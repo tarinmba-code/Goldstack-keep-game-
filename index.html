@@ -39,7 +39,7 @@
   /* ---- loader with on-screen diagnostics ---- */
   (function(){
     var step=document.getElementById('bootStep'), errBox=document.getElementById('bootErr'), done=false;
-    var REMOTE='https://upload.higgsfield.ai/user_3GV3qOPm6iGGSW2lq6tFLbT5Fsw/b4ec93f4-1b08-497c-a2e8-564bdae0e859.js';
+        var REMOTE='https://upload.higgsfield.ai/user_3GV3qOPm6iGGSW2lq6tFLbT5Fsw/585c21ba-4f0a-41b0-8dd2-b771fcd66a71.js';
     function say(t){ step.textContent=t; }
     function fail(title,detail){ errBox.style.display='block'; errBox.innerHTML='<b>'+title+'</b>'+(detail||''); }
     window.addEventListener('error',function(e){
@@ -55,7 +55,7 @@
     function start(){
       load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','Loading 3D engine…',function(){
         if(!window.THREE){ fail('3D engine did not start','Your browser may block WebGL.'); return; }
-        say('Downloading game (3.4 MB)…');
+        say('Downloading game v26 · 7.7 MB…');
         var s=document.createElement('script'); s.src=REMOTE; s.async=false;
         s.onload=ok; s.onerror=function(){ fail('Could not download the game files',REMOTE.slice(0,120)); };
         document.head.appendChild(s);
