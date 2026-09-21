@@ -29,7 +29,7 @@
   <i></i>
   <div>Loading Goldstack Keep</div>
   <div id="bootStep">Starting…</div>
-  <div id="bootVer">Build v39 · 7.2 MB · cloud save on · 35 stages · 40 heroes</div>
+  <div id="bootVer">Build v43 · 8.3 MB · cloud save on · 35 stages · 40 heroes</div>
   <div id="bootErr"></div>
 </div>
 <script>
@@ -37,7 +37,7 @@
   window.GK_SUPABASE = { url: "https://xrsvrvrqrctvufkneizs.supabase.co", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyc3ZydnJxcmN0dnVma25laXpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MDQ2NzQsImV4cCI6MjA5ODk4MDY3NH0.R372wC1w81zfMjLMjG7L_sFKM67bdVoGd3-E4JUQ97s" };
 
   (function(){
-    var GAME='https://upload.higgsfield.ai/user_3GV3qOPm6iGGSW2lq6tFLbT5Fsw/10936620-2015-452b-bda5-6bf7c0764da3.js';
+    var GAME='https://upload.higgsfield.ai/user_3GV3qOPm6iGGSW2lq6tFLbT5Fsw/27dda2df-5664-4bbc-aae5-87a88db89c8a.js';
     var step=document.getElementById('bootStep'), errBox=document.getElementById('bootErr'), done=false;
     function say(t){ step.textContent=t; }
     function fail(t,d){ errBox.style.display='block'; errBox.innerHTML='<b>'+t+'</b><br>'+(d||''); }
@@ -50,20 +50,11 @@
     load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','Loading 3D engine…',function(){
       if(!window.THREE){ fail('3D engine did not start','Your browser may be blocking WebGL.'); return; }
       load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','Loading accounts…',function(){
-      load(GAME,'Downloading game (7.2 MB)…',function(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); });
+      load(GAME,'Downloading game (8.3 MB)…',function(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); });
       });
     });
-    setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','On a slow connection a 7.2 MB download can take a while. If this stays, tell Claude what this box says.'); },40000);
+    setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','On a slow connection an 8.3 MB download can take a while. If this stays, tell Claude what this box says.'); },40000);
   })();
-</script>
-<script src="audio.js"></script>
-<script>
-window.addEventListener('pointerdown', function () {
-  gsAudio.unlock();
-  gsAudio.setStage(1);
-  gsAudio.setPhase('build');
-  gsAudio.playMusic();
-}, { once: true });
 </script>
 </body>
 </html>
