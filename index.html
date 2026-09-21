@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#CFE9F5">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="description" content="Goldstack Keep: an anime castle-defense game. Carry gold, raise walls, recruit samurai and defend fifteen lands from the oni horde.">
+<meta name="description" content="Goldstack Keep: an anime castle-defense game. Carry the gold, raise the wall, defend 35 lands from the oni horde.">
 <title>Goldstack Keep</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,8 +20,8 @@
   #boot i{ width:46px; height:46px; border-radius:50%; background:#F5B820; box-shadow:inset 0 -6px 0 #A8760A; animation:spin 1s linear infinite; }
   @keyframes spin{ to{ transform:rotateY(360deg) } }
   #bootStep{ font-family:"Nunito Sans",sans-serif; font-weight:800; font-size:14px; color:#4A4453; max-width:34ch; }
+  #bootVer{ font-family:"Nunito Sans",sans-serif; font-weight:800; font-size:11px; color:#8A7F72; }
   #bootErr{ font-family:"Nunito Sans",sans-serif; font-weight:800; font-size:13px; color:#B3261E; background:#fff; border-radius:12px; padding:10px 12px; max-width:36ch; display:none; word-break:break-word; }
-  #bootErr b{ display:block; margin-bottom:4px; }
 </style>
 </head>
 <body>
@@ -29,42 +29,29 @@
   <i></i>
   <div>Loading Goldstack Keep</div>
   <div id="bootStep">Starting…</div>
+  <div id="bootVer">Build v37 · 7.1 MB · 35 stages · 40 heroes</div>
   <div id="bootErr"></div>
 </div>
 <script>
-  /* ---- Accounts and cloud saves: paste your Supabase project URL and anon (public) key, then commit. ---- */
+  /* Accounts and cloud saves: paste your Supabase project URL and anon key, then commit. */
   window.GK_SUPABASE = null;
-  // window.GK_SUPABASE = { url: "https://YOUR-PROJECT.supabase.co", key: "YOUR-ANON-PUBLIC-KEY" };
 
-  /* ---- loader with on-screen diagnostics ---- */
   (function(){
+    var GAME='https://upload.higgsfield.ai/user_3GV3qOPm6iGGSW2lq6tFLbT5Fsw/91299b42-6688-40b1-8b92-d234011f08ae.js';
     var step=document.getElementById('bootStep'), errBox=document.getElementById('bootErr'), done=false;
-    var REMOTE='https://upload.higgsfield.ai/user_3GV3qOPm6iGGSW2lq6tFLbT5Fsw/b102a30a-7ab8-44bc-ba7a-b2bf13193092.js';
     function say(t){ step.textContent=t; }
-    function fail(title,detail){ errBox.style.display='block'; errBox.innerHTML='<b>'+title+'</b>'+(detail||''); }
-    window.addEventListener('error',function(e){
-      if(done) return;
+    function fail(t,d){ errBox.style.display='block'; errBox.innerHTML='<b>'+t+'</b><br>'+(d||''); }
+    window.addEventListener('error',function(e){ if(done) return;
       if(e.target&&e.target.tagName==='SCRIPT'){ fail('A file failed to load',String(e.target.src||'').slice(0,120)); return; }
-      fail('Error while starting', (e.message||'')+' — '+String(e.filename||'').split('/').pop()+':'+(e.lineno||''));
-    },true);
-    function load(src,label,next){
-      say(label); var s=document.createElement('script'); s.src=src; s.async=false;
-      s.onload=next; s.onerror=function(){ fail('Could not download '+label.toLowerCase(), src.slice(0,120)); };
-      document.head.appendChild(s);
-    }
-    function start(){
-      load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','Loading 3D engine…',function(){
-        if(!window.THREE){ fail('3D engine did not start','Your browser may block WebGL.'); return; }
-        say('Downloading game v26 · 7.7 MB…');
-        var s=document.createElement('script'); s.src=REMOTE; s.async=false;
-        s.onload=ok; s.onerror=function(){ fail('Could not download the game files',REMOTE.slice(0,120)); };
-        document.head.appendChild(s);
-      });
-    }
-    function ok(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); }
-    if(window.GK_SUPABASE){ load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','Loading accounts…',start); }
-    else start();
-    setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','If this stays here, your connection may be blocking one of the files. Tell Claude what this box says.'); },25000);
+      fail('Error while starting',(e.message||'')+' — '+String(e.filename||'').split('/').pop()+':'+(e.lineno||'')); },true);
+    function load(src,label,next){ say(label); var s=document.createElement('script'); s.src=src; s.async=false;
+      s.onload=next; s.onerror=function(){ fail('Could not download '+label.toLowerCase(),src.slice(0,120)); };
+      document.head.appendChild(s); }
+    load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','Loading 3D engine…',function(){
+      if(!window.THREE){ fail('3D engine did not start','Your browser may be blocking WebGL.'); return; }
+      load(GAME,'Downloading game (7.1 MB)…',function(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); });
+    });
+    setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','On a slow connection a 7.1 MB download can take a while. If this stays, tell Claude what this box says.'); },40000);
   })();
 </script>
 </body>
