@@ -54,5 +54,14 @@
     setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','On a slow connection a 7.1 MB download can take a while. If this stays, tell Claude what this box says.'); },40000);
   })();
 </script>
+<script src="audio.js"></script>
+<script>
+window.addEventListener('pointerdown', function () {
+  gsAudio.unlock();
+  gsAudio.setStage(1);
+  gsAudio.setPhase('build');
+  gsAudio.playMusic();
+}, { once: true });
+</script>
 </body>
 </html>
