@@ -29,12 +29,12 @@
   <i></i>
   <div>Loading Goldstack Keep</div>
   <div id="bootStep">Starting…</div>
-  <div id="bootVer">Build v37 · 7.1 MB · 35 stages · 40 heroes</div>
+  <div id="bootVer">Build v39 · 7.2 MB · cloud save on · 35 stages · 40 heroes</div>
   <div id="bootErr"></div>
 </div>
 <script>
-  /* Accounts and cloud saves: paste your Supabase project URL and anon key, then commit. */
-  window.GK_SUPABASE = null;
+  /* Accounts and cloud saves */
+  window.GK_SUPABASE = { url: "https://xrsvrvrqrctvufkneizs.supabase.co", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyc3ZydnJxcmN0dnVma25laXpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MDQ2NzQsImV4cCI6MjA5ODk4MDY3NH0.R372wC1w81zfMjLMjG7L_sFKM67bdVoGd3-E4JUQ97s" };
 
   (function(){
     var GAME='https://upload.higgsfield.ai/user_3GV3qOPm6iGGSW2lq6tFLbT5Fsw/f495f376-9b86-40b1-a2af-fdd72d0df186.js';
@@ -49,9 +49,11 @@
       document.head.appendChild(s); }
     load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','Loading 3D engine…',function(){
       if(!window.THREE){ fail('3D engine did not start','Your browser may be blocking WebGL.'); return; }
-      load(GAME,'Downloading game (7.1 MB)…',function(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); });
+      load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','Loading accounts…',function(){
+      load(GAME,'Downloading game (7.2 MB)…',function(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); });
+      });
     });
-    setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','On a slow connection a 7.1 MB download can take a while. If this stays, tell Claude what this box says.'); },40000);
+    setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','On a slow connection a 7.2 MB download can take a while. If this stays, tell Claude what this box says.'); },40000);
   })();
 </script>
 <script src="audio.js"></script>
