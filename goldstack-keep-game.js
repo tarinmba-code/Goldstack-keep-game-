@@ -1220,7 +1220,7 @@ function startStage(si){
   G={ si, st, state:'play', time:0, clock:0, waves:genWaves(si), waveIdx:0, spawners:[], kills:0, built:0,
     hero:{x:0,z:6,vx:0,vz:0,rot:Math.PI,hp:HD.hp,max:HD.hp,cd:0,alive:true,respawn:0,target:null,rt:0,flash:0,ax:0,moving:false,isHero:true},
     units:[], enemies:[], eshots:[], arrows:[], orbs:[], coins:[], parts:[], tgs:[], towerArchers:[], barracks:[], towers:{}, fences:{}, pads:[], builtIds:new Set(), up:new Set(),
-    mine:null, forge:null, armory:null, heroDef:HD, ultCd:Math.min(8,ultMax()*0.3), ultFx:0, lvls:{}, armRemote:false, stack:6+PK('chest')*10, bonusTotal:0, bossBounty:0, breaks:{}, breakT:0, ingots:0, keepMax:Math.round((HD.id==='shachi'?1.8:HD.id==='gasha'?1.3:HD.id==='orochi'?1.4:HD.id==='daidara'?1.5:HD.id==='enma'?1.6:HD.id==='brute'?1.15:1)*CFG.keepHp*(1+0.15*si)*(1+0.10*PK('bless'))), lean:{x:0,v:0}, wob:{x:0,v:0}, tweens:[],
+    mine:null, forge:null, armory:null, heroDef:HD, ultCd:Math.min(8,ultMax()*0.3), ultFx:0, lvls:{}, armRemote:false, stack:6+PK('chest')*10, bonusTotal:0, bossScale:0, bossBounty:0, breaks:{}, breakT:0, ingots:0, keepMax:Math.round((HD.id==='shachi'?1.8:HD.id==='gasha'?1.3:HD.id==='orochi'?1.4:HD.id==='daidara'?1.5:HD.id==='enma'?1.6:HD.id==='brute'?1.15:1)*CFG.keepHp*(1+0.15*si)*(1+0.10*PK('bless'))), lean:{x:0,v:0}, wob:{x:0,v:0}, tweens:[],
     cards:[], mods:{}, cardOpen:false, cardPick:null, cardWaves:{}, shake:0, hitStop:0, focus:new T.Vector3(0,0,6), lastStack:-1, lastIng:-1, pillT:0, cpCap:CFG.cpBase+2*PK('cap'), gear:{archer:0,samurai:0,onmyoji:0,ninja:0,oniw:0,yari:0,teppo:0,sohei:0,miko:0,tanuki:0,sumo:0,kabuki:0,falcon:0,kusari:0,komainu:0},
     pending:[], boss:null, armOpen:false, armDismissed:false, ambT:0, zoom:1 };
   G.keepHp=G.keepMax;
@@ -1267,15 +1267,45 @@ function spawnUnit(cls,x,z){
   const D=CLS[cls], hpMul=MOD('squadHp')*((cls==='samurai'||cls==='oniw')?1+0.4*(G.gear[cls]||0):1)*(1+0.1*LV('m_vital'))*(1+0.08*PK('squadhp'))*(PASS('samurai')?1.15:1)*(PASS('namazu')?1.25:1)*(PASS('shuten')?1.3:1)*(PASS('benkei')?1.45:1);
   G.units.push({cls,x,z,rot:Math.PI,hp:D.hp*hpMul,max:D.hp*hpMul,cd:rand(0,D.cd),alive:true,target:null,rt:rand(0,0.3),flash:0,moving:false,seed:rand(0,10),xp:0,rank:0,st:'idle',slot:G.units.length});
 }
+const MUTS=[
+  {id:'shield', name:'Warded',   col:0x7FC8FF, from:4,  w:3},
+  {id:'swift',  name:'Swift',    col:0xFFE27A, from:6,  w:3},
+  {id:'rage',   name:'Enraged',  col:0xFF6A4A, from:7,  w:3},
+  {id:'split',  name:'Splitting',col:0xC8FF7A, from:10, w:2},
+  {id:'healer', name:'Chanting', col:0x8CFFB4, from:13, w:2}];
+function rollMutation(e){
+  if(!e||e.cls==='boss'||e.noMut) return;
+  const chance=Math.min(0.22,0.03+0.006*G.si);
+  if(Math.random()>chance) return;
+  const pool=MUTS.filter(m=>G.si>=m.from); if(!pool.length) return;
+  let tot=pool.reduce((a,m)=>a+m.w,0), r=Math.random()*tot, pick=pool[0];
+  for(const m of pool){ r-=m.w; if(r<=0){ pick=m; break; } }
+  e.mut=pick.id; e.mutCol=pick.col; e.max=Math.round(e.max*1.5); e.hp=e.max;
+  if(pick.id==='shield') e.ward=e.max*0.6;
+  if(pick.id==='swift') e.speed*=1.45;
+  if(pick.id==='rage') e.rage=true;
+  if(pick.id==='split') e.split=2;
+  if(pick.id==='healer') e.healer=true;
+  popText(e.x,2.2,e.z,pick.name,'crit');
+}
+function splitEnemy(e){
+  if(!e.split) return; const n=e.split; e.split=0;
+  for(let i=0;i<n;i++){ const c=spawnEnemy(e.cls,e.lane);
+    if(c){ c.noMut=true; c.x=e.x+rand(-1.2,1.2); c.z=e.z+rand(-1.2,1.2); c.wp=e.wp;
+      c.max=Math.round(e.max*0.4); c.hp=c.max; c.speed=e.speed*1.15; c.dmg=e.dmg*0.6; } }
+  spawnParticles(e.x,1,e.z,14,0xC8FF7A,5,0.5,1.3,0);
+}
 function spawnEnemy(type,laneIdx,near){
   const lane=LAYOUT.lanes[laneIdx]; let [x,z]=lane[0]; let wp=1;
   if(near){ x=near.x+rand(-2,2); z=near.z+rand(-2,2); wp=near.wp||1; }
-  const hs=STAGES[0].hp*(1+G.clock/300);  /* normal enemies no longer scale with stage number */
+  const hs=STAGES[0].hp*(1+Math.max(0,G.clock)/300);  /* normal enemies no longer scale with stage number */
   const e={lane:laneIdx,wp,x:x+rand(-1.2,1.2),z:z+rand(-1.2,1.2),rot:0,cd:rand(0.2,1),rt:0,target:null,flash:0,dead:false,moving:true,seed:rand(0,10),atk:0,
     slowT:0,slowF:0,freezeT:0,burnT:0,burnDps:0,stunT:0,burnFx:0};
   if(type.startsWith('boss:')){
     const kind=type.slice(5), D=BOSSES[kind];
-    Object.assign(e,{cls:'boss',kind,hp:D.hp*(kind==='brute'?G.st.hp:1),speed:D.speed,rad:D.rad,st:'move',atkT:1.5,pi:0,timer:0,dmg:30*(1+0.25*G.si)});
+    { const base=BOSSES[G.st.boss].hp+(G.st.boss2?BOSSES[G.st.boss2].hp:0);
+      if(!G.bossScale) G.bossScale=Math.min(1,(2600*Math.pow(G.si+1,1.25))/base); }
+    Object.assign(e,{cls:'boss',kind,hp:(kind==='brute'?D.hp*(1+0.35*G.si):D.hp*G.bossScale),speed:D.speed,rad:D.rad,st:'move',atkT:1.5,pi:0,timer:0,dmg:30*(1+0.25*G.si)});
     e.max=e.hp;
     const m={g:new T.Group()};
     Object.assign(e,m); e.mats=bossMats(e.g);
@@ -1284,9 +1314,10 @@ function spawnEnemy(type,laneIdx,near){
   } else {
     const D=EN[type]; Object.assign(e,{cls:type,hp:D.hp*hs+40*Math.floor(G.si/10),speed:D.speed*rand(0.9,1.1),rad:D.rad,dmg:D.dmg}); e.max=e.hp;
   }
+  if(e.cls!=='boss') rollMutation(e);
   G.enemies.push(e); return e;
 }
-function spawnParticles(x,y,z,n,color,spd=4,life=0.5,size=1,grav=-9){
+function spawnParticles(x,y,z,n,color,spd=4,life=0.5,size=1,grav=-9){ if(QL<1){ n=Math.max(1,Math.round(n*QL)); if(QL<0.5&&Math.random()>0.6) return; }
   for(let i=0;i<n;i++){ if(G.parts.length>=880) G.parts.shift(); const a=rand(0,Math.PI*2), s=rand(0.4,1)*spd;
     G.parts.push({x,y,z,vx:Math.cos(a)*s,vy:rand(0.5,1.4)*spd*0.8,vz:Math.sin(a)*s,life,max:life,size:size*rand(0.7,1.3),col:color,grav,rx:rand(0,3),ry:rand(0,3)}); }
 }
@@ -1309,6 +1340,9 @@ function hitEnemy(e,dmg,src,el,depth=0,isArrow=false){
   if(e.dead) return;
   if(isArrow&&e.cls==='boss'&&U('steel3')) dmg*=1.25;
   { const ED=EN[e.cls]; if(ED&&ED.armor) dmg*=(1-ED.armor); }
+  if(e.ward>0){ const soak=Math.min(e.ward,dmg*0.6); e.ward-=soak; dmg-=soak;
+    if(e.ward<=0){ e.ward=0; spawnParticles(e.x,1.3,e.z,10,0x7FC8FF,5,0.4,1.3,0); popText(e.x,2.3,e.z,'WARD BROKEN','crit'); }
+    else spawnParticles(e.x,1.3,e.z,2,0x7FC8FF,2,0.25,1,0); }
   e.hp-=dmg; e.flash=1;
   if(e.cls==='boss'||Math.random()<0.3) popText(e.x,(e.cls==='boss'?BOSSES[e.kind].h:1.9),e.z,'-'+Math.round(dmg));
   if(e.cls==='boss') dmg*=MOD('bossDmg'); else dmg*=MOD('normDmg');
@@ -1327,6 +1361,7 @@ function hitEnemy(e,dmg,src,el,depth=0,isArrow=false){
   if(e.hp<=0){ killEnemy(e,src); if(G&&G.ultCd>0) G.ultCd=Math.max(0,G.ultCd-0.35); }
 }
 function killEnemy(e,src){
+  if(e.split) splitEnemy(e);
   if(e.dead) return; e.dead=true; G.kills++;
   if(src&&src.xp!==undefined&&src.alive){ src.xp+=e.cls==='boss'?5:e.cls==='oni'?2:1; const nr=src.xp>=8?2:src.xp>=3?1:0;
     if(nr>src.rank){ src.rank=nr; const add=CLS[src.cls].hp*0.2; src.max+=add; src.hp=src.max; popText(src.x,1.9,src.z,nr===2?'GOLD RANK':'RANK UP','gold'); spawnParticles(src.x,1,src.z,14,0xFFE27A,4,0.6,1,-6); sfx('rank'); } }
@@ -1494,7 +1529,7 @@ const FX={}, fxGeo=new T.PlaneGeometry(1,1), _fxq=new T.Quaternion(), _fxax=new 
 function fxInit(){ for(const k of FXK){ if(FX[k]||!SPR[k]) continue;
   const m=new T.InstancedMesh(fxGeo,new T.MeshBasicMaterial({map:tex(k),transparent:true,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide}),40);
   m.frustumCulled=false; m.renderOrder=8; scene.add(m); FX[k]={mesh:m,items:[]}; } }
-function fx(kind,x,y,z,size,life,col,opt){ const F=FX[kind]; if(!F) return; opt=opt||{};
+function fx(kind,x,y,z,size,life,col,opt){ const F=FX[kind]; if(!F) return; if(QL<0.45&&F.items.length>8) return; opt=opt||{};
   if(F.items.length>=40) F.items.shift();
   F.items.push({x,y,z,s0:size,t:0,life,col:col||0xFFFFFF,rot:opt.rot!==undefined?opt.rot:rand(0,6.3),spin:opt.spin||0,grow:opt.grow!==undefined?opt.grow:1.6,flat:!!opt.flat,vy:opt.vy||0}); }
 function fxUpdate(dt){
@@ -1962,6 +1997,12 @@ function holdFenceLine(e){
 function laneDir(e){ const lane=LAYOUT.lanes[e.lane]; let wp=lane[e.wp], dx=wp[0]-e.x, dz=wp[1]-e.z, d=Math.hypot(dx,dz);
   if(d<1.0&&e.wp<lane.length-1){ e.wp++; wp=lane[e.wp]; dx=wp[0]-e.x; dz=wp[1]-e.z; d=Math.hypot(dx,dz); } return {mx:d?dx/d:0,mz:d?dz/d:0}; }
 function updateGrunt(e,dt){
+  if(e.mut){
+    if(e.rage&&!e.raged&&e.hp<e.max*0.5){ e.raged=true; e.speed*=1.5; e.dmg*=1.6; spawnParticles(e.x,1.2,e.z,12,0xFF6A4A,5,0.5,1.5,0); popText(e.x,2.2,e.z,'ENRAGED','crit'); }
+    if(e.healer&&(e.healT=(e.healT||0)-dt)<=0){ e.healT=1.2;
+      for(const o of G.enemies){ if(o.dead||o===e) continue; if(Math.hypot(o.x-e.x,o.z-e.z)<5.5&&o.hp<o.max){ o.hp=Math.min(o.max,o.hp+o.max*0.06); spawnParticles(o.x,1.4,o.z,2,0x8CFFB4,1.5,0.5,1,1.5); } } }
+    if((e.auraT=(e.auraT||0)-dt)<=0){ e.auraT=0.25; spawnParticles(e.x,0.5,e.z,1,e.mutCol,0.8,0.5,1.1,0.6); }
+  }
   const D=EN[e.cls];
   e.rt-=dt; if(e.rt<=0){ e.rt=0.3; e.target=nearestPlayer(e.x,e.z,D.aggro); } if(e.target&&!e.target.alive) e.target=null;
   const kd=Math.hypot(e.x-KEEP.x,e.z-KEEP.z), reach=0.55+e.rad+(D.range||0);
@@ -2043,7 +2084,17 @@ function castPattern(e,p,ax,az,enr){
 
 /* ================================================================ render */
 const camQ=new T.Quaternion();
-function render(dt){
+let QL=1, _fpsT=0, _fpsN=0, _fps=60;
+function perfTick(dt){
+  _fpsT+=dt; _fpsN++;
+  if(_fpsT>=1){ _fps=_fpsN/_fpsT; _fpsT=0; _fpsN=0;
+    /* quality follows the measured frame rate only: a phone that copes keeps full detail */
+    if(_fps<30) QL=Math.max(0.3,QL-0.25);
+    else if(_fps>50) QL=Math.min(1,QL+0.15);
+    try{ if(renderer){ const want=QL>=0.9?Math.min(2,window.devicePixelRatio||1):(QL>=0.5?1:0.75);
+      if(Math.abs((renderer.getPixelRatio()||1)-want)>0.05) renderer.setPixelRatio(want);
+      if(sun&&sun.castShadow!==(QL>=0.55)) sun.castShadow=(QL>=0.55); } }catch(err){} } }
+function render(dt){ perfTick(dt);
   const h=G.hero, t=TIME;
   const tx=h.alive?h.x+h.vx*0.16:0, tz=h.alive?h.z+h.vz*0.16:6, k=1-Math.exp(-dt*8);
   G.focus.x+=(tx-G.focus.x)*k; G.focus.z+=(tz-G.focus.z)*k;
@@ -2083,7 +2134,7 @@ function render(dt){
       if(e.kind==='shogun'&&Math.random()<dt*10) spawnParticles(e.x+rand(-1,1),5.2,e.z,1,0xFF7A2A,1,0.6,1,3);
       if(e.kind==='kitsune'&&Math.random()<dt*6) spawnParticles(e.x+rand(-1.5,1.5),rand(1.5,4),e.z,1,0x6FE3FF,0.6,0.7,0.9,1);
       continue; }
-    drawSprite(e.cls,e,e.x,0,e.z,e.rot,e.flash,e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,1,e.burnT>0);
+    drawSprite(e.cls,e,e.x,0,e.z,e.rot,Math.max(e.flash,e.mut?0.42+Math.sin(TIME*4+e.seed)*0.12:0),e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,e.mut?1.18:1,e.burnT>0);
   }
   Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
 
@@ -2338,5 +2389,5 @@ $('avatar').src=ART.hero; $('titleHero').src=ART[(HEROES[SAVE.hero]||HEROES.roni
 })();
 startStage(0); G.state='title'; showScreen('title'); $('toast').classList.remove('show'); toastTimer=0;
 requestAnimationFrame(frame);
-window.__T={ cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
+window.__T={ ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
 })();
