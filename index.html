@@ -29,7 +29,7 @@
   <i></i>
   <div>Loading Goldstack Keep</div>
   <div id="bootStep">Starting…</div>
-  <div id="bootVer">Build v48 · 40 stages · 45 heroes · battle cards</div>
+  <div id="bootVer">Build v50 · 50 stages · 45 heroes · legendary gods</div>
   <div id="bootErr"></div>
 </div>
 <script>
@@ -50,7 +50,11 @@
     load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','Loading 3D engine…',function(){
       if(!window.THREE){ fail('3D engine did not start','Your browser may be blocking WebGL.'); return; }
       load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','Loading accounts…',function(){
+      load('./goldstack-art-core.js','Loading artwork…',function(){
+      load('./goldstack-art-gods.js','Loading the gods…',function(){
       load(GAME,'Loading game…',function(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); });
+      });
+      });
       });
     });
     setTimeout(function(){ if(!done&&errBox.style.display!=='block') fail('Still loading','If this stays, tell Claude what this box says.'); },40000);
