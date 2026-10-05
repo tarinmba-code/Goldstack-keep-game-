@@ -1,0 +1,21 @@
+{
+  "name": "goldstack-keep-video",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Remotion video project for Goldstack Keep (trailers, promos)",
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render GoldstackIntro out/goldstack-intro.mp4",
+    "still": "remotion still GoldstackIntro out/goldstack-intro.png --frame=60"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.532",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.532"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "7.0.2"
+  }
+}
