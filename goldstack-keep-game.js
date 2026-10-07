@@ -34,7 +34,10 @@ const CLS = {
   komainu: {name:'Komainu',       cp:2, hp:200, speed:7.4, range:1.6, dmg:32, cd:0.8,  train:6, order:4},
   shugen:  {name:'Flame Shugenja',cp:2, hp:70,  speed:5.8, range:8,   dmg:34, cd:1.6,  train:6, order:0, aoe:2.0, el:'fire'},
   kunoichi:{name:'Frost Kunoichi',cp:2, hp:120, speed:7.8, range:1.4, dmg:30, cd:0.6,  train:6, order:2, el:'ice', crit:0.25},
-  taiko:   {name:'Taiko Drummer', cp:3, hp:150, speed:5.6, range:5,   dmg:24, cd:1.8,  train:7, order:1, aoe:4.2, el:'bolt'}
+  taiko:   {name:'Taiko Drummer', cp:3, hp:150, speed:5.6, range:5,   dmg:24, cd:1.8,  train:7, order:1, aoe:4.2, el:'bolt'},
+  naginata:{name:'Naginata Maiden',cp:2, hp:170, speed:6.6, range:2.6, dmg:30, cd:0.9,  train:6, order:3, cleave:3},
+  tate:    {name:'Shield Guard',  cp:3, hp:700, speed:5.2, range:1.6, dmg:18, cd:1.1,  train:8, order:5, taunt:6, guard:0.45},
+  foxmage: {name:'Kitsune Mage',  cp:2, hp:55,  speed:6.0, range:8.5, dmg:28, cd:1.4,  train:6, order:0, aoe:2.2}
 };
 const EN = {
   bandit:{hp:40,  speed:2.3, dmg:6,  cd:1.0, rad:0.45, loot:[2,3], aggro:3.4},
@@ -325,13 +328,16 @@ const RECRUITS = {
   falcon: {name:'Falconer',      sprite:'falcon',  price:1600, jade:24, req:14, desc:'Longest range in the army, strikes from far behind the wall. Unlocks the Falconry.'},
   kusari: {name:'Kusarigama',    sprite:'kusari',  price:1800, jade:28, req:16, desc:'Chain sickle that drags enemies out of the pack. Unlocks the Chain Yard.'},
   komainu:{name:'Komainu',       sprite:'komainu', price:2000, jade:32, req:18, desc:'A shrine lion-dog that chases down stragglers. Unlocks the Guardian Shrine.'},
+  naginata:{name:'Naginata Maiden',sprite:'naginata',price:2400, jade:36, req:22, desc:'Wide polearm sweeps that cut up to four foes at once. Unlocks the Naginata Hall.'},
+  tate:   {name:'Shield Guard',   sprite:'tate',   price:2800, jade:42, req:28, desc:'A walking wall: pulls nearby foes onto himself and shrugs off 45% of damage. Unlocks the Shield Barracks.'},
+  foxmage:{name:'Kitsune Mage',   sprite:'foxmage',price:3200, jade:48, req:34, desc:'Hurls two foxfire orbs at different foes, burning whole groups. Unlocks the Fox Shrine.'},
   shugen: {name:'Flame Shugenja', sprite:'shugen', price:4000, jade:40, req:50, desc:'Hurls fire talismans that set whole groups burning. Unlocks the Fire Altar.'},
   kunoichi:{name:'Frost Kunoichi',sprite:'kunoichi',price:4500, jade:45, req:51, desc:'Lightning-fast ice kunai that chill and freeze foes, with critical hits. Unlocks the Frost Dojo.'},
   taiko:  {name:'Taiko Drummer',  sprite:'taiko',  price:5000, jade:50, req:52, desc:'Thunder drum beats shock every nearby foe and rally the squad. Unlocks the Drum Tower.'}
 };
-const UNIT_SPR={archer:'archer',samurai:'samurai',onmyoji:'onmyoji',ninja:'ninja',oniw:'oni',yari:'yari',teppo:'teppo',sohei:'sohei',miko:'miko',tanuki:'tanuki',sumo:'sumo',kabuki:'kabuki',falcon:'falcon',kusari:'kusari',komainu:'komainu',shugen:'shugen',kunoichi:'kunoichi',taiko:'taiko'};
-const MELEE_CLS=['samurai','oniw','yari','sohei','sumo','kusari','komainu','kunoichi'];
-const ICONS = {sumopit:'🤼', kabukipit:'🎭', falconpit:'🦅', kusaripit:'⛓️', komainupit:'🦁', shugenpit:'🔥', kunoichipit:'❄️', taikopit:'🥁', yaripit:'🔱', teppopit:'💥', soheipit:'🔔', mikopit:'🎐', tanukipit:'🧨', ctower:'💣', onipit:'👹', range:'🏹', dojo:'⚔️', shrine:'⛩️', ninja:'🥷', banner:'🎌', mine:'⛏️', forge:'🔥', armory:'🛡️', tower:'🗼', fence:'🪵', tup:'⬆️', lvl2:'⭐'};
+const UNIT_SPR={archer:'archer',samurai:'samurai',onmyoji:'onmyoji',ninja:'ninja',oniw:'oni',yari:'yari',teppo:'teppo',sohei:'sohei',miko:'miko',tanuki:'tanuki',sumo:'sumo',kabuki:'kabuki',falcon:'falcon',kusari:'kusari',komainu:'komainu',shugen:'shugen',kunoichi:'kunoichi',taiko:'taiko',naginata:'naginata',tate:'tate',foxmage:'foxmage'};
+const MELEE_CLS=['samurai','oniw','yari','sohei','sumo','kusari','komainu','kunoichi','naginata','tate'];
+const ICONS = {sumopit:'🤼', kabukipit:'🎭', falconpit:'🦅', kusaripit:'⛓️', komainupit:'🦁', shugenpit:'🔥', kunoichipit:'❄️', taikopit:'🥁', naginatapit:'🗡️', tatepit:'🛡️', foxmagepit:'🦊', yaripit:'🔱', teppopit:'💥', soheipit:'🔔', mikopit:'🎐', tanukipit:'🧨', ctower:'💣', onipit:'👹', range:'🏹', dojo:'⚔️', shrine:'⛩️', ninja:'🥷', banner:'🎌', mine:'⛏️', forge:'🔥', armory:'🛡️', tower:'🗼', fence:'🪵', tup:'⬆️', lvl2:'⭐'};
 
 /* ================================================================ helpers */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -558,7 +564,7 @@ let _blank=null;
 function texBlank(){ if(!_blank){ const c=document.createElement('canvas'); c.width=c.height=2; _blank=new T.CanvasTexture(c); } return _blank; }
 function tex(k,rep){ if(!SPR[k]&&!ANIM[k]) return texBlank(); const key=k+(rep?':'+rep:''); if(TEX[key]) return TEX[key]; const t=texLoader.load(SPR[k]||ANIM[k]); t.anisotropy=renderer.capabilities.getMaxAnisotropy?Math.min(8,renderer.capabilities.getMaxAnisotropy()):4;
   if(rep){ t.wrapS=t.wrapT=T.RepeatWrapping; t.repeat.set(rep,rep); } return (TEX[key]=t); }
-const SPR_H={wata:8.1,oyama:7.8,kurao:7.4,magatsu:9.2,ryugu:8.4,eronin:3.2,egolem:4.2,epriest:3.3,shugen:1.7,kunoichi:1.6,taiko:1.65,esapper:1.8,eflier:2.2,etunnel:2.0,etreasure:2.2,takemika:6.2,hachiman:6.3,bishamon:6.3,inari:6.1,saruta:6.5,minaka:6.4,kunitoko:6.7,yatono:6.4,marishi:6.4,mioya:6.8,espear:2.3,earcher:3.3,eshaman:3.6,eshield:4.2,fujin:5.8,yukionna:5.8,benkei:6.0,kagutsuchi:5.8,izanagi:6.2,sumo:1.75,kabuki:1.7,falcon:1.65,kusari:1.65,komainu:1.45,raiju:5.4,baku:5.2,onryo:5.6,shachi:5.4,amaterasu:5.8,jorogumo:5.6,karura:5.8,kuzuryu:6.2,izanami:6.0,tsukuyomi:6.4,ushioni:5.8,shuten:6.4,kirin:5.6,enma:6.2,susanoo:6.6,umibozu:6.0,kamaitachi:4.6,daidara:7.2,hannya:5.4,mikaboshi:6.6,yari:1.65,teppo:1.6,sohei:1.7,miko:1.6,tanuki:1.55,nue:5.0,ryujin:5.8,tsuchi:4.8,nurari:4.8,orochi:6.2,namazu:5.4,mao:6.4,kappa:5.1,gasha:6.9,raijin:6.2,hero:2.15,archer:1.6,samurai:1.7,onmyoji:1.65,ninja:1.35,bandit:1.6,oni:2.35,brute:3.7,akaoni:4.9,tengu:4.5,kitsune:4.4,yuki:4.9,shogun:6.0};
+const SPR_H={naginata:2.1,tate:1.8,foxmage:1.75,wata:8.1,oyama:7.8,kurao:7.4,magatsu:9.2,ryugu:8.4,eronin:3.2,egolem:4.2,epriest:3.3,shugen:1.7,kunoichi:1.6,taiko:1.65,esapper:1.8,eflier:2.2,etunnel:2.0,etreasure:2.2,takemika:6.2,hachiman:6.3,bishamon:6.3,inari:6.1,saruta:6.5,minaka:6.4,kunitoko:6.7,yatono:6.4,marishi:6.4,mioya:6.8,espear:2.3,earcher:3.3,eshaman:3.6,eshield:4.2,fujin:5.8,yukionna:5.8,benkei:6.0,kagutsuchi:5.8,izanagi:6.2,sumo:1.75,kabuki:1.7,falcon:1.65,kusari:1.65,komainu:1.45,raiju:5.4,baku:5.2,onryo:5.6,shachi:5.4,amaterasu:5.8,jorogumo:5.6,karura:5.8,kuzuryu:6.2,izanami:6.0,tsukuyomi:6.4,ushioni:5.8,shuten:6.4,kirin:5.6,enma:6.2,susanoo:6.6,umibozu:6.0,kamaitachi:4.6,daidara:7.2,hannya:5.4,mikaboshi:6.6,yari:1.65,teppo:1.6,sohei:1.7,miko:1.6,tanuki:1.55,nue:5.0,ryujin:5.8,tsuchi:4.8,nurari:4.8,orochi:6.2,namazu:5.4,mao:6.4,kappa:5.1,gasha:6.9,raijin:6.2,hero:2.15,archer:1.6,samurai:1.7,onmyoji:1.65,ninja:1.35,bandit:1.6,oni:2.35,brute:3.7,akaoni:4.9,tengu:4.5,kitsune:4.4,yuki:4.9,shogun:6.0};
 const sprGeo=new T.PlaneGeometry(1,1); sprGeo.translate(0,0.5,0);
 const sprMat=k=>new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide});
 const FRAMES=k=>((ANIM_META[k]&&ANIM_META[k].n)||3);
@@ -567,7 +573,7 @@ function animMat(k){ const m=new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,s
   /* one compiled shader per frame count: without this, three.js reuses the first one it built for every character */
   m.customProgramCacheKey=()=>'animframes'+n;
   return m; }
-const SB={}; [['hero',2],['archer',140],['samurai',40],['onmyoji',40],['ninja',40],['bandit',240],['oni',90],['espear',80],['earcher',80],['eshaman',60],['eshield',50],['esapper',50],['eflier',60],['etunnel',40],['etreasure',4],['brute',4],['akaoni',2],['tengu',2],['kitsune',2],['yuki',2],['shogun',2],['kappa',2],['gasha',2],['raijin',2],['nue',2],['ryujin',2],['tsuchi',2],['nurari',2],['orochi',2],['namazu',2],['mao',2],['umibozu',2],['kamaitachi',2],['daidara',2],['hannya',2],['mikaboshi',2],['ushioni',2],['shuten',2],['kirin',2],['enma',2],['susanoo',2],['jorogumo',2],['karura',2],['kuzuryu',2],['izanami',2],['tsukuyomi',2],['raiju',2],['baku',2],['onryo',2],['shachi',2],['amaterasu',2],['fujin',2],['yukionna',2],['benkei',2],['kagutsuchi',2],['izanagi',2],['takemika',2],['hachiman',2],['bishamon',2],['inari',2],['saruta',2],['minaka',2],['kunitoko',2],['yatono',2],['marishi',2],['mioya',2],['oyama',2],['wata',2],['kurao',2],['magatsu',2],['ryugu',2],['eronin',50],['egolem',24],['epriest',36],['shugen',40],['kunoichi',40],['taiko',40],['sumo',40],['kabuki',40],['falcon',50],['kusari',50],['komainu',50],['yari',60],['teppo',60],['sohei',40],['miko',40],['tanuki',40]].forEach(([k,c])=>{
+const SB={}; [['hero',2],['archer',140],['samurai',40],['onmyoji',40],['ninja',40],['bandit',240],['oni',90],['espear',80],['earcher',80],['eshaman',60],['eshield',50],['esapper',50],['eflier',60],['etunnel',40],['etreasure',4],['brute',4],['akaoni',2],['tengu',2],['kitsune',2],['yuki',2],['shogun',2],['kappa',2],['gasha',2],['raijin',2],['nue',2],['ryujin',2],['tsuchi',2],['nurari',2],['orochi',2],['namazu',2],['mao',2],['umibozu',2],['kamaitachi',2],['daidara',2],['hannya',2],['mikaboshi',2],['ushioni',2],['shuten',2],['kirin',2],['enma',2],['susanoo',2],['jorogumo',2],['karura',2],['kuzuryu',2],['izanami',2],['tsukuyomi',2],['raiju',2],['baku',2],['onryo',2],['shachi',2],['amaterasu',2],['fujin',2],['yukionna',2],['benkei',2],['kagutsuchi',2],['izanagi',2],['takemika',2],['hachiman',2],['bishamon',2],['inari',2],['saruta',2],['minaka',2],['kunitoko',2],['yatono',2],['marishi',2],['mioya',2],['oyama',2],['wata',2],['kurao',2],['magatsu',2],['ryugu',2],['eronin',50],['egolem',24],['epriest',36],['shugen',40],['kunoichi',40],['taiko',40],['naginata',40],['tate',30],['foxmage',40],['sumo',40],['kabuki',40],['falcon',50],['kusari',50],['komainu',50],['yari',60],['teppo',60],['sohei',40],['miko',40],['tanuki',40]].forEach(([k,c])=>{
   const g=sprGeo.clone(), fa=new T.InstancedBufferAttribute(new Float32Array(c),1); fa.setUsage(T.DynamicDrawUsage); g.setAttribute('aFrame',fa);
   SB[k]=makeBatch(g,c,{mat:animMat(k),shadow:false,order:1}); SB[k].fa=fa; });
 const BLD={b_cannon:4.2,b_yari:3.2,b_teppo:3.2,b_sohei:3.6,b_tanuki:3.2,b_tower:4.6,b_range:3.2,b_dojo:3.4,b_shrine:3.6,b_ninja:3.2,b_onipit:3.4,b_banner:4.0,b_mine:3.4,b_forge:3.4,b_armory:3.3};
@@ -861,6 +867,9 @@ function genLayout(si){
   if(SAVE.units.includes('shugen')) basePad('shugenpit','shugenpit',40,['armory']);
   if(SAVE.units.includes('kunoichi')) basePad('kunoichipit','kunoichipit',40,['dojo']);
   if(SAVE.units.includes('taiko')) basePad('taikopit','taikopit',42,['banner1']);
+  if(SAVE.units.includes('naginata')) basePad('naginatapit','naginatapit',36,['dojo']);
+  if(SAVE.units.includes('tate')) basePad('tatepit','tatepit',40,['banner1']);
+  if(SAVE.units.includes('foxmage')) basePad('foxmagepit','foxmagepit',38,['mine']);
   if(si>=2) basePad('banner2','banner',60,['forge']);
   // level-2 and tower upgrade pads near their parent
   const near=(parent,id,kind,cost,req,extra)=>{ if(!parent||pads.indexOf(parent)<0) return;
@@ -872,7 +881,7 @@ function genLayout(si){
         if(okPad(x,z,pc,rc)){ P(id,kind,cost,x,z,Object.assign({req,cur:'ingot'},extra)); return; } } };
   towers.forEach(t=>near(t,'tup_'+t.id,'tup',5,[t.id,'forge'],{target:t.id}));
   pads.filter(q=>q.kind==='fence').forEach(fp=>near(fp,'fup_'+fp.id,'fup',6,[fp.id,'forge'],{target:fp.fence}));
-  [['range1','range2'],['dojo','dojo2'],['shrine','shrine2'],['ninja','ninja2'],['onipit','onipit2'],['yaripit','yaripit2'],['teppopit','teppopit2'],['soheipit','soheipit2'],['mikopit','mikopit2'],['tanukipit','tanukipit2'],['sumopit','sumopit2'],['kabukipit','kabukipit2'],['falconpit','falconpit2'],['kusaripit','kusaripit2'],['komainupit','komainupit2'],['shugenpit','shugenpit2'],['kunoichipit','kunoichipit2'],['taikopit','taikopit2']].forEach(([a,b])=>{ const par=pads.find(p=>p.id===a); near(par,b,'lvl2',6,[a,'forge'],{target:a}); });
+  [['range1','range2'],['dojo','dojo2'],['shrine','shrine2'],['ninja','ninja2'],['onipit','onipit2'],['yaripit','yaripit2'],['teppopit','teppopit2'],['soheipit','soheipit2'],['mikopit','mikopit2'],['tanukipit','tanukipit2'],['sumopit','sumopit2'],['kabukipit','kabukipit2'],['falconpit','falconpit2'],['kusaripit','kusaripit2'],['komainupit','komainupit2'],['shugenpit','shugenpit2'],['kunoichipit','kunoichipit2'],['taikopit','taikopit2'],['naginatapit','naginatapit2'],['tatepit','tatepit2'],['foxmagepit','foxmagepit2']].forEach(([a,b])=>{ const par=pads.find(p=>p.id===a); near(par,b,'lvl2',6,[a,'forge'],{target:a}); });
   return {lanes, fences, pads};
 }
 
@@ -1284,7 +1293,7 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
     hero:{x:0,z:6,vx:0,vz:0,rot:Math.PI,hp:HD.hp,max:HD.hp,cd:0,alive:true,respawn:0,target:null,rt:0,flash:0,ax:0,moving:false,isHero:true},
     units:[], enemies:[], eshots:[], arrows:[], orbs:[], coins:[], parts:[], tgs:[], towerArchers:[], barracks:[], towers:{}, fences:{}, pads:[], builtIds:new Set(), up:new Set(),
     mine:null, forge:null, armory:null, heroDef:HD, ultCd:Math.min(8,ultMax()*0.3), ultFx:0, lvls:{}, armRemote:false, stack:6+PK('chest')*10, bonusTotal:0, diff:0, diffMul:1, sky2Cd:0, skyFall:null, bossScale:0, bossBounty:0, breaks:{}, breakT:0, ingots:0, keepMax:Math.round((HD.id==='shachi'?1.8:HD.id==='gasha'?1.3:HD.id==='orochi'?1.4:HD.id==='daidara'?1.5:HD.id==='enma'?1.6:HD.id==='brute'?1.15:(HD.pass&&HD.pass.castle)||1)*CFG.keepHp*(1+0.15*si)*(1+0.10*PK('bless'))), lean:{x:0,v:0}, wob:{x:0,v:0}, tweens:[],
-    cards:[], mods:{}, cardOpen:false, cardPick:null, cardWaves:{}, shake:0, hitStop:0, focus:new T.Vector3(0,0,6), lastStack:-1, lastIng:-1, pillT:0, cpCap:CFG.cpBase+2*PK('cap'), gear:{archer:0,samurai:0,onmyoji:0,ninja:0,oniw:0,yari:0,teppo:0,sohei:0,miko:0,tanuki:0,sumo:0,kabuki:0,falcon:0,kusari:0,komainu:0,shugen:0,kunoichi:0,taiko:0},
+    cards:[], mods:{}, cardOpen:false, cardPick:null, cardWaves:{}, shake:0, hitStop:0, focus:new T.Vector3(0,0,6), lastStack:-1, lastIng:-1, pillT:0, cpCap:CFG.cpBase+2*PK('cap'), gear:{archer:0,samurai:0,onmyoji:0,ninja:0,oniw:0,yari:0,teppo:0,sohei:0,miko:0,tanuki:0,sumo:0,kabuki:0,falcon:0,kusari:0,komainu:0,shugen:0,kunoichi:0,taiko:0,naginata:0,tate:0,foxmage:0},
     pending:[], boss:null, armOpen:false, armDismissed:false, ambT:0, zoom:1 };
   G.keepHp=G.keepMax;
   for(const k in LAYOUT.fences){
@@ -1419,7 +1428,9 @@ function nearestEnemy(x,z,range,exclude){
   return best; }
 function nearestPlayer(x,z,range){ let best=null, bd=range*range; const h=G.hero;
   if(h.alive){ const d=(h.x-x)**2+(h.z-z)**2; if(d<bd){ bd=d; best=h; } }
-  for(const u of G.units){ if(!u.alive) continue; const d=((u.x-x)**2+(u.z-z)**2)*(u.cls==='samurai'?0.7:1); if(d<bd){ bd=d; best=u; } } return best; }
+  for(const u of G.units){ if(!u.alive) continue; const d2=(u.x-x)**2+(u.z-z)**2, tt=CLS[u.cls].taunt;
+    if(tt&&d2<tt*tt){ const dd=d2*0.05; if(dd<bd){ bd=dd; best=u; } continue; }   /* shield guard draws foes onto himself */
+    const d=d2*(u.cls==='samurai'?0.7:1); if(d<bd){ bd=d; best=u; } } return best; }
 const ELCOL={fire:0xFF7A2A, frost:0x7FE3FF, bolt:0xFFE45C};
 function arrowEl(){ return U('fire1')?'fire':U('frost1')?'frost':U('bolt1')?'bolt':null; }
 const LV=id=>(G&&G.lvls&&G.lvls[id])||0;
@@ -1496,7 +1507,7 @@ function killEnemy(e,src){
   sfx('die');
 }
 function damagePlayer(t,dmg){
-  if(!t.alive) return; t.hp-=dmg; t.flash=1;
+  if(!t.alive) return; if(t.cls&&CLS[t.cls]&&CLS[t.cls].guard) dmg*=1-CLS[t.cls].guard; t.hp-=dmg; t.flash=1;
   if(t.isHero){ popText(t.x,2.4,t.z,'-'+Math.round(dmg),'hurt'); G.shake=Math.max(G.shake,0.12); sfx('hurt'); }
   if(t.hp<=0){ t.alive=false; spawnParticles(t.x,0.8,t.z,12,0x2E3A57,4,0.5,1,-8);
     if(t.isHero){ t.respawn=3.5; const lost=Math.floor(G.stack/2); G.stack-=lost; spawnLoot(t.x,t.z,Math.min(lost,60)); toast('Hero down. Back in 3'); closeArmory(); } }
@@ -1573,6 +1584,9 @@ function buildStructure(p){
     case 'shugenpit': obj=buildingSprite('b_shrine',p.x,p.z); addBarracks('shugen',2); toast('Fire Altar: flame shugenja join'); break;
     case 'kunoichipit': obj=buildingSprite('b_ninja',p.x,p.z); addBarracks('kunoichi',2); toast('Frost Dojo: kunoichi join'); break;
     case 'taikopit': obj=buildingSprite('b_dojo',p.x,p.z); addBarracks('taiko',2); toast('Drum Tower: taiko drummers join'); break;
+    case 'naginatapit': obj=buildingSprite('b_yari',p.x,p.z); addBarracks('naginata',2); toast('Naginata Hall: naginata maidens join'); break;
+    case 'tatepit': obj=buildingSprite('b_sohei',p.x,p.z); addBarracks('tate',2); toast('Shield Barracks: shield guards join'); break;
+    case 'foxmagepit': obj=buildingSprite('b_shrine',p.x,p.z); addBarracks('foxmage',2); toast('Fox Shrine: kitsune mages join'); break;
     case 'ninja': obj=buildingSprite('b_ninja',p.x,p.z); addBarracks('ninja',2); toast('Hideout: ninja join'); break;
     case 'banner': obj=buildingSprite('b_banner',p.x,p.z); G.cpCap+=CFG.cpBanner; toast(`Command raised: squad cap ${G.cpCap}`); break;
     case 'ctower': { obj=buildingSprite('b_cannon',p.x,p.z);
@@ -2258,7 +2272,9 @@ function update(dt){
           if(u.cd<=0){ u.cd=MOD('squadCd')*D.cd; u.atk=1; const dmg=MOD('squadDmg')*D.dmg*rankMul*(1+0.15*(G.gear[u.cls]||0))*(u.rally>0?1.25:1)*(U('blade1')?1.25:1)*(u.cls==='yari'?1.1:1)*(PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg'); if(D.knock&&chase.cls!=='boss'){ const dx=chase.x-u.x,dz=chase.z-u.z,dd=Math.hypot(dx,dz)||1; chase.x+=dx/dd*D.knock; chase.z+=dz/dd*D.knock; chase.stunT=Math.max(chase.stunT,0.5); }
             if(D.pull&&chase.cls!=='boss'){ const dx=u.x-chase.x,dz=u.z-chase.z,dd=Math.hypot(dx,dz)||1; chase.x+=dx/dd*1.6; chase.z+=dz/dd*1.6; chase.slowT=Math.max(chase.slowT,1.2); chase.slowF=Math.max(chase.slowF,0.4); }
             { let dm=dmg; if(D.crit&&Math.random()<D.crit){ dm*=2.2; popText(chase.x,2.3,chase.z,'CRIT','crit'); }
-              hitEnemy(chase,dm,u,D.el||null); } sfx('slash');
+              hitEnemy(chase,dm,u,D.el||null);
+              if(D.cleave){ let n=0; eachEnemyNear(chase.x,chase.z,3,o2=>{ if(n>=D.cleave||o2===chase||o2.dead||Math.hypot(o2.x-chase.x,o2.z-chase.z)>2.4) return; hitEnemy(o2,dm*0.8,u,null,1); n++; });
+                fx('fx_slash',chase.x,1.1,chase.z,4.2,0.25,0xFFFFFF,{rot:-Math.atan2(chase.x-u.x,chase.z-u.z)+Math.PI/2,grow:0.6}); } } sfx('slash');
             spawnParticles(chase.x,1,chase.z,4,D.el==='ice'?0xBFEFFF:0xFFFFFF,4,0.2,0.9,0);
             if(U('blade2')){ let n=0; for(const o2 of G.enemies){ if(n>=2) break; if(o2.dead||o2===chase) continue; if(Math.hypot(o2.x-chase.x,o2.z-chase.z)<1.8){ hitEnemy(o2,dmg*0.7,u,null,1); n++; } } } } } }
     } else if(u.cls==='ninja'){
@@ -2284,6 +2300,9 @@ function update(dt){
           for(const e of G.enemies){ if(e.dead) continue; const d=Math.hypot(e.x-u.target.x,e.z-u.target.z); if(d<D2.aoe+e.rad*0.5){ hitEnemy(e,dmg,u,null,1); e.slowT=Math.max(e.slowT,1.5); e.slowF=Math.max(e.slowF,0.3); } }
           for(const o of G.units) if(Math.hypot(o.x-u.x,o.z-u.z)<6){ o.rally=1.2; }
           for(let q=0;q<14;q++){ const a=q/14*6.3; spawnParticles(u.target.x+Math.sin(a)*D2.aoe*0.7,1,u.target.z+Math.cos(a)*D2.aoe*0.7,1,0xF7B6D2,2,0.5,1.2,0.4); } sfx('slash'); }
+        else if(u.cls==='foxmage'){ const dm=D.dmg*rankMul*(1+0.3*(G.gear.foxmage||0)); const t2=nearestEnemy(u.target.x,u.target.z,6,u.target)||u.target;
+          for(const tg of [u.target,t2]){ const d=Math.hypot(tg.x-u.x,tg.z-u.z); G.orbs.push({sx:u.x,sy:1.4,sz:u.z,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.3,d/12),src:u,dmg:dm,rad:D.aoe,burn:dm*0.15,fox:true}); }
+          spawnParticles(u.x,1.4,u.z,6,0x6FE3FF,2,0.35,1.1,1); sfx('fire'); }
         else if(u.cls==='shugen'){ const d=Math.hypot(u.target.x-u.x,u.target.z-u.z), dm=D.dmg*rankMul*(1+0.3*(G.gear.shugen||0));
           G.orbs.push({sx:u.x,sy:1.3,sz:u.z,tx:u.target.x,tz:u.target.z,t:0,dur:Math.max(0.3,d/13),src:u,dmg:dm,rad:D.aoe,burn:dm*0.2,flame:true}); sfx('fire'); }
         else if(u.cls==='taiko'){ const dm=D.dmg*rankMul*(1+0.3*(G.gear.taiko||0)); let n=0;
@@ -3108,11 +3127,11 @@ function endStage(won){
   const starMul=(won?(stars>=3?2.5:stars===2?1.5:1):1)*(G.diffReward||1);
   if(won&&G.diff>(SAVE.tier[G.si]||0)) SAVE.tier[G.si]=G.diff;
   const honor=won?Math.round((carried+ingVal+starB+bounty)*starMul):Math.floor((carried+ingVal)/2);
-  const prevBest=SAVE.stars[G.si]||0, firstClear=won&&!(SAVE.stars[G.si]>0), jade=won?(G.si+1)*2+stars+(firstClear?5:0):0;
+  const prevBest=SAVE.stars[G.si]||0, firstClear=won&&!(SAVE.stars[G.si]>0), jadeMul=stars>=3?3:stars===2?2.5:2, jade=won?Math.round(((G.si+1)*2+stars+(firstClear?5:0))*jadeMul):0;   /* jade x2 / x2.5 / x3 by stars */
   SAVE.honor+=honor; SAVE.jade=(SAVE.jade||0)+jade;
   $('endCoins').innerHTML=`<div><span>Gold still carried</span><span>🪙 ${carried}</span></div><div><span>Ingots (×5)</span><span>🪙 ${ingVal}</span></div>`+
     (won?`<div><span>Star bonus (${stars}★)</span><span>🪙 ${starB}</span></div><div><span>Boss bounty</span><span>🪙 ${bounty}</span></div>`:`<div><span>Retreat penalty</span><span>half kept</span></div>`)+
-    `<div><span>Wave and early-call bonuses earned</span><span>🪙 ${G.bonusTotal}</span></div>${won?`<div><span>Star multiplier (${stars}★)</span><span>×${starMul}</span></div>`:''}<div class="tot"><span>Banked to treasury</span><span>🪙 +${honor}</span></div>`+(jade?`<div class="tot"><span>Spirit Jade earned${firstClear?' (first clear +5)':''}</span><span>💠 +${jade}</span></div>`:'')+`<div><span>Treasury total</span><span>🪙 ${SAVE.honor} · 💠 ${SAVE.jade}</span></div>`; if(won){ SAVE.stars[G.si]=Math.max(SAVE.stars[G.si]||0,stars); SAVE.unlocked=Math.max(SAVE.unlocked,Math.min(STAGES.length,G.si+2)); } persist();
+    `<div><span>Wave and early-call bonuses earned</span><span>🪙 ${G.bonusTotal}</span></div>${won?`<div><span>Star multiplier (${stars}★)</span><span>×${starMul}</span></div>`:''}<div class="tot"><span>Banked to treasury</span><span>🪙 +${honor}</span></div>`+(jade?`<div class="tot"><span>Spirit Jade earned (${stars}★ ×${jadeMul}${firstClear?', first clear':''})</span><span>💠 +${jade}</span></div>`:'')+`<div><span>Treasury total</span><span>🪙 ${SAVE.honor} · 💠 ${SAVE.jade}</span></div>`; if(won){ SAVE.stars[G.si]=Math.max(SAVE.stars[G.si]||0,stars); SAVE.unlocked=Math.max(SAVE.unlocked,Math.min(STAGES.length,G.si+2)); } persist();
   $('endTitle').textContent=won?(G.si===STAGES.length-1?'The oni are vanquished':'Castle held'):'The castle fell';
   $('endStars').innerHTML=won?'★'.repeat(stars)+`<span class="dim">${'★'.repeat(3-stars)}</span>`:'';
   const m=Math.floor(G.time/60), s=String(Math.floor(G.time%60)).padStart(2,'0');
