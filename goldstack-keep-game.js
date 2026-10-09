@@ -358,6 +358,33 @@ const angOf=(x,z)=>Math.atan2(x-KEEP.x, -(z-KEEP.z));
 const colCache=new Map(); function C(hex){ let c=colCache.get(hex); if(!c){ c=new T.Color(hex); colCache.set(hex,c); } return c; }
 
 /* ================================================================ save */
+/* HUD buttons fire on finger-lift (pointerup), not 'click'. Phones do not send a click while another
+   finger is on the screen, so with the click version a button could not be pressed while steering with the joystick. */
+function onTap(el,fn){ if(!el) return; let down=null, last=0;
+  el.addEventListener('pointerdown',e=>{ down=e.pointerId; el.classList.add('pressed'); e.stopPropagation(); });
+  el.addEventListener('pointerup',e=>{ el.classList.remove('pressed'); if(down!==e.pointerId) return; down=null; last=performance.now(); if(el.disabled) return; fn(e); });
+  el.addEventListener('pointercancel',()=>{ down=null; el.classList.remove('pressed'); });
+  el.addEventListener('touchend',e=>{ if(e.cancelable) e.preventDefault(); },{passive:false});   /* no ghost click on whatever opens under the finger */
+  el.addEventListener('click',e=>{ if(performance.now()-last<700) return; fn(e); }); }   /* keyboard and desktop fallback */
+/* Phone HUD layout: one right-hand column at the bottom for actions (call wave, special, sky),
+   one right-hand column at the top for settings (pause, speed, sound, zoom), with fixed gaps so nothing touches. */
+(function(){ const st=document.createElement('style'); st.textContent=`
+  #callWave{ right:10px; bottom:calc(env(safe-area-inset-bottom) + 14px); min-width:132px; }
+  #ultBtn{ right:14px; bottom:calc(env(safe-area-inset-bottom) + 86px); width:80px; height:80px; }
+  #ultBtn img{ width:60px; height:60px; margin:10px auto 0; }
+  #sky2Btn{ right:18px; bottom:calc(env(safe-area-inset-bottom) + 180px); width:72px; height:72px; }
+  #pauseBtn{ right:14px; top:calc(env(safe-area-inset-top) + 126px); }
+  #spdBtn{ right:9px; top:calc(env(safe-area-inset-top) + 178px); }
+  #zoom{ right:12px; top:calc(env(safe-area-inset-top) + 244px); gap:8px; }
+  #zoom .zbtn{ width:42px; height:42px; font-size:22px; }
+  #etBtn{ left:10px; bottom:calc(env(safe-area-inset-bottom) + 66px); }
+  #armBtn{ left:10px; bottom:calc(env(safe-area-inset-bottom) + 14px); }
+  #hud::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:calc(env(safe-area-inset-bottom) + 132px); pointer-events:none; z-index:-1;
+    background:linear-gradient(rgba(20,16,28,0),rgba(20,16,28,.32)); }
+  #callWave.pressed,#ultBtn.pressed,#sky2Btn.pressed,#spdBtn.pressed,#pauseBtn.pressed,.zbtn.pressed,#armBtn.pressed,#etBtn.pressed{ transform:scale(.93); }
+  .pad.under{ opacity:.22; }
+  @media (max-height:700px){ #sky2Btn{ width:64px; height:64px; bottom:calc(env(safe-area-inset-bottom) + 172px); } #zoom{ top:calc(env(safe-area-inset-top) + 238px); gap:6px; } #zoom .zbtn{ width:38px; height:38px; } }
+`; document.head.appendChild(st); })();
 const SAVE_KEY='goldstack-keep-save-v2';
 let SAVE={unlocked:1, stars:new Array(55).fill(0), honor:0, perks:{chest:0,vet:0,bless:0}};
 try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s&&s.stars) SAVE=Object.assign(SAVE,s); }catch(e){}
@@ -1335,6 +1362,13 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
   updateHud(true);
   { const d=DIFFS[window.__pendDiff||0]||DIFFS[0]; G.diff=d.id; G.diffMul=d.mul; G.diffReward=d.reward; window.__pendDiff=0;
     if(d.id) setTimeout(()=>toast(d.name+' difficulty: enemies x'+d.mul+', rewards x'+d.reward,2.6),1200); }
+  if(si>=39){ const t2=si>=49; let n=0;   /* late stages start with a ready-made palisade so the opening is fair */
+    for(const p of G.pads){ if(p.kind!=='fence'||p.done) continue; const f=G.fences[p.fence]; if(!f) continue;
+      p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; G.builtIds.add(p.id);
+      f.built=true; f.hp=f.max; f.planks.forEach((pl,i)=>{ pl.h=0; pl.delay=i*0.02; }); n++;
+      if(t2){ f.tier=2; f.max=Math.round(f.max*1.7); f.hp=f.max;
+        const up=G.pads.find(q=>q.kind==='fup'&&q.target===p.fence); if(up){ up.level=2; up.cost=Math.round(up.cost*1.5); } } }
+    if(n){ refreshPads(); setTimeout(()=>toast(t2?'Iron palisades stand ready · upgrade them on the yellow pads':'Palisades stand ready · upgrade them on the yellow pads',2.6),2700); } }
   /* perf: compile every shader for this stage now, not in the middle of the first fight */
   _perfGrace=3; renderer.shadowMap.needsUpdate=true; try{ renderer.compile(scene,camera); }catch(err){}
   toast(`Stage ${si+1}: ${st.name}${window.__mood&&window.__mood.n!=='Midday'?' · '+window.__mood.n:''}`,2.4); wakeAudio(); if(AUDIO_MODE===0) setTimeout(()=>toast('Sound is off: tap 🎵 to turn it on',2.6),2600); if(AC){ Music.setStage(si); Music.start(); }
@@ -1662,7 +1696,7 @@ function refreshArmoryStates(){ $('armBody').querySelectorAll('.card').forEach(e
 function openArmory(remote){ if(remote&&G) G.armRemote=true; if(G.armOpen) return; G.armOpen=true; renderArmory(); $('armory').style.display='block'; $('pausedTag').classList.remove('show'); toast('Game paused while you choose upgrades',1.4); }
 function closeArmory(){ if(G){ G.armOpen=false; G.armRemote=false; G.armDismissed=true; } $('armory').style.display='none'; }
 $('armClose').addEventListener('click',()=>{ const near=G.armory&&Math.hypot(G.hero.x-G.armory.x,G.hero.z-G.armory.z)<2.4; closeArmory(); if(near) G.armDismissed=true; });
-$('armBtn').addEventListener('click',()=>{ audioInit(); if(!G||G.state!=='play') return; if(!G.armory){ toast('Build the Armory first'); return; } if(G.armOpen) closeArmory(); else { G.armDismissed=false; openArmory(true); } });
+onTap($('armBtn'),()=>{ audioInit(); if(!G||G.state!=='play') return; if(!G.armory){ toast('Build the Armory first'); return; } if(G.armOpen) closeArmory(); else { G.armDismissed=false; openArmory(true); } });
 $('armBody').addEventListener('click',e=>{
   const gb=e.target.closest('.ug'); if(gb){ armGrp=gb.dataset.g; renderArmory(); return; }
   const el=e.target.closest('.card'); if(!el||!G) return; const u=UPG.find(x=>x.id===el.dataset.id), s=upgState(u);
@@ -2817,7 +2851,11 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
     if(_v.z>1||sx<-60||sx>cw+60||sy<-60||sy>ch+60){ p.el.style.display='none'; continue; }
     p.el.style.display='flex'; const left=p.cost-p.paid; if(left!==p.shown){ p.shown=left; p.numEl.textContent=left; }
     p.el.classList.toggle('off',(p.cur==='ingot'?G.ingots:G.stack)<=0&&left>0);
-    p.el.style.transform=`translate(${sx-p.el.offsetWidth/2}px,${sy-p.el.offsetHeight-6}px)`; }
+    { const w=p.el.offsetWidth, h=p.el.offsetHeight, lx=sx-w/2, ly=sy-h-6;
+      if(!G._hz||TIME-(G._hzT||0)>0.5){ G._hzT=TIME; G._hz=['callWave','ultBtn','sky2Btn','armBtn','etBtn','spdBtn','pauseBtn','zoom'].map(id=>{ const e=$(id); if(!e) return null; const r=e.getBoundingClientRect(); return (r.width&&getComputedStyle(e).display!=='none')?[r.left-10,r.top-10,r.right+10,r.bottom+10]:null; }).filter(Boolean); }
+      let under=false; for(const z of G._hz){ if(lx<z[2]&&lx+w>z[0]&&ly<z[3]&&ly+h>z[1]){ under=true; break; } }
+      if(under!==!!p.under){ p.under=under; p.el.classList.toggle('under',under); }
+      p.el.style.transform=`translate(${lx}px,${ly}px)`; } }
   for(const nn of numPool){ if(!nn.active) continue; nn.t+=dt; if(nn.t>0.85){ nn.active=false; nn.el.style.display='none'; continue; }
     const u=nn.t/0.85; _v.set(nn.x,nn.y+u*1.3,nn.z).project(camera); const sx=(_v.x+1)/2*cw, sy=(1-_v.y)/2*ch, sc=nn.t<0.1?1.45-nn.t*4.5:1;
     nn.el.style.opacity=u>0.65?String(1-(u-0.65)/0.35):'1'; nn.el.style.transform=`translate(${sx-16}px,${sy-14}px) scale(${sc})`; }
@@ -2835,13 +2873,13 @@ function callBonus(){ const W=G.waves; if(G.waveIdx>=W.length) return 0; const l
 function callWave(){ if(!G||G.state!=='play') return; const b=callBonus(); if(b<=0) return;
   G.clock=G.waves[G.waveIdx].t; G.stack+=b; G.bonusTotal+=b; G.breakT=0; $('breakCard').classList.remove('show');
   popText(G.hero.x,2.8,G.hero.z,'+'+b+' early call','gold'); sfx('horn'); toast(`Wave called early: +${b} coins`); }
-$('callWave').addEventListener('click',()=>{ audioInit(); callWave(); });
-$('ultBtn').addEventListener('click',()=>{ audioInit(); castUlt(); });
-$('sky2Btn').addEventListener('click',()=>{ audioInit(); castSky(); });
+onTap($('callWave'),()=>{ audioInit(); callWave(); });
+onTap($('ultBtn'),()=>{ audioInit(); castUlt(); });
+onTap($('sky2Btn'),()=>{ audioInit(); castSky(); });
 function syncSpeed(){ const b=$('spdBtn'); if(!b) return; const v=SAVE.speed||1; $('spdTxt').textContent=v+'\u00d7'; b.classList.toggle('fast',v>1); }
-$('spdBtn').addEventListener('click',()=>{ audioInit(); SAVE.speed=(SAVE.speed||1)>1?1:2; persist(); syncSpeed(); toast('Game speed '+SAVE.speed+'\u00d7',1.1); });
+onTap($('spdBtn'),()=>{ audioInit(); SAVE.speed=(SAVE.speed||1)>1?1:2; persist(); syncSpeed(); toast('Game speed '+SAVE.speed+'\u00d7',1.1); });
 setTimeout(syncSpeed,0);
-$('etBtn').addEventListener('click',()=>{ audioInit(); if(G&&G.state==='play') openETowers(); });
+onTap($('etBtn'),()=>{ audioInit(); if(G&&G.state==='play') openETowers(); });
 $('cardRow').addEventListener('click',e=>{
   const br=e.target.closest('[data-branch]'); if(br){ chooseBranch(br.dataset.branch); return; }
   const eb=e.target.closest('[data-etbuy]'); if(eb){ placeETower(eb.dataset.etbuy); return; }
@@ -2861,13 +2899,13 @@ $('cardRow').addEventListener('click',e=>{
   chooseCard(+b.dataset.c); });
 function cardList(){ return (G&&G.cards||[]).map(id=>{ const c=CARDS.find(x=>x.id===id); return c?c.name:id; }).join(' · '); }
 function setPause(v){ if(!G||G.state!=='play') return; G.paused=v; $('pausedTag').classList.toggle('show',!!v&&!G.armOpen); $('pauseBtn').textContent=v?'▶':'⏸'; if(v) toast(G&&G.cards&&G.cards.length?('Paused · cards: '+cardList()):'Paused — tap ▶ to continue',2.2); }
-$('pauseBtn').addEventListener('click',()=>{ audioInit(); if(G&&G.armOpen){ closeArmory(); return; } setPause(!(G&&G.paused)); });
+onTap($('pauseBtn'),()=>{ audioInit(); if(G&&G.armOpen){ closeArmory(); return; } setPause(!(G&&G.paused)); });
 let userZoom=clamp(+SAVE.zoom||1,0.5,2.2);
 function setZoom(z){ userZoom=clamp(z,0.5,2.2); SAVE.zoom=+userZoom.toFixed(2); persist(); }
-$('zIn').addEventListener('click',()=>setZoom(userZoom/1.2));
-$('audioBtn').addEventListener('click',()=>{ audioInit(); Music.start(); cycleAudio(); });
+onTap($('zIn'),()=>setZoom(userZoom/1.2));
+onTap($('audioBtn'),()=>{ audioInit(); Music.start(); cycleAudio(); });
 $('audioBtn').textContent=['🔇','🔔','🎵'][AUDIO_MODE];
-$('zOut').addEventListener('click',()=>setZoom(userZoom*1.2));
+onTap($('zOut'),()=>setZoom(userZoom*1.2));
 addEventListener('wheel',e=>{ if(e.target.closest&&e.target.closest('#armory,.screen')) return; setZoom(userZoom*(e.deltaY>0?1.1:1/1.1)); },{passive:true});
 addEventListener('keydown',e=>{ const k=e.key; if(k==='+'||k==='=') setZoom(userZoom/1.2); else if(k==='-'||k==='_') setZoom(userZoom*1.2); else if(k==='p'||k==='P'||k==='Escape'){ if(G&&G.armOpen) closeArmory(); else setPause(!(G&&G.paused)); }
   else if(k==='e'||k==='E') callWave(); else if(k===' '||k==='q'||k==='Q'){ e.preventDefault(); castUlt(); } });
