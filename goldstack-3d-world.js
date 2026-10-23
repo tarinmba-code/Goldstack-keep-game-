@@ -179,6 +179,88 @@ const BUILD={
     R.add(b,g,0x8E8A84,{p:[0,0.4,0]}); R.add(b,SPH(0.62,0.32,0.55,8,5),0x6E9A50,{p:[-0.15,0.98,-0.1],ol:false}); } },
 };
 
+/* ---------------------------------------------------------------- v79: scenery for every stage theme */
+function rockGeo(r,seed){ const g=SPH(r,r*0.75,r*0.9,8,6), p=g.attributes.position;
+  for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i), n=1+0.18*Math.sin(x*5.1/r+z*3.7/r+seed)+0.12*Math.sin(y*7.3/r+x*2.1/r); p.setXYZ(i,x*n,Math.max(-0.2*r,y*n),z*n); } g.computeVertexNormals(); return g; }
+function canopy(R,b,n,cx,cy,cz,rad,cols,flat){ for(let i=0;i<n;i++){ const a=i*2.4, r=i===0?0:rad*(0.55+0.3*(i%2)), y=cy+(i===0?rad*0.3:rad*0.12*Math.sin(i*1.7)), s=rad*(i===0?0.62:0.48+0.08*(i%3));
+  R.add(b,SPH(s*1.08,s*(flat||0.8),s*1.08,9,6),cols[i%cols.length],{p:[cx+Math.sin(a)*r,y,cz+Math.cos(a)*r]}); } }
+function branchy(R,b,col,h,n,spread,thick){ R.add(b,G_.tube([[0,0,0],[0.08,h*0.35,0.04],[-0.05,h*0.7,0.08],[0.1,h,0]],thick||0.22,(thick||0.22)*0.45,6,6),col,{});
+  for(let i=0;i<n;i++){ const a=i*2.3+0.4, y=h*(0.45+0.5*i/n), L=spread*(0.6+0.4*((i*7)%3)/2);
+    R.add(b,G_.tube([[0,0,0],[Math.sin(a)*L*0.45,L*0.25,Math.cos(a)*L*0.45],[Math.sin(a)*L,L*0.35,Math.cos(a)*L],[Math.sin(a)*L*1.2,L*0.6,Math.cos(a)*L*1.2]],(thick||0.22)*0.4,0.02,5,6),col,{p:[0,y,0],ol:false}); } }
+Object.assign(BUILD,{
+  t_bamboo:{h:5.6,o:{sway:true},fn:(R)=>{ const b='root';
+    for(let i=0;i<6;i++){ const a=i*1.9, r=0.18+0.18*(i%3), x=Math.sin(a)*r, z=Math.cos(a)*r, H=4.2+0.9*((i*5)%3)/2, lean=(i%2?1:-1)*0.04;
+      R.add(b,G_.cyl(0.07,0.085,H,7),i%2?0x6FAE4A:0x5E9F3E,{p:[x+lean*H/2,H/2,z],r:[0,0,-lean],grad:0x8CC85E});
+      for(let k=1;k<5;k+=1) if(k%2) R.add(b,G_.cyl(0.088,0.088,0.035,7),0x4E8A34,{p:[x+lean*H*k/5,H*k/5,z],r:[0,0,-lean],ol:false});
+      for(let k=0;k<3;k++){ const aa=k*2.1+i; R.add(b,G_.cone(0.1,0.65,3),0x6FB548,{p:[x+lean*H+Math.sin(aa)*0.3,H*(0.74+k*0.06),z+Math.cos(aa)*0.3],r:[Math.cos(aa)*1.1,aa,-Math.sin(aa)*1.1],s:[1,1,0.25],ol:false}); } } } },
+  t_maple:{h:4.4,o:{sway:true},fn:(R)=>{ const b='root'; branchy(R,b,0x5A3A2A,2.2,3,0.8,0.2);
+    canopy(R,b,8,0,2.7,0,1.35,[0xE8542B,0xF07A2A,0xD8341E,0xF5A042]); } },
+  t_snowpine:{h:5,o:{sway:true},fn:(R)=>{ const b='root'; R.add(b,G_.cyl(0.14,0.22,1.2,8),0x5A3E2E,{p:[0,0.6,0]});
+    for(let i=0;i<4;i++){ const r=1.25-i*0.25, y=1.4+i*0.72; R.add(b,G_.cone(r,1.2,9),i%2?0x2F5A3A:0x3A6A44,{p:[0,y,0]});
+      R.add(b,G_.cone(r*0.82,0.42,9),0xF4F8FC,{p:[0,y+0.36,0],grad:0xDCE8F2}); } } },
+  t_stormpine:{h:5.4,o:{sway:true},fn:(R)=>{ const b='root'; R.add(b,G_.cyl(0.12,0.22,1.6,8),0x3A2E2A,{p:[0.1,0.8,0],r:[0,0,-0.1]});
+    for(let i=0;i<4;i++) R.add(b,G_.cone(1.1-i*0.22,1.3,8),i%2?0x1E3A3A:0x2A4A48,{p:[0.25+i*0.12,1.7+i*0.75,0],r:[0,0,-0.18]}); } },
+  t_cedar:{h:5.8,o:{sway:true},fn:(R)=>{ const b='root'; R.add(b,G_.cyl(0.16,0.26,1.6,8),0x6E3E2A,{p:[0,0.8,0]});
+    for(let i=0;i<6;i++){ const r=0.95-i*0.13; R.add(b,SPH(r,0.55,r,10,6),i%2?0x2F5A2A:0x3A6A34,{p:[0,1.7+i*0.62,0]}); }
+    R.add(b,G_.cone(0.25,0.7,7),0x2F5A2A,{p:[0,5.4,0]}); } },
+  t_coastpine:{h:4.4,o:{sway:true},fn:(R)=>{ const b='root';   /* Japanese black pine: a leaning trunk with flat cloud-shaped foliage pads */
+    R.add(b,G_.tube([[0,0,0],[0.25,1.0,0],[0.7,2.0,0.1],[0.9,3.0,0]],0.22,0.1,7,10),0x4A3A30,{});
+    for(const [x,y,z,s] of [[0.9,3.1,0,1.0],[0.2,2.3,0.3,0.8],[1.3,2.4,-0.2,0.75],[0.4,3.5,-0.2,0.6]]){ R.add(b,SPH(s*0.95,s*0.32,s*0.8,10,6),0x2F5A34,{p:[x,y,z]}); R.add(b,SPH(s*0.7,s*0.2,s*0.6,8,5),0x4E7A44,{p:[x,y+s*0.18,z],ol:false}); } } },
+  t_willow:{h:4.6,o:{sway:true},fn:(R)=>{ const b='root'; R.add(b,G_.tube([[0,0,0],[0.1,1.2,0],[-0.05,2.4,0.05],[0.05,3.2,0]],0.28,0.14,7,8),0x5A4A3A,{});
+    R.add(b,SPH(1.1,0.55,1.1,10,6),0x7A9A3A,{p:[0,3.4,0]});
+    for(let i=0;i<16;i++){ const a=i/16*TAU, r=0.95+0.15*(i%2), L=2.0+0.5*((i*3)%4)/3;
+      R.add(b,G_.tube([[Math.sin(a)*r*0.8,3.4,Math.cos(a)*r*0.8],[Math.sin(a)*r*1.1,3.0,Math.cos(a)*r*1.1],[Math.sin(a)*r*1.15,3.4-L*0.6,Math.cos(a)*r*1.15],[Math.sin(a)*r*1.12,3.4-L,Math.cos(a)*r*1.12]],0.09,0.03,4,8),i%2?0x8CAA44:0x6E8E34,{ol:false}); } } },
+  t_dead:{h:4.2,fn:(R)=>{ const b='root'; branchy(R,b,0x2A2220,2.6,5,1.0,0.24);
+    for(let i=0;i<4;i++){ const a=i*1.7; R.add(b,SPH(0.06),0xFF8A2A,{p:[Math.sin(a)*0.9,2.6+i*0.3,Math.cos(a)*0.9],glow:true}); } } },
+  t_ashtree:{h:4.4,fn:(R)=>{ const b='root'; branchy(R,b,0x1E1818,2.4,4,0.9,0.24);
+    canopy(R,b,5,0,2.9,0,1.0,[0x6E6670,0x8A8290,0x5A5260],0.6);
+    for(let i=0;i<5;i++){ const a=i*1.3; R.add(b,SPH(0.07),0xFF6A2A,{p:[Math.sin(a)*0.7,2.7+(i%2)*0.4,Math.cos(a)*0.7],glow:true}); } } },
+  t_spooky:{h:4.6,fn:(R)=>{ const b='root'; branchy(R,b,0x2E2236,2.8,6,1.1,0.26);
+    R.add(b,SPH(0.22,0.28,0.1),0x14101A,{p:[0.02,1.3,0.22],ol:false});
+    for(let i=0;i<4;i++){ const a=i*1.6+0.4; R.add(b,G_.lathe([[0.01,0.12],[0.09,0.06],[0.1,0],[0.06,-0.08],[0.01,-0.1]],8),0xC58CFF,{p:[Math.sin(a)*1.1,2.2+i*0.25,Math.cos(a)*1.1],glow:true}); } } },
+  t_crystal:{h:3.4,fn:(R)=>{ const b='root';
+    for(let i=0;i<7;i++){ const a=i*2.1, r=i===0?0:0.3+0.12*(i%2), H=i===0?2.6:1.1+0.5*((i*3)%3)/2, tilt=i===0?0:0.35;
+      const c=i%2?0xB98CFF:0x8E6FE6; R.add(b,G_.cyl(0.001,0.22*(i===0?1.4:1),0.5*(i===0?1.4:1),6),c,{p:[Math.sin(a)*r,H+0.22,Math.cos(a)*r],r:[Math.cos(a)*tilt,0,-Math.sin(a)*tilt],glow:true});
+      R.add(b,G_.cyl(0.22*(i===0?1.4:1),0.24*(i===0?1.4:1),H,6),c,{p:[Math.sin(a)*r*0.6,H/2,Math.cos(a)*r*0.6],r:[Math.cos(a)*tilt,0,-Math.sin(a)*tilt],grad:0xE6D8FF}); }
+    R.add(b,rockGeo(0.6,1),0x4A4556,{p:[0,0.1,0]}); } },
+  p_fountain:{h:1.6,fn:(R)=>{ const b='root';   /* tsukubai: a stone water basin with a bamboo spout */
+    R.add(b,rockGeo(0.55,2),0x8E8A84,{p:[0,0.3,0]}); R.add(b,G_.cyl(0.32,0.32,0.05,16),0x6FB8D8,{p:[0,0.62,0],glow:true,grad:0xBFE8F5});
+    R.add(b,G_.cyl(0.04,0.04,0.9,7),0x8CA04A,{p:[0.55,0.45,0]}); R.add(b,G_.cyl(0.035,0.035,0.55,7),0x8CA04A,{p:[0.35,0.88,0],r:[0,0,Math.PI/2+0.25]});
+    R.add(b,G_.cyl(0.02,0.02,0.22,5),0x9FE6FF,{p:[0.1,0.76,0],glow:true}); } },
+  p_sign:{h:2,fn:(R)=>{ const b='root'; R.add(b,G_.cyl(0.06,0.07,1.8,7),0x6E4A2E,{p:[0,0.9,0]});
+    R.add(b,G_.box(0.9,0.28,0.05),0xB98A5A,{p:[0.3,1.45,0],r:[0,0,0.08]}); R.add(b,G_.box(0.8,0.26,0.05),0xB98A5A,{p:[-0.25,1.05,0],r:[0,0.5,-0.06]});
+    for(const [x,y,r] of [[0.3,1.45,0],[-0.25,1.05,0.5]]) R.add(b,G_.box(0.4,0.04,0.06),0x2A1E1E,{p:[x,y,0.01],r:[0,r,0],ol:false});
+    R.add(b,G_.cone(0.18,0.15,4),0x5A4A3A,{p:[0,1.85,0],r:[0,Math.PI/4,0]}); } },
+  p_pampas:{h:1.9,o:{sway:true},fn:(R)=>{ const b='root'; for(let i=0;i<10;i++){ const a=i*2.4, r=0.1+0.08*(i%3), lean=0.15+0.1*(i%2), H=1.3+0.3*((i*3)%3)/2;
+      R.add(b,G_.cyl(0.012,0.016,H,4),0xB9A86A,{p:[Math.sin(a)*(r+lean*H/2),H/2,Math.cos(a)*(r+lean*H/2)],r:[Math.cos(a)*lean,0,-Math.sin(a)*lean],ol:false});
+      R.add(b,SPH(0.07,0.28,0.07,5,4),0xF2EAD0,{p:[Math.sin(a)*(r+lean*H),H+0.15,Math.cos(a)*(r+lean*H)],r:[Math.cos(a)*lean,0,-Math.sin(a)*lean],grad:0xD8C89A}); }
+    for(let i=0;i<4;i++){ const a=i*1.6; R.add(b,G_.cone(0.04,0.7,3),0x8CA04A,{p:[Math.sin(a)*0.15,0.3,Math.cos(a)*0.15],r:[Math.cos(a)*0.5,0,-Math.sin(a)*0.5],ol:false}); } } },
+  p_grave:{h:1.6,fn:(R)=>{ const b='root'; R.add(b,G_.box(0.9,0.2,0.6),0x6E6878,{p:[0,0.1,0]}); R.add(b,G_.box(0.42,1.1,0.22),0x8E8896,{p:[0,0.75,0],grad:0x6E6878});
+    R.add(b,G_.cone(0.32,0.2,4),0x6E6878,{p:[0,1.4,0],r:[0,Math.PI/4,0]}); R.add(b,G_.box(0.06,0.6,0.01),0x2A2433,{p:[0,0.8,0.115],ol:false});
+    R.add(b,SPH(0.12),0xC58CFF,{p:[0.35,1.2,0.2],glow:true}); for(const sd of [1,-1]) R.add(b,G_.cyl(0.05,0.05,0.2,6),0x5A7A3A,{p:[sd*0.32,0.3,0.2]}); } },
+  p_lavapool:{h:0.4,fn:(R)=>{ const b='root'; R.add(b,G_.cyl(1,1.05,0.08,20),0xFF6A1A,{p:[0,0.04,0],glow:true,grad:0xFFE27A});
+    for(let i=0;i<9;i++){ const a=i/9*TAU; R.add(b,rockGeo(0.28,i),0x2A2220,{p:[Math.sin(a)*1.05,0.08,Math.cos(a)*1.05]}); } } },
+});
+for(const [k,col,cap] of [['rock_snow',0x8E96A6,0xF4F8FC],['rock_lava',0x3A302E,0xFF6A1A],['rock_moss',0x6E6E64,0x4E7A3A],['rock_sand',0xC8B48C,0xE8DCB8],['rock_dark',0x4A4556,0x8E6FE6],['rock_ash',0x4A4248,0x8A8290]])
+  BUILD[k]={h:2,fn:(R)=>{ const b='root'; R.add(b,rockGeo(1,k.length),col,{p:[0,0.4,0],grad:shade(col,0.75)});
+    const glowCap=k==='rock_lava'||k==='rock_dark';
+    if(glowCap) for(let i=0;i<4;i++){ const a=i*1.6; R.add(b,G_.tube([[Math.sin(a)*0.3,0.9,Math.cos(a)*0.3],[Math.sin(a)*0.7,0.55,Math.cos(a)*0.6],[Math.sin(a)*0.9,0.1,Math.cos(a)*0.8]],0.05,0.03,4,8),cap,{glow:true,ol:false}); }
+    else R.add(b,SPH(0.85,0.22,0.75,8,5),cap,{p:[-0.05,0.95,-0.05],ol:false}); } };
+
+/* ---------------------------------------------------------------- v79: base buildings - palisade, coins, ingots, pads */
+BUILD.f_wood={h:1.5,fn:(R)=>{ const b='root';   /* sharpened log stakes lashed with rope */
+  for(let i=0;i<2;i++){ const x=(i-0.5)*0.2; R.add(b,G_.cyl(0.095,0.1,1.25,7),i?0xA0703F:0x8A5E34,{p:[x,0.62,0],grad:0x6E4A2A}); R.add(b,G_.cone(0.095,0.28,7),0xC8A070,{p:[x,1.39,0]}); }
+  R.add(b,G_.box(0.44,0.05,0.22),0xD8C8A0,{p:[0,0.9,0],ol:false}); R.add(b,G_.box(0.44,0.05,0.22),0xD8C8A0,{p:[0,0.4,0],ol:false}); } };
+BUILD.f_iron={h:1.8,fn:(R)=>{ const b='root';   /* iron-banded timber with spikes */
+  R.add(b,G_.box(0.42,1.5,0.2),0x6B4626,{p:[0,0.75,0],grad:0x4A2E1A});
+  for(const y of [0.35,0.85,1.3]) R.add(b,G_.box(0.44,0.08,0.22),0x5A6470,{p:[0,y,0],grad:0x8C96A2});
+  for(const x of [-0.12,0.12]) R.add(b,G_.cone(0.05,0.3,4),0xB8C2CC,{p:[x,1.64,0]}); } };
+BUILD.f_stone={h:2.1,fn:(R)=>{ const b='root';   /* plastered stone wall with a tiled cap, like a castle wall */
+  R.add(b,G_.box(0.56,0.7,0.36),0x8E8A84,{p:[0,0.35,0],grad:0x6E6A64}); for(let k=0;k<2;k++) R.add(b,G_.box(0.57,0.02,0.37),0x6E6A64,{p:[0,0.22+k*0.25,0],ol:false});
+  R.add(b,G_.box(0.52,0.85,0.3),0xF4EFE4,{p:[0,1.1,0]}); R.add(b,G_.box(0.12,0.16,0.31),0x2A2433,{p:[0,1.15,0],ol:false});
+  const rg=G_.cyl(0.001,1,0.3,4); rg.rotateY(Math.PI/4); R.add(b,rg,0x3A4A5E,{p:[0,1.67,0],s:[0.42,1,0.3]});
+  R.add(b,G_.box(0.6,0.05,0.44),0x2A3444,{p:[0,1.53,0]}); R.add(b,G_.cyl(0.03,0.03,0.6,6),0xF5C542,{p:[0,1.82,0],r:[0,0,Math.PI/2],ol:false}); } };
+
 /* ---------------------------------------------------------------- terrain */
 function noise2(x,z,seed){ const s=Math.sin(x*12.9898+z*78.233+seed*37.719)*43758.5453; return s-Math.floor(s); }
 function vnoise(x,z,seed){ const xi=Math.floor(x), zi=Math.floor(z), xf=x-xi, zf=z-zi, u=xf*xf*(3-2*xf), v=zf*zf*(3-2*zf);
@@ -206,7 +288,7 @@ function shapeGround(geo,rotY){ /* geo: a plane already rotated flat; rotY: the 
 
 /* ---------------------------------------------------------------- water */
 function pondMesh(P){ const g=new T.CircleGeometry(P.r,40); g.rotateX(-Math.PI/2);
-  const m=new T.ShaderMaterial({transparent:true,uniforms:{uTime:U.time,uDeep:{value:new T.Color(0x2F7FA8)},uShal:{value:new T.Color(0x8FD8E6)}},
+  const m=new T.ShaderMaterial({transparent:true,uniforms:{uTime:U.time,uDeep:{value:new T.Color(P.deep||0x2F7FA8)},uShal:{value:new T.Color(P.shal||0x8FD8E6)}},
     vertexShader:'varying vec2 vP; void main(){ vP=position.xz; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader:'uniform float uTime; uniform vec3 uDeep, uShal; varying vec2 vP; uniform float uR;\n'+
       'void main(){ float d=length(vP)/'+P.r.toFixed(2)+'; float w=sin(vP.x*3.1+uTime*1.3)*sin(vP.y*2.7-uTime*1.1)+sin((vP.x+vP.y)*4.3+uTime*1.7)*0.5;\n'+
@@ -215,20 +297,32 @@ function pondMesh(P){ const g=new T.CircleGeometry(P.r,40); g.rotateX(-Math.PI/2
   const mesh=new T.Mesh(g,m); mesh.position.set(P.x,0.05,P.z); mesh.renderOrder=1; return mesh; }
 
 /* ---------------------------------------------------------------- petals */
-function petals(n,area,center){ const g=new T.BufferGeometry(), pos=new Float32Array(n*3), vel=[];
-  for(let i=0;i<n;i++){ pos[i*3]=center.x+(Math.random()-0.5)*area; pos[i*3+1]=Math.random()*9; pos[i*3+2]=center.z+(Math.random()-0.5)*area; vel.push([0.4+Math.random()*0.5,0.6+Math.random()*0.5,Math.random()*TAU]); }
+const AIR={petal:{c1:'#FBC6DC',c2:'#FFFFFF',size:0.32,fall:[0.6,1.1],drift:0.5,shape:'petal'},
+  leaf:{c1:'#E8642B',c2:'#F5A042',size:0.36,fall:[0.7,1.2],drift:0.6,shape:'leaf'}, greenleaf:{c1:'#7AB548',c2:'#B8E07A',size:0.3,fall:[0.6,1.0],drift:0.5,shape:'leaf'},
+  snow:{c1:'#FFFFFF',c2:'#DCEAF6',size:0.22,fall:[0.8,1.4],drift:0.35,shape:'dot'}, storm:{c1:'#FFFFFF',c2:'#C8D8EE',size:0.2,fall:[2.6,3.4],drift:1.6,shape:'dot'},
+  ember:{c1:'#FF8A2A',c2:'#FFE27A',size:0.2,fall:[-1.2,-0.6],drift:0.4,shape:'dot',glow:true}, ash:{c1:'#8A8290',c2:'#C8C0C8',size:0.24,fall:[0.4,0.8],drift:0.5,shape:'dot'},
+  wisp:{c1:'#C58CFF',c2:'#F0E0FF',size:0.34,fall:[-0.25,0.15],drift:0.5,shape:'dot',glow:true}, firefly:{c1:'#E8FF8A',c2:'#FFFFC8',size:0.22,fall:[-0.2,0.2],drift:0.6,shape:'dot',glow:true},
+  sparkle:{c1:'#C8B8FF',c2:'#FFFFFF',size:0.2,fall:[-0.3,0.3],drift:0.3,shape:'star',glow:true}, gold:{c1:'#F5C542',c2:'#FFF0B0',size:0.24,fall:[0.4,0.7],drift:0.4,shape:'leaf'}};
+function petals(n,area,center,kind){ const K=AIR[kind||'petal']||AIR.petal; const g=new T.BufferGeometry(), pos=new Float32Array(n*3), vel=[];
+  const rise=K.fall[1]<=0||K.fall[0]<0&&K.fall[1]<0.3, top=rise?0.2:9;
+  for(let i=0;i<n;i++){ pos[i*3]=center.x+(Math.random()-0.5)*area; pos[i*3+1]=Math.random()*9; pos[i*3+2]=center.z+(Math.random()-0.5)*area; vel.push([K.drift*(0.6+Math.random()*0.8),lerp(K.fall[0],K.fall[1],Math.random()),Math.random()*TAU]); }
   g.setAttribute('position',new T.BufferAttribute(pos,3));
-  const cv=document.createElement('canvas'); cv.width=cv.height=32; const c=cv.getContext('2d'); c.fillStyle='#FBC6DC'; c.beginPath(); c.ellipse(16,16,12,7,0.6,0,TAU); c.fill(); c.fillStyle='#FFFFFF'; c.beginPath(); c.ellipse(13,14,4,2,0.6,0,TAU); c.fill();
-  const m=new T.PointsMaterial({size:0.32,map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,alphaTest:0.2});
+  const cv=document.createElement('canvas'); cv.width=cv.height=32; const c=cv.getContext('2d');
+  if(K.shape==='petal'||K.shape==='leaf'){ c.fillStyle=K.c1; c.beginPath(); c.ellipse(16,16,12,K.shape==='leaf'?8:7,0.6,0,TAU); c.fill(); c.fillStyle=K.c2; c.beginPath(); c.ellipse(13,14,4,2,0.6,0,TAU); c.fill(); }
+  else if(K.shape==='star'){ const gr=c.createRadialGradient(16,16,0,16,16,15); gr.addColorStop(0,K.c2); gr.addColorStop(0.3,K.c1); gr.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=gr; c.fillRect(0,0,32,32); c.fillStyle=K.c2; c.fillRect(15,2,2,28); c.fillRect(2,15,28,2); }
+  else { const gr=c.createRadialGradient(16,16,0,16,16,15); gr.addColorStop(0,K.c2); gr.addColorStop(0.45,K.c1); gr.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=gr; c.fillRect(0,0,32,32); }
+  const m=new T.PointsMaterial({size:K.size,map:new T.CanvasTexture(cv),transparent:true,depthWrite:false,alphaTest:K.glow?0.02:0.2,blending:K.glow?T.AdditiveBlending:T.NormalBlending});
   const pts=new T.Points(g,m); pts.frustumCulled=false;
-  pts.userData.tick=(dt,t)=>{ const a=g.attributes.position.array; for(let i=0;i<n;i++){ const v=vel[i]; a[i*3]+=(v[0]+Math.sin(t*1.3+v[2])*0.5)*dt; a[i*3+1]-=v[1]*dt; a[i*3+2]+=Math.cos(t*0.9+v[2])*0.35*dt;
-      if(a[i*3+1]<0.05){ a[i*3]=center.x+(Math.random()-0.5)*area; a[i*3+1]=8+Math.random()*2; a[i*3+2]=center.z+(Math.random()-0.5)*area; } } g.attributes.position.needsUpdate=true; };
+  pts.userData.tick=(dt,t)=>{ const a=g.attributes.position.array; for(let i=0;i<n;i++){ const v=vel[i]; a[i*3]+=(v[0]+Math.sin(t*1.3+v[2])*0.5)*dt; a[i*3+1]-=v[1]*dt+(K.fall[0]<0&&K.fall[1]>0?Math.sin(t*1.7+v[2])*0.25*dt:0); a[i*3+2]+=Math.cos(t*0.9+v[2])*0.35*dt;
+      const out=a[i*3+1]<0.05||a[i*3+1]>10;
+      if(out){ a[i*3]=center.x+(Math.random()-0.5)*area; a[i*3+1]=v[1]<0?0.2+Math.random()*0.5:8+Math.random()*2; a[i*3+2]=center.z+(Math.random()-0.5)*area; } } g.attributes.position.needsUpdate=true; };
   return pts; }
 
 /* ---------------------------------------------------------------- public */
 const tickers=[];
 return {
   model, instanced, has:k=>!!BUILD[k], heightOf:k=>(BUILD[k]&&BUILD[k].h)||3,
+  geo:k=>{ const B=BUILD[k]; return B?(CACHE[k]||(CACHE[k]=bake(B.fn))):null; }, mats:{toon:TOON,ol:OLS},
   setupTerrain, terrainHeight, inPond:(x,z,m)=>!!(TER&&TER.pond&&Math.hypot(x-TER.pond.x,z-TER.pond.z)<TER.pond.r+(m||0)), shapeGround, laneDist:(x,z)=>TER?laneDist(x,z):99,
   pondMesh, petals, swayMat, U,
   addTicker:f=>tickers.push(f), clearTickers:()=>{ tickers.length=0; },

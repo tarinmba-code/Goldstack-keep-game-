@@ -671,6 +671,10 @@ function attach3D(g,kind,sprite,shadow){ const M=MODELS3D[kind]; if(GFX!=='3d'||
     if(M.rotY) m.rotation.y=M.rotY; m.scale.setScalar(M.scale||1); g.add(m); sprite.visible=false; if(shadow) shadow.visible=false; g.userData.model3d=m; renderer.shadowMap.needsUpdate=true; })
   .catch(err=>{ console.warn('3D model failed, keeping sprite:',kind,err&&err.message); }); }
 if(GFX==='3d') load3DKit().catch(err=>console.warn('3D kit failed to load:',err&&err.message));
+if(GFX==='3d'){ /* v79: mon coins with a square hole and a raised rim; trapezoid ingots */
+  const sh=new T.Shape(); sh.absarc(0,0,0.3,0,Math.PI*2,false); const hole=new T.Path(); hole.moveTo(-0.075,-0.075); hole.lineTo(-0.075,0.075); hole.lineTo(0.075,0.075); hole.lineTo(0.075,-0.075); hole.lineTo(-0.075,-0.075); sh.holes.push(hole);
+  const cg=new T.ExtrudeGeometry(sh,{depth:0.06,bevelEnabled:true,bevelThickness:0.02,bevelSize:0.02,bevelSegments:1,curveSegments:14}); cg.translate(0,0,-0.03); cg.rotateX(-Math.PI/2); B.coin.m.geometry=cg;
+  const ig=new T.BoxGeometry(0.56,0.16,0.3,1,1,1), ip=ig.attributes.position; for(let i=0;i<ip.count;i++) if(ip.getY(i)>0) ip.setXYZ(i,ip.getX(i)*0.72,ip.getY(i),ip.getZ(i)*0.6); ig.computeVertexNormals(); B.ingot.m.geometry=ig; }
 { /* graphics switches: 3D / classic (reloads the page) and, in 3D, the character style anime / chibi (switches live) */
   const bar=document.createElement('div'); bar.id='gfxbar'; document.body.appendChild(bar);
   const chip=document.createElement('button'); chip.id='gfx3d'; chip.type='button';
@@ -828,10 +832,11 @@ function buildEnvironment(si){
   const LANDMAP=[pick[0],jit.getHex()], LROT=((Math.random()*4)|0)*Math.PI/2;
   let POND=null;
   if(W){ /* hills ring the battlefield; lanes cut flat valleys through them; Sakura gets a koi pond */
-    if(st.theme==='sakura'){ for(let q=0;q<400&&!POND;q++){ const a=R()*Math.PI*2, r=13+R()*8, x=KEEP.x+Math.sin(a)*r, z=KEEP.z-Math.cos(a)*r;
+    const PONDC={sakura:[0x2F7FA8,0x8FD8E6],bamboo:[0x2F7A6E,0x8FD8C0],autumn:[0x3A6E8C,0xA8D8E0],swamp:[0x3A4A2A,0x7A8A4A],mist:[0x2F5A5A,0x8AB8B0],coast:[0x1E7AA8,0x6FD8E6],temple:[0x2F6A8C,0x9FD8E6],forest:[0x234A44,0x6E9A8A],snow:[0x8CB8D8,0xE6F4FC]}[st.theme];
+    if(PONDC){ for(let q=0;q<400&&!POND;q++){ const a=R()*Math.PI*2, r=13+R()*8, x=KEEP.x+Math.sin(a)*r, z=KEEP.z-Math.cos(a)*r;
       let bad=LAYOUT.pads.some(p=>Math.hypot(p.x-x,p.z-z)<7.5); for(const pts of LAYOUT.lanes) for(let i=0;i<pts.length-1;i++) if(pointSegDist(x,z,pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1])<6.5) bad=true;
       for(const k in LAYOUT.fences){ const f=LAYOUT.fences[k]; for(let i=0;i<f.length-1;i++) if(pointSegDist(x,z,f[i][0],f[i][1],f[i+1][0],f[i+1][1])<5) bad=true; }
-      if(!bad) POND={x,z,r:3.2+R()*0.8}; } }
+      if(!bad) POND={x,z,r:(st.theme==='coast'?4.4:3.2)+R()*0.8,deep:PONDC[0],shal:PONDC[1]}; } }
     W.setupTerrain(LAYOUT,KEEP,si*7+MATCH%97,POND); W.shapeGround(gg,LROT); }
   const ground=new T.Mesh(gg,new T.MeshLambertMaterial({vertexColors:true,color:LANDMAP[1],map:tex(LANDMAP[0],14)})); ground.rotation.y=LROT; ground.receiveShadow=true; env.add(ground);
   { // a second, larger pass of the same painting breaks up any sense of repetition
@@ -880,7 +885,7 @@ function buildEnvironment(si){
     pebs.forEach((p,i)=>{ _p.set(p[0],0.06+TH(p[0],p[1]),p[1]); _q.setFromAxisAngle(_Y,p[3]); _s.set(p[2],p[2]*0.55,p[2]); _m4.compose(_p,_q,_s); pm.setMatrixAt(i,_m4); }); pm.receiveShadow=true; env.add(pm); }
   { const sets={forest:['p_bush','p_rock','p_fountain','p_lantern'],ember:['p_rock','p_sign','p_cart','p_rock'],temple:['p_lantern','p_torii','p_fountain','p_sign'],moon:['p_rock','p_torii','p_lantern','p_rock'],sakura:['p_bush','p_lantern','p_torii','p_cart'],bamboo:['p_bush','p_fountain','p_lantern','p_sign'],autumn:['p_torii','p_lantern','p_rock','p_pampas'],
       snow:['p_rock','p_lantern','p_sign','p_pampas'],volcano:['p_rock','p_sign','p_cart','p_rock'],swamp:['p_fountain','p_pampas','p_bush','p_rock'],
-      grave:['p_lantern','p_torii','p_rock','p_sign'],storm:['p_rock','p_torii','p_pampas','p_lantern'],mist:['p_torii','p_bush','p_rock','p_fountain'],
+      grave:['p_grave','p_lantern','p_grave','p_torii'],storm:['p_rock','p_torii','p_pampas','p_lantern'],mist:['p_torii','p_bush','p_rock','p_fountain'],
       coast:['p_rock','p_pampas','p_sign','p_cart'],cave:['p_rock','p_lantern','p_rock','p_sign'],eclipse:['p_rock','p_torii','p_sign','p_rock']}[st.theme]||['p_rock','p_bush','p_lantern','p_sign'];
     const H0={p_rock:1.9,p_bush:1.7,p_lantern:2.2,p_torii:3.6,p_fountain:1.8,p_sign:2.1,p_pampas:1.9,p_cart:1.8};
     const spots2=[]; let g2=0;
@@ -903,7 +908,7 @@ function buildEnvironment(si){
       mist:0xDCE8D8,coast:0xF6ECD8,cave:0xCFC6DC,eclipse:0xD8C4CC,forest:0xDCE8D0,ember:0xF0C0A0,temple:0xF2ECDC,moon:0xE0E8FA}[st.theme]||0xFFFFFF;
     const cl=[]; for(let i=0;i<30;i++){ const a=(i/30)*Math.PI*2+R()*0.22, r=26+R()*14, x=KEEP.x+Math.sin(a)*r, z=KEEP.z-Math.cos(a)*r;
       if(nearLane(x,z,6)||nearPad(x,z,11)||Math.hypot(x-KEEP.x,z-KEEP.z)<24||(z>KEEP.z-6&&Math.hypot(x-KEEP.x,z-KEEP.z)<48)) continue; cl.push({x,z,s:0.85+R()*0.75,f:R()<0.5?-1:1}); }
-    if(W){ const ms=W.instanced('rockout',cl.length);
+    if(W){ const ms=W.instanced({snow:'rock_snow',storm:'rock_snow',moon:'rock_snow',volcano:'rock_lava',ember:'rock_lava',eclipse:'rock_ash',swamp:'rock_moss',mist:'rock_moss',forest:'rock_moss',bamboo:'rock_moss',coast:'rock_sand',cave:'rock_dark',grave:'rock_dark'}[st.theme]||'rockout',cl.length);
       cl.forEach((c,i)=>{ _p.set(c.x,TH(c.x,c.z)-0.5,c.z); _q.setFromAxisAngle(_Y,R()*6.28); const k=1.6+c.s*1.9; _s.set(k*(0.9+R()*0.3),k*(0.7+R()*0.5),k); _m4.compose(_p,_q,_s); for(const m of ms) m.setMatrixAt(i,_m4); });
       for(const m of ms) env.add(m); }
     else { const H=9.5;
@@ -920,17 +925,23 @@ function buildEnvironment(si){
   const inst=(geo,mat,list,fn)=>{ const m=new T.InstancedMesh(geo,mat,list.length); list.forEach((t,i)=>{ fn(t); _m4.compose(_p,_q,_s); m.setMatrixAt(i,_m4); }); m.castShadow=true; env.add(m); return m; };
   const trunk=(col,h=0.9)=>inst(new T.CylinderGeometry(0.18,0.24,h,6),toon(col),spots,t=>{ _p.set(t.x,h/2*t.s,t.z); _q.setFromAxisAngle(_Y,t.r); _s.set(t.s,t.s,t.s); });
   { const tk={cedar:'t_cedar',ashtree:'t_ashtree',crystal:'t_crystal',sakura:'t_sakura',bamboo:'t_bamboo',maple:'t_maple',snowpine:'t_snowpine',dead:'t_dead',willow:'t_willow',spooky:'t_spooky',stormpine:'t_storm',cedar:'t_cedar',coastpine:'t_coastpine',crystal:'t_crystal',ashtree:'t_ashtree'}[th.tree], th0={t_cedar:5.4,t_coastpine:4.4,t_crystal:3.4,t_ashtree:4.6,t_willow:5.0,t_spooky:4.6,t_storm:5.0,t_sakura:4.2,t_bamboo:5.6,t_maple:4.4,t_snowpine:5.0,t_dead:4.2}[tk];
-    const t3={t_sakura:'t_sakura',t_cedar:'t_pine',t_coastpine:'t_pine',t_storm:'t_pine'}[tk];
-    if(W&&t3){ const pine=t3==='t_pine'?spots:spots.filter((t,i)=>i%6===5), main=t3==='t_pine'?[]:spots.filter((t,i)=>i%6!==5);
-      for(const [kind,list] of [[t3,t3==='t_pine'?spots:main],['t_pine',t3==='t_pine'?[]:pine]]){ if(!list.length) continue; const ms=W.instanced(kind,list.length), mh=W.heightOf(kind);
-        list.forEach((t,i)=>{ _p.set(t.x,TH(t.x,t.z)-0.05,t.z); _q.setFromAxisAngle(_Y,t.r); _s.setScalar(t.s*th0/mh*(kind==='t_pine'&&t3!=='t_pine'?1.15:1)); _m4.compose(_p,_q,_s); for(const m of ms) m.setMatrixAt(i,_m4); });
+    const T3={sakura:'t_sakura',bamboo:'t_bamboo',maple:'t_maple',snowpine:'t_snowpine',dead:'t_dead',willow:'t_willow',spooky:'t_spooky',stormpine:'t_stormpine',cedar:'t_cedar',coastpine:'t_coastpine',crystal:'t_crystal',ashtree:'t_ashtree'};
+    const SECOND={sakura:'t_pine',maple:'t_cedar',willow:'t_bamboo',cedar:'t_pine',bamboo:'t_cedar',spooky:'t_dead',crystal:'t_crystal',snowpine:'t_snowpine',coastpine:'t_coastpine',stormpine:'t_snowpine',dead:'t_ashtree',ashtree:'t_dead'};
+    const t3=T3[th.tree];
+    if(W&&t3){ const sec=SECOND[th.tree]||t3, main=spots.filter((t,i)=>i%5!==4), alt=spots.filter((t,i)=>i%5===4);
+      for(const [kind,list] of [[t3,main],[sec,alt]]){ if(!list.length) continue; const ms=W.instanced(kind,list.length), mh=W.heightOf(kind), kh=kind==='t_crystal'?3.4:kind==='t_bamboo'?5.6:kind==='t_cedar'?5.6:th0;
+        list.forEach((t,i)=>{ _p.set(t.x,TH(t.x,t.z)-0.05,t.z); _q.setFromAxisAngle(_Y,t.r); _s.setScalar(t.s*kh/mh); _m4.compose(_p,_q,_s); for(const m of ms) m.setMatrixAt(i,_m4); });
         env.add(...ms); }
-      if(st.theme==='sakura'){ const pt=W.petals(220,64,{x:KEEP.x,z:KEEP.z+4}); env.add(pt); W.addTicker(pt.userData.tick); } }
+      /* drifting air: petals, leaves, snow, embers, ash, wisps, fireflies, crystal sparkles */
+      const AIRK={sakura:'petal',autumn:'leaf',bamboo:'greenleaf',snow:'snow',storm:'storm',volcano:'ember',ember:'ember',eclipse:'ash',grave:'wisp',swamp:'firefly',mist:'firefly',forest:'firefly',cave:'sparkle',moon:'sparkle',temple:'gold',coast:null}[st.theme];
+      if(AIRK){ const pt=W.petals(AIRK==='storm'?320:AIRK==='firefly'||AIRK==='wisp'||AIRK==='sparkle'?90:200,64,{x:KEEP.x,z:KEEP.z+4},AIRK); env.add(pt); W.addTicker(pt.userData.tick); }
+      if(st.theme==='volcano'||st.theme==='ember'||st.theme==='eclipse'){ const lava=[]; let gl=0; while(lava.length<7&&gl++<600){ const x=-30+R()*60, z=-44+R()*70; if(ok(x,z,4.5)) lava.push({x,z,s:1+R()*1.4}); }
+        const lm=W.instanced('p_lavapool',lava.length); lava.forEach((l,i)=>{ _p.set(l.x,TH(l.x,l.z)-0.02,l.z); _q.setFromAxisAngle(_Y,R()*6); _s.set(l.s,1,l.s); _m4.compose(_p,_q,_s); for(const m of lm) m.setMatrixAt(i,_m4); }); env.add(...lm); } }
     else { const tm=new T.InstancedMesh(sprGeo,sprMat(tk),spots.length), bm=new T.InstancedMesh(blobGeo,new T.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.22,depthWrite:false}),spots.length);
     spots.forEach((t,i)=>{ const H=th0*t.s, Wd=H*(SPR_AR[tk]||1), fl=R()<0.5?-1:1, ty=TH(t.x,t.z); _p.set(t.x,ty,t.z); _s.set(Wd*fl,H,1); _m4.compose(_p,camBill,_s); tm.setMatrixAt(i,_m4);
       _p.set(t.x,0.03+ty,t.z); _q.identity(); _s.set(Wd*0.7,1,Wd*0.45); _m4.compose(_p,_q,_s); bm.setMatrixAt(i,_m4); });
     env.add(tm,bm); }
-    if(th.tree==='dead'){ const lava=[]; let gl=0; while(lava.length<9&&gl++<600){ const x=-30+R()*60, z=-44+R()*70; if(ok(x,z,4.5)) lava.push({x,z,s:1+R()*1.8}); }
+    if(th.tree==='dead'&&!W){ const lava=[]; let gl=0; while(lava.length<9&&gl++<600){ const x=-30+R()*60, z=-44+R()*70; if(ok(x,z,4.5)) lava.push({x,z,s:1+R()*1.8}); }
       const lm=new T.InstancedMesh(new T.CircleGeometry(1,10),new T.MeshBasicMaterial({color:0xFF6A1A}),lava.length);
       lava.forEach((l,i)=>{ _p.set(l.x,0.04,l.z); _q.setFromEuler(_e.set(-Math.PI/2,0,0)); _s.set(l.s,l.s,1); _m4.compose(_p,_q,_s); lm.setMatrixAt(i,_m4); }); env.add(lm); } }
   // torii gates on lanes (shrine theme) and stone lanterns
@@ -1712,9 +1723,15 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
   for(const d of LAYOUT.pads){
     const g=new T.Group(); g.position.set(d.x,0,d.z); const ing=d.cur==='ingot';
     const fupP=d.kind==='fup';
-    g.add(mk(new T.BoxGeometry(2.8,0.12,2.8),new T.MeshLambertMaterial({color:fupP?0x9A7208:ing?0x1F4C78:0x2F6A22}),0,0.06,0,false));
-    g.add(mk(new T.BoxGeometry(2.45,0.14,2.45),new T.MeshLambertMaterial({color:fupP?0xFFD34D:ing?0x62AEEF:0x6FDB4F}),0,0.1,0,false));
-    const fill=mk(new T.BoxGeometry(2.45,0.15,2.45),new T.MeshLambertMaterial({color:0xF4FFE8,transparent:true,opacity:.75}),0,0.11,0,false); fill.scale.set(0.001,1,0.001); g.add(fill);
+    if(W3()){ const tileC=fupP?0xFFD34D:ing?0x62AEEF:0x6FDB4F, rimC=fupP?0x9A7208:ing?0x1F4C78:0x2F6A22;
+      const slab=new T.CylinderGeometry(2.0,2.12,0.16,4,1); slab.rotateY(Math.PI/4); g.add(mk(slab,toon(0xA8A296),0,0.08,0,false));
+      const slab2=new T.CylinderGeometry(1.86,1.94,0.06,4,1); slab2.rotateY(Math.PI/4); g.add(mk(slab2,toon(rimC),0,0.18,0,false));
+      g.add(mk(new T.BoxGeometry(2.45,0.06,2.45),new T.MeshLambertMaterial({color:tileC,emissive:tileC,emissiveIntensity:0.18}),0,0.2,0,false));
+      const ring=new T.Mesh(new T.RingGeometry(0.72,0.82,40),new T.MeshBasicMaterial({color:0xFFFFFF,transparent:true,opacity:0.45,depthWrite:false})); ring.rotation.x=-Math.PI/2; ring.position.y=0.24; g.add(ring);
+      for(const [cx,cz] of [[1.25,1.25],[-1.25,1.25],[1.25,-1.25],[-1.25,-1.25]]){ g.add(mk(new T.CylinderGeometry(0.12,0.15,0.3,6),toon(0x8E8A84),cx,0.22,cz,false)); g.add(mk(new T.SphereGeometry(0.09,8,6),toon(0xF5C542),cx,0.42,cz,false)); } }
+    else { g.add(mk(new T.BoxGeometry(2.8,0.12,2.8),new T.MeshLambertMaterial({color:fupP?0x9A7208:ing?0x1F4C78:0x2F6A22}),0,0.06,0,false));
+    g.add(mk(new T.BoxGeometry(2.45,0.14,2.45),new T.MeshLambertMaterial({color:fupP?0xFFD34D:ing?0x62AEEF:0x6FDB4F}),0,0.1,0,false)); }
+    const fill=mk(new T.BoxGeometry(2.45,0.15,2.45),new T.MeshLambertMaterial({color:0xF4FFE8,transparent:true,opacity:.75}),0,W3()?0.2:0.11,0,false); fill.scale.set(0.001,1,0.001); g.add(fill);
     g.visible=false; dyn.add(g);
     const el=document.createElement('div'); el.className='pad'+(fupP?' fup':ing?' ing':''); el.innerHTML=(ICONS[d.kind]?`<span class="ic">${ICONS[d.kind]}</span>`:'')+'<b></b>'+(d.kind==='aup'?'<i class="lv">Lv 2</i>':''); el.style.display='none'; $('labels').appendChild(el);
     G.pads.push(Object.assign({},d,{paid:0,carry:0,standT:0,active:false,done:false,doneT:-1,g,fill,el,numEl:el.querySelector('b'),shown:-1}));
@@ -2131,10 +2148,13 @@ function buildStructure(p){
       const TIER=[0xC98A3C,0xD9E2EC,0xF5C542,0x7FE0FF,0xB98CFF], col=TIER[Math.min(4,tw.tier-1)];
       if(tw.deco) tw.obj.remove(tw.deco);
       const deco=new T.Group();
-      const bn=new T.Mesh(new T.PlaneGeometry(0.26,0.34+0.07*tw.tier),new T.MeshBasicMaterial({color:col,side:T.DoubleSide,transparent:true,opacity:0.95}));
+      if(_w3d){ const pole=mk(new T.CylinderGeometry(0.035,0.035,2.0,6),toon(0x3A2418),1.38,3.3,1.38); deco.add(pole);
+        const fl=mk(new T.BoxGeometry(0.42,0.75+0.08*tw.tier,0.03),toon(col),1.38+0.23,3.8,1.38); deco.add(fl); deco.add(mk(new T.BoxGeometry(0.48,0.04,0.05),toon(0x3A2418),1.38+0.23,4.22+0.04*tw.tier,1.38));
+        for(let i2=0;i2<tw.tier;i2++){ const gem=mk(new T.OctahedronGeometry(0.11,0),new T.MeshLambertMaterial({color:col,emissive:col,emissiveIntensity:0.5}),(i2-(tw.tier-1)/2)*0.28,3.25,1.5,false); deco.add(gem); } }
+      else { const bn=new T.Mesh(new T.PlaneGeometry(0.26,0.34+0.07*tw.tier),new T.MeshBasicMaterial({color:col,side:T.DoubleSide,transparent:true,opacity:0.95}));
       bn.quaternion.copy(camBill); bn.position.set(RIGHT.x*0.95+DOWN.x*0.5,2.75,RIGHT.z*0.95+DOWN.z*0.5); bn.renderOrder=2; deco.add(bn);
       for(let i2=0;i2<tw.tier;i2++){ const pip=new T.Mesh(new T.CircleGeometry(0.085,10),new T.MeshBasicMaterial({color:col,side:T.DoubleSide}));
-        pip.quaternion.copy(camBill); pip.position.set((i2-(tw.tier-1)/2)*0.22,3.62,0); pip.renderOrder=3; deco.add(pip); }
+        pip.quaternion.copy(camBill); pip.position.set((i2-(tw.tier-1)/2)*0.22,3.62,0); pip.renderOrder=3; deco.add(pip); } }
       const ring=new T.Mesh(new T.RingGeometry(1.1,1.34,28),new T.MeshBasicMaterial({color:col,transparent:true,opacity:0.12+0.05*tw.tier,side:T.DoubleSide,depthWrite:false}));
       ring.rotation.x=-Math.PI/2; ring.position.y=0.05; ring.renderOrder=1; deco.add(ring);
       if(tw.tier>=5){ const cr=new T.Mesh(new T.ConeGeometry(0.22,0.42,6),new T.MeshBasicMaterial({color:0xFFD34D})); cr.position.set(0,3.95,0); deco.add(cr); }
@@ -3431,8 +3451,13 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
     if(Math.random()<0.5) spawnParticles(lerp(o.sx,o.tx,u),lerp(o.sy,0.5,u)+Math.sin(u*Math.PI)*2,lerp(o.sz,o.tz,u),1,0xC58CFF,0.5,0.3,0.7,0); }
   bEnd(B.talis);
   bBegin(B.part); for(const p of G.parts){ const s=p.size*Math.max(0.05,Math.min(1,p.life/p.max*1.5)); bEuler(B.part,p.x,p.y,p.z,p.rx+t*4,p.ry+t*3,0,s,C(p.col)); } bEnd(B.part);
+  if(_w3d&&!window._fb3){ window._fb3={}; for(const k of ['f_wood','f_iron','f_stone']){ const g=_w3d.geo(k); window._fb3[k]=[makeBatch(g.toon,1400,{mat:_w3d.mats.toon,receive:true}),makeBatch(g.ol,1400,{mat:_w3d.mats.ol,shadow:false})]; } }
+  const FB=window._fb3; if(FB){ for(const k in FB) for(const bt of FB[k]) bBegin(bt);
+    for(const k2 in G.fences){ const f=G.fences[k2]; if(!f.built) continue; const jit=f.shake>0?0.06:0, tier=f.tier||1, kind=tier===1?'f_wood':tier===2?'f_iron':'f_stone', sx=tier===3?0.78:1;
+      for(const pl of f.planks){ if(pl.h<=0) continue; const sy=Math.max(0.01,easeOutBack(pl.h)*pl.tall), x=pl.x+rand(-jit,jit); for(const bt of FB[kind]) bYaw(bt,x,0,pl.z,pl.rot,sx,sy,1,f.shake>0?C(0xFFB0A0):WHITE); } }
+    for(const k in FB) for(const bt of FB[k]) bEnd(bt); }
   bBegin(B.plank);
-  for(const k2 in G.fences){ const f=G.fences[k2]; if(!f.built) continue; const jit=f.shake>0?0.06:0;
+  if(!FB) for(const k2 in G.fences){ const f=G.fences[k2]; if(!f.built) continue; const jit=f.shake>0?0.06:0;
     const tier=f.tier||1, tall=tier===1?1:tier===2?1.22:1.42, wide=tier===3?1.35:1, body=tier===1?0x94643F:tier===2?0x6B4626:0x9C9A94;
     for(const pl of f.planks){ if(pl.h<=0) continue; const s=easeOutBack(pl.h), hgt=Math.max(0.01,s*pl.tall*tall), x=pl.x+rand(-jit,jit);
       bYaw(B.plank,x,0.75*hgt,pl.z,pl.rot,wide,hgt,wide,C(body));
@@ -3849,5 +3874,5 @@ $('avatar').src=ART.hero; $('titleHero').src=ART[(HEROES[SAVE.hero]||HEROES.roni
 })();
 startStage(0); G.state='title'; showScreen('title'); $('toast').classList.remove('show'); toastTimer=0;
 requestAnimationFrame(frame);
-window.__T={ unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
+window.__T={ themes:()=>STAGES.map(x=>x.theme), unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
 })();
