@@ -10,6 +10,8 @@ window.GK3D_CHARS=function(T,opt){
 opt=opt||{};
 const gradTex=opt.gradTex||(()=>{ const t=new T.DataTexture(new Uint8Array([95,95,95,255,175,175,175,255,255,255,255,255]),3,1,T.RGBAFormat); t.minFilter=t.magFilter=T.NearestFilter; t.generateMipmaps=false; t.needsUpdate=true; return t; })();
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, sm=t=>{ t=clamp(t,0,1); return t*t*(3-2*t); };
+/* character style: 'anime' = heroic anime proportions (default), 'chibi' = the big-headed look of the 2D art */
+const STYLE=opt.style||window.GK_STYLE||(()=>{ try{ const q=new URLSearchParams(location.search).get('style'); if(q==='anime'||q==='chibi'){ localStorage.setItem('gk-style',q); return q; } return localStorage.getItem('gk-style')||'anime'; }catch(e){ return 'anime'; } })();
 const TAU=Math.PI*2;
 
 /* ================================================================ geometry kit
@@ -117,7 +119,19 @@ const BUILDS={
   round:  {head:0.3, leg:0.5, torso:0.6, w:0.48,limb:0.1,  arm:0.55},
   heroic: {head:0.27,leg:0.96,torso:0.74,w:0.36,limb:0.1,  arm:0.78},   /* warriors: tall, broad shoulders, smaller head */
   titan:  {head:0.26,leg:0.9, torso:0.82,w:0.48,limb:0.13, arm:0.86},   /* warlords and war gods */
-  divine: {head:0.25,leg:1.0, torso:0.7, w:0.3, limb:0.08, arm:0.76}};  /* serene gods: tall and elegant */
+  divine: {head:0.25,leg:1.0, torso:0.7, w:0.3, limb:0.08, arm:0.76},
+  /* heroic anime: heads about a seventh of the body */
+  a_male:   {head:0.19,leg:1.14,torso:0.82,w:0.27,limb:0.066,arm:0.86},
+  a_female: {head:0.183,leg:1.16,torso:0.74,w:0.215,limb:0.054,arm:0.8},
+  a_youth:  {head:0.2, leg:1.02,torso:0.74,w:0.25,limb:0.062,arm:0.78},
+  a_hero:   {head:0.185,leg:1.12,torso:0.92,w:0.36,limb:0.085,arm:0.92},
+  a_titan:  {head:0.19, leg:1.06,torso:1.0, w:0.47,limb:0.115,arm:1.0},
+  a_round:  {head:0.22, leg:0.72,torso:0.78,w:0.5, limb:0.1,  arm:0.7}};
+const FEMALE=new Set(['kitsune','amaterasu','izanami','marishi','yukionna','hannya','jorogumo','ungai','orizuru','inari','mioya']);
+const YOUTH=new Set(['hero','samurai','onmyoji','ninja','kitsune','amaterasu']);
+function animeBuild(sp){ const b=sp.build||'normal', k=sp.key, fem=FEMALE.has(k);
+  if(b==='round') return 'a_round'; if(b==='giant'||b==='titan') return 'a_titan'; if(b==='broad'||b==='heroic') return 'a_hero';
+  return fem?'a_female':YOUTH.has(k)?'a_youth':'a_male'; }  /* serene gods: tall and elegant */
 
 /* ================================================================ v71 detail kit
    Shared building blocks that bring a code-built character closer to its painted art:
@@ -158,8 +172,8 @@ function faceAnime(R,hr,hy,eyes,hairCol,skin,sp){
   R.add('head',G_.sph(hr*0.035,hr*0.025,hr*0.02),shade(skin,0.85),{p:[0,hy-hr*0.3,hr*0.97],ol:false});
   if(old) for(let i=0;i<2;i++) R.add('head',G_.box(hr*0.55,0.01,0.01),shade(skin,0.72),{p:[0,hy+hr*(0.45+i*0.12),hr*0.92],ol:false}); }
 
-function hairFlow(R,H,hr,hy,cap){
-  const c=H.col||0x2A2433, tip=H.col2||shade(c,1.3), root=shade(c,0.82), L=hr*(H.len||4), fl=H.flare||1.4;
+function hairFlow(R,H,hr,hy,cap,hk){
+  const c=H.col||0x2A2433, tip=H.col2||shade(c,1.3), root=shade(c,0.82), L=hr*(H.len||4)*(hk||1), fl=H.flare||1.4;
   cap();
   const nb=H.bangs||9;
   for(let i=0;i<nb;i++){ const u=i/(nb-1)-0.5, a=u*2.1, side=Math.abs(u)*2, len=hr*(0.62+0.45*side*side+((i%3)-1)*0.05);
@@ -350,7 +364,11 @@ function armorOrnate(R,o,B,legL,spineH,chestH){
   R.add('back',G_.tor(0.07,0.03,6,12),0xD8342C,{p:[0,-0.3,-0.06],r:[0,0,0.6]}); R.add('back',G_.tor(0.07,0.03,6,12),0xD8342C,{p:[0,-0.3,-0.06],r:[0,0,-0.6]}); }
 
 function buildHuman(sp){
-  const B=Object.assign({},BUILDS[sp.build||'normal'],sp.prop||{}), R=new Rig();
+  if(STYLE==='anime'){ const fem=FEMALE.has(sp.key); sp=Object.assign({},sp);
+    if(!sp.face&&!YOUTH.has(sp.key)) sp.face=fem?'elegant':(sp.eyes&&sp.eyes.fierce)?'fierce':null;
+    if(sp.key==='nurari') sp.prop={head:0.19}; }
+  const B=STYLE==='anime'?Object.assign({},BUILDS[animeBuild(sp)],sp.propAnime||{}):Object.assign({},BUILDS[sp.build||'normal'],sp.prop||{}), R=new Rig();
+  sp._hk=STYLE==='anime'?clamp(0.3/B.head,1,2.2):1;   /* hair keeps its length when the head is smaller */
   const legL=B.leg, thigh=legL*0.5, shin=legL*0.5-0.05, hipW=B.w*0.42, spineH=B.torso*0.36, chestH=B.torso*0.42, neckH=B.torso*0.12;
   const armSeg=B.arm*0.5, shW=B.w*0.95+B.limb*0.6;
   R.bone('hips','root',[0,legL+0.02,0]);
@@ -367,8 +385,10 @@ function buildHuman(sp){
   const G=(c,f)=>({grad:shade(c,f||0.84)});
   /* --- torso */
   R.add('hips',G_.sph(B.w*0.95,B.torso*0.22,B.w*0.7),bare?(o.col2||0x6B4A2A):hakama?oc:oc2,{p:[0,0.02,0]});
-  R.add('spine',G_.sph(B.w*0.9,spineH*0.75,B.w*0.66),topCol,Object.assign({p:[0,spineH*0.45,0]},G(topCol,0.9)));
-  R.add('chest',G_.sph(B.w*(bulk?1.12:1.0),chestH*0.72,B.w*0.72),topCol,Object.assign({p:[0,chestH*0.42,0.01]},G(topCol,0.9)));
+  const AN=STYLE==='anime', FEM=FEMALE.has(sp.key);
+  R.add('spine',G_.sph(B.w*(AN?(FEM?0.68:0.76):0.9),spineH*0.75,B.w*(AN?0.6:0.66)),topCol,Object.assign({p:[0,spineH*0.45,0]},G(topCol,0.9)));
+  R.add('chest',G_.sph(B.w*(bulk?1.12:AN&&!FEM?1.08:1.0),chestH*0.72,B.w*0.72),topCol,Object.assign({p:[0,chestH*0.42,0.01]},G(topCol,0.9)));
+  if(AN&&!bare) for(const sd of [1,-1]) R.add('chest',G_.sph(B.w*0.42,chestH*0.36,B.w*0.4),topCol,{p:[sd*B.w*0.62,chestH*0.78,0],grad:shade(topCol,0.88)});   /* shoulders */
   if(bare){ const ms=shade(skin,0.9);   /* muscle definition: pecs, abs, collarbones */
     for(const sd of [1,-1]) R.add('chest',G_.sph(B.w*0.46,chestH*0.33,B.w*0.28),skin,{p:[sd*B.w*0.42,chestH*0.5,B.w*0.5],grad:ms});
     for(let i=0;i<3;i++) for(const sd of [1,-1]) R.add('spine',G_.sph(B.w*0.2,spineH*0.16,0.06),skin,{p:[sd*B.w*0.21,spineH*(0.85-i*0.3),B.w*0.6],grad:ms});
@@ -607,8 +627,8 @@ function buildHair(R,sp,B,hr,hy){
       strand([[Math.sin(a)*hr*0.85,hy+hr*0.5*Math.cos(u*1.3),-Math.cos(a)*hr*0.62-hr*0.08],[Math.sin(a)*hr*(1.2+au*0.6),hy-hr*0.45,-hr*0.78-Math.cos(a)*hr*0.18],
         [Math.sin(a)*hr*(1.3+fl*au*0.9)+w,hy-L*0.55,-hr*0.62+Math.cos(i)*hr*0.1],[Math.sin(a)*hr*(1.35+fl*au*1.5)-w,hy-L*(0.9+0.08*Math.sin(i*2.3)),-hr*0.4]],hr*(0.36-au*0.08),i%3===1?root:c,{onHair:true,seg:14,gax:0.8,r1:hr*0.04}); } };
   switch(H.style){
-    case 'flow': hairFlow(R,H,hr,hy,cap); break;
-    case 'long': case 'longflow': { const L=hr*Math.max(2.2,(H.len||3)*1.15);
+    case 'flow': hairFlow(R,H,hr,hy,cap,sp._hk); break;
+    case 'long': case 'longflow': { const L=hr*Math.max(2.2,(H.len||3)*1.15)*(sp._hk||1);
       cap(); bangs(H.bangs||6,0.6,2.3); for(const sd of [1,-1]) strand([[sd*hr*0.8,hy+hr*0.5,hr*0.3],[sd*hr*1.02,hy-hr*0.2,hr*0.32],[sd*hr*1.2,hy-hr*0.95,hr*0.1],[sd*hr*1.35,hy-L*0.55,-hr*0.15]],hr*0.22,c,{seg:12});
       R.add('hair',G_.lathe([[hr*0.9,hy+hr*0.55],[hr*1.12,hy-hr*0.4],[hr*1.35,hy-L*0.5],[hr*1.5,hy-L*0.9],[hr*1.3,hy-L*0.97]],20),root,{p:[0,-hr*0.9,hr*0.4-hr*0.78],s:[1,1,0.38],grad:tip,gax:1.2});
       back(H.strands||14,L,H.flare||0.9);
@@ -737,10 +757,10 @@ function buildBack(R,sp,B){
         R.add(w,G_.leaf(0.13+0.06*(1-t),len,0.022),i%2?c:c2,{p:[sd*0.15*t,0.1*t,-0.05],r:[0,sd*0.25,sd*-a],grad:K.tip||shade(c2,1.2),gax:1.6});
         if(i<n-1) R.add(w,G_.leaf(0.1,len*0.6,0.022),shade(c,0.85),{p:[sd*0.12*t,0.1*t+0.05,-0.02],r:[0,sd*0.25,sd*-(a+0.12)],grad:c2}); }
       R.add(w,G_.cap(0.06,span*0.6),c,{p:[sd*span*0.28,span*0.12,-0.02],r:[0,0,sd*-1.2]}); } break;
-    case 'tails': { const t=R.byName.tail, n=K.n||9;
-      for(let i=0;i<n;i++){ const a=n>1?(i/(n-1)-0.5)*2.6:0, L=K.len||1.1;
+    case 'tails': { const t=R.byName.tail, n=K.n||9, ts=STYLE==='anime'?0.72:1;
+      for(let i=0;i<n;i++){ const a=n>1?(i/(n-1)-0.5)*2.6:0, L=(K.len||1.1)*ts;
         const crv=new T.CatmullRomCurve3([[0,0,0],[Math.sin(a)*L*0.25,0.15,-L*0.3],[Math.sin(a)*L*0.6,0.45+Math.cos(a)*0.2,-L*0.6],[Math.sin(a)*L*0.8,0.85+Math.cos(a)*0.3,-L*0.55]].map(p=>new T.Vector3(...p)));
-        for(let k=0;k<11;k++){ const u=k/10, P=crv.getPointAt(u), rr=(0.08+0.15*Math.sin(Math.PI*Math.min(1,u*0.85+0.1)))*(K.fat||1);
+        for(let k=0;k<11;k++){ const u=k/10, P=crv.getPointAt(u), rr=(0.08+0.15*Math.sin(Math.PI*Math.min(1,u*0.85+0.1)))*(K.fat||1)*ts;
           R.add(t,G_.sph(rr,rr,rr*1.2,10,6),k>=10?(K.tip||0xFFFFFF):(i%2?c:c2),{p:[P.x,P.y,P.z],grad:k===9?(K.tip||0xFFFFFF):null}); } } break; }
     case 'drums': R.add('back',G_.tor(0.75,0.04,6,32),c,{p:[0,0.25,-0.15]});
       for(let i=0;i<8;i++){ const a=i/8*TAU; R.add('back',G_.cyl(0.13,0.13,0.12,12),c2,{p:[Math.sin(a)*0.75,0.25+Math.cos(a)*0.75,-0.15],r:[Math.PI/2,0,0]}); R.add('back',G_.cyl(0.1,0.1,0.13,12),0xF5C542,{p:[Math.sin(a)*0.75,0.25+Math.cos(a)*0.75,-0.13],r:[Math.PI/2,0,0],ol:false}); } break;
@@ -762,10 +782,10 @@ function buildBack(R,sp,B){
       R.add('back',G_.box(0.16,0.34,0.012),0xF4ECFF,{p:[Math.sin(a)*r,0.35+Math.cos(a)*0.45,-0.1+0.1*Math.cos(a)],r:[0,0,-a*0.3],glow:true,grad:K.col||0xB98CFF});
       R.add('back',G_.box(0.03,0.24,0.014),K.col||0x8E4FD6,{p:[Math.sin(a)*r,0.35+Math.cos(a)*0.45,-0.093+0.1*Math.cos(a)],r:[0,0,-a*0.3],glow:true}); } break;
     case 'sunflame': backSunflame(R,K,B,sp); break;
-    case 'halo': { const hc=K.col2||0xFFE27A; R.add('back',G_.tor(0.8,0.04,6,48),hc,{p:[0,0.6,-0.1],glow:true}); R.add('back',G_.tor(0.62,0.018,5,40),0xFFFFFF,{p:[0,0.6,-0.1],glow:true});
-      R.add('back',G_.cyl(0.79,0.79,0.012,40),shade(hc,0.9),{p:[0,0.6,-0.13],r:[Math.PI/2,0,0],glow:true,grad:0xFFFFFF});
-      for(let i=0;i<24;i++){ const a=i/24*TAU; R.add('back',G_.cone(i%2?0.035:0.05,i%2?0.2:0.34,4),hc,{p:[Math.sin(a)*(0.95+(i%2?0:0.06)),0.6+Math.cos(a)*(0.95+(i%2?0:0.06)),-0.1],r:[0,0,-a],glow:true}); }
-      for(let i=0;i<8;i++){ const a=i/8*TAU+0.2; R.add('back',G_.sph(0.045),0xFFFFFF,{p:[Math.sin(a)*0.8,0.6+Math.cos(a)*0.8,-0.07],glow:true}); } break; }
+    case 'halo': { const hc=K.col2||0xFFE27A, hs=STYLE==='anime'?clamp(B.head/0.3,0.62,1):1; R.add('back',G_.tor(0.8*hs,0.04*hs,6,48),hc,{p:[0,0.6*hs,-0.1],glow:true}); R.add('back',G_.tor(0.62*hs,0.018,5,40),0xFFFFFF,{p:[0,0.6*hs,-0.1],glow:true});
+      R.add('back',G_.cyl(0.79*hs,0.79*hs,0.012,40),shade(hc,0.9),{p:[0,0.6*hs,-0.13],r:[Math.PI/2,0,0],glow:true,grad:0xFFFFFF});
+      for(let i=0;i<24;i++){ const a=i/24*TAU; R.add('back',G_.cone((i%2?0.035:0.05)*hs,(i%2?0.2:0.34)*hs,4),hc,{p:[Math.sin(a)*(0.95+(i%2?0:0.06))*hs,(0.6+Math.cos(a)*(0.95+(i%2?0:0.06)))*hs,-0.1],r:[0,0,-a],glow:true}); }
+      for(let i=0;i<8;i++){ const a=i/8*TAU+0.2; R.add('back',G_.sph(0.045*hs),0xFFFFFF,{p:[Math.sin(a)*0.8*hs,(0.6+Math.cos(a)*0.8)*hs,-0.07],glow:true}); } break; }
     case 'planets': { const o=R.bone('orbit','chest',[0,0.4,0]); for(let i=0;i<5;i++){ const a=i/5*TAU; R.add(o,G_.sph(0.08+0.03*(i%3)),[0xF5C542,0x9FE6FF,0xFF8A4A,0xC58CFF,0xFFFFFF][i],{p:[Math.sin(a)*0.9,Math.cos(a*2)*0.15,Math.cos(a)*0.9],glow:true}); } R.add(o,G_.tor(0.9,0.008,3,48),0xFFFFFF,{r:[Math.PI/2,0,0],glow:true}); break; }
     case 'trees': for(let i=0;i<5;i++){ const a=(i/4-0.5)*1.6; R.add('back',G_.cyl(0.02,0.03,0.4,5),0x6B4A2A,{p:[Math.sin(a)*0.35,0.2,-0.1]}); R.add('back',G_.cone(0.16,0.45,6),0x3F7A3A,{p:[Math.sin(a)*0.35,0.55,-0.1]}); } break;
     case 'clouds': for(let i=0;i<9;i++){ const a=(i/8-0.5)*2.8, r=0.2+0.08*(i%2); R.add('back',G_.sph(r,r*0.8,r*0.7),c,{p:[Math.sin(a)*0.8,0.25+Math.cos(a)*0.45,-0.15-0.05*(i%2)],grad:c2});
@@ -967,7 +987,7 @@ function buildFish(sp){ if(sp.tigerHead) return buildTigerFish(sp);
 
 /* ================================================================ character registry */
 const DEFS={};
-const def=(k,s)=>{ DEFS[k]=s; };
+const def=(k,s)=>{ DEFS[k]=s; s.key=k; };
 /* compact design list for all 70 heroes and bosses, drawn from their painted portraits */
 const HORN=0xF2DEA0, BLK=0x1C1C22, WHT=0xF4F1EA, GLD=0xF5C542, RED=0xC8342C;
 def('hero',    {type:'human',build:'chibi',skin:0xF6D2B0,hair:{style:'spiky',col:0x22305E,col2:0x2E4280,tip:0x4A62B0},hat:{kind:'none'},extra:(R,B)=>{ R.add('head',G_.tor(B.head*1.02,B.head*0.09,6,24),0xD8342C,{p:[0,B.head*1.25,0],r:[Math.PI/2+0.15,0,0]}); for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*0.1,-0.05,-0.12],[sd*0.22,-0.18,-0.32],[sd*0.3,-0.12,-0.5]],0.035,0.02,5,10),0xD8342C,{p:[sd*0.04,B.head*1.2,-B.head*0.95],grad:0xA81E18}); },
@@ -1096,6 +1116,7 @@ const BUILT={};   /* key -> {geos, kind, height, meta} shared geometry */
 function getBuilt(key){ if(BUILT[key]) return BUILT[key]; const sp=DEFS[key]; if(!sp) return null;
   const b=sp.type==='quad'?buildQuad(sp):sp.type==='serpent'?buildSerpent(sp):sp.type==='spider'?buildSpider(sp):sp.type==='blob'?buildBlob(sp):sp.type==='fish'?buildFish(sp):buildHuman(sp);
   const geos=b.rig.build(); const bb=geos.toon.boundingBox; geos.height=bb.max.y-Math.min(0,bb.min.y);
+  if(STYLE==='anime'&&b.kind==='human'){ const hw=b.rig.byName.head.userData.world.y, hr=b.B.head; geos.height=Math.min(geos.height,(hw+hr*2.15)*1.06); }
   return (BUILT[key]={sp,b,geos,height:geos.height,proto:b.rig}); }
 function cloneRig(proto){ /* fresh bone hierarchy matching the prototype's bind pose */
   const map={}, bones=[];
