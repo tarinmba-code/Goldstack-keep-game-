@@ -11,7 +11,7 @@ opt=opt||{};
 const gradTex=opt.gradTex||(()=>{ const t=new T.DataTexture(new Uint8Array([95,95,95,255,175,175,175,255,255,255,255,255]),3,1,T.RGBAFormat); t.minFilter=t.magFilter=T.NearestFilter; t.generateMipmaps=false; t.needsUpdate=true; return t; })();
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, sm=t=>{ t=clamp(t,0,1); return t*t*(3-2*t); };
 /* character style: 'anime' = heroic anime proportions (default), 'chibi' = the big-headed look of the 2D art */
-const STYLE=opt.style||window.GK_STYLE||(()=>{ try{ const q=new URLSearchParams(location.search).get('style'); if(q==='anime'||q==='chibi'){ localStorage.setItem('gk-style',q); return q; } return localStorage.getItem('gk-style')||'anime'; }catch(e){ return 'anime'; } })();
+let STYLE=opt.style||window.GK_STYLE||(()=>{ try{ const q=new URLSearchParams(location.search).get('style'); if(q==='anime'||q==='chibi'){ localStorage.setItem('gk-style',q); return q; } return localStorage.getItem('gk-style')||'anime'; }catch(e){ return 'anime'; } })();
 const TAU=Math.PI*2;
 
 /* ================================================================ geometry kit
@@ -1257,6 +1257,13 @@ const API={
   has:key=>!!DEFS[key],
   keys:()=>Object.keys(DEFS),
   prebuild:keys=>{ for(const k of keys) getBuilt(k); },
+  style:()=>STYLE,
+  /* switch anime/chibi live: drop every built model and instance; characters rebuild on their next frame */
+  setStyle(st){ if(st!=='anime'&&st!=='chibi'||st===STYLE) return STYLE; STYLE=st; try{ localStorage.setItem('gk-style',st); }catch(e){}
+    for(const [ent,I] of [...live]) release(ent,I);
+    for(const k in pool){ for(const I of pool[k]) if(I.grp.parent) I.grp.parent.remove(I.grp); delete pool[k]; }
+    for(const k in BUILT){ const g=BUILT[k].geos; for(const n of ['toon','ol','glow']) if(g[n]) g[n].dispose(); delete BUILT[k]; }
+    return STYLE; },
   begin(){ frameTag++; },
   /* p: {x,y,z,rot,H,dt,moving,atk,style,flash,frozen,burn,cast,castKind,castU,stun,scale,tint} */
   drive(ent,key,p){ const I=acquire(ent,key); if(!I) return false; const S=I.st, dt=Math.min(0.05,p.dt||0.016);

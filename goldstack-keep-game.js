@@ -671,11 +671,19 @@ function attach3D(g,kind,sprite,shadow){ const M=MODELS3D[kind]; if(GFX!=='3d'||
     if(M.rotY) m.rotation.y=M.rotY; m.scale.setScalar(M.scale||1); g.add(m); sprite.visible=false; if(shadow) shadow.visible=false; g.userData.model3d=m; renderer.shadowMap.needsUpdate=true; })
   .catch(err=>{ console.warn('3D model failed, keeping sprite:',kind,err&&err.message); }); }
 if(GFX==='3d') load3DKit().catch(err=>console.warn('3D kit failed to load:',err&&err.message));
-{ /* graphics switch: tap to swap between 3D and the classic painted look (reloads the page) */
+{ /* graphics switches: 3D / classic (reloads the page) and, in 3D, the character style anime / chibi (switches live) */
+  const bar=document.createElement('div'); bar.id='gfxbar'; document.body.appendChild(bar);
   const chip=document.createElement('button'); chip.id='gfx3d'; chip.type='button';
-  chip.textContent=GFX==='3d'?'3D on · tap for classic':'Classic · tap for 3D'; document.body.appendChild(chip);
+  chip.textContent=GFX==='3d'?'3D on · tap for classic':'Classic · tap for 3D'; bar.appendChild(chip);
   chip.addEventListener('click',()=>{ try{ localStorage.setItem('gk-gfx2',GFX==='3d'?'sprite':'3d'); }catch(e){} const u=new URL(location.href); u.searchParams.delete('gfx'); location.replace(u.toString()); });
-  const st=document.createElement('style'); st.textContent='#gfx3d{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 6px);transform:translateX(-50%);z-index:30;font:800 11px "Nunito Sans",sans-serif;color:#fff;background:'+(GFX==='3d'?'rgba(46,125,50,.9)':'rgba(60,60,72,.85)')+';border:0;border-radius:999px;padding:4px 12px;cursor:pointer;}'; document.head.appendChild(st); }
+  if(GFX==='3d'){ const sb=document.createElement('button'); sb.id='gfxstyle'; sb.type='button'; bar.appendChild(sb);
+    const cur=()=>{ const C=window.GK3D_CHARS&&CH3(); return C?C.style():'anime'; };
+    const label=()=>{ const a=cur()==='anime'; sb.textContent=a?'Style: Anime · tap for Chibi':'Style: Chibi · tap for Anime'; sb.className=a?'anime':'chibi'; };
+    sb.addEventListener('click',e=>{ e.stopPropagation(); const C=CH3(); if(!C) return; C.setStyle(C.style()==='anime'?'chibi':'anime'); label(); if(typeof sfx==='function') try{ sfx('rank'); }catch(_){} });
+    setTimeout(label,0); }
+  const st=document.createElement('style'); st.textContent='#gfxbar{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 6px);transform:translateX(-50%);z-index:30;display:flex;gap:6px;white-space:nowrap}'+
+    '#gfxbar button{font:800 11px "Nunito Sans",sans-serif;color:#fff;border:0;border-radius:999px;padding:5px 12px;cursor:pointer;touch-action:manipulation}'+
+    '#gfx3d{background:'+(GFX==='3d'?'rgba(46,125,50,.9)':'rgba(60,60,72,.85)')+'}#gfxstyle.anime{background:rgba(110,63,176,.9)}#gfxstyle.chibi{background:rgba(216,52,104,.88)}'; document.head.appendChild(st); }
 
 /* ================================================================ v66 · performance overlay
    ?perf=1 shows frame rate, frame time, draw calls, triangles, GPU objects and memory; ?perf=0 hides it. */
