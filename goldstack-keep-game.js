@@ -2217,7 +2217,10 @@ function fxInit(){ for(const k of FXK){ if(FX[k]||!SPR[k]) continue;
   m.frustumCulled=false; m.renderOrder=hx?9:8; scene.add(m); FX[k]={mesh:m,items:[],cap,vital:hx||k.startsWith('st_')}; } }
 function fx(kind,x,y,z,size,life,col,opt){ const F=FX[kind]; if(!F) return; if(QL<0.45&&F.items.length>8&&!F.vital&&!(G&&G._vfx)) return; opt=opt||{};
   if(F.items.length>=(F.cap||40)) F.items.shift();
-  F.items.push({x,y,z,s0:size,t:0,life,col:col||0xFFFFFF,rot:opt.rot!==undefined?opt.rot:rand(0,6.3),spin:opt.spin||0,grow:opt.grow!==undefined?opt.grow:1.6,flat:!!opt.flat,vy:opt.vy||0,sy:opt.sy||1}); }
+  /* v78: an effect that lands on a boss or enemy is dimmed and kept smaller than the body, so the target always stays visible */
+  let dim=1; if(!opt.flat&&G&&G.enemies&&G.state==='play'&&!(G._vfx&&!kind.startsWith('st_'))){ for(const e of G.enemies){ if(e.dead||e.burrow) continue; const r=(e.rad||0.6)+0.7, dx=x-e.x, dz=z-e.z; if(dx*dx+dz*dz>r*r) continue;
+      const boss=e.cls==='boss', Hb=boss?((BOSSES[e.kind]||{}).h||5)*(e.bossScale||1):(SPR_H[e.cls]||2.2); dim=Math.min(dim,boss?0.38:0.55); size=Math.min(size,Hb*(boss?0.42:0.6)); } }
+  F.items.push({x,y,z,dim,s0:size,t:0,life,col:col||0xFFFFFF,rot:opt.rot!==undefined?opt.rot:rand(0,6.3),spin:opt.spin||0,grow:opt.grow!==undefined?opt.grow:1.6,flat:!!opt.flat,vy:opt.vy||0,sy:opt.sy||1}); }
 function fxUpdate(dt){
   for(const k in FX){ const F=FX[k], ms=F.mesh; let n=0;
     for(let i=F.items.length-1;i>=0;i--){ const o=F.items[i]; o.t+=dt; if(o.t>=o.life){ F.items.splice(i,1); continue; }
@@ -2227,7 +2230,7 @@ function fxUpdate(dt){
       if(o.flat){ _q.setFromAxisAngle(_fxax2,-Math.PI/2); _fxq.setFromAxisAngle(_fxax3,o.rot); _q.multiply(_fxq); }
       else { _q.copy(camBill); _fxq.setFromAxisAngle(_fxax,o.rot); _q.multiply(_fxq); }
       _m4.compose(_p,_q,_s); ms.setMatrixAt(n,_m4);
-      _fxcol.setHex(o.col).multiplyScalar(0.35+0.65*a); ms.setColorAt(n,_fxcol); n++; }
+      _fxcol.setHex(o.col).multiplyScalar((0.35+0.65*a)*(o.dim||1)); ms.setColorAt(n,_fxcol); n++; }
     ms.count=n; ms.instanceMatrix.needsUpdate=true; if(ms.instanceColor) ms.instanceColor.needsUpdate=true; }
 }
 
@@ -2385,7 +2388,7 @@ function updateStatusFx(dt){
     const H=e.cls==='boss'?((BOSSES[e.kind]||{}).h||5):(SPR_H[e.cls]||2.2), j=()=>rand(-0.18,0.18)*H*0.4;
     if(shk){ fx('st_shock'+(1+((Math.random()*2)|0)),e.x+j(),H*rand(0.35,0.65),e.z+j(),H*0.4,0.11,0xC8C8C8,{grow:1.04,rot:rand(-0.5,0.5)}); e.stFx=0.1; continue; }
     if(frz){ fx('st_ice',e.x,H*0.2,e.z,H*0.44,0.26,0x7C8A92,{rot:0}); if(Math.random()<0.5) fx('st_frost',e.x+j(),H*rand(0.4,0.9),e.z+j(),0.6,0.4,0xB0C0C8,{spin:2}); e.stFx=0.24; continue; }
-    if(burn){ fx('st_flame'+(1+((Math.random()*3)|0)),e.x+j()*0.7,H*rand(0.25,0.5),e.z+j()*0.7,H*0.38,0.28,0xB09888,{grow:1.1,rot:rand(-0.3,0.3)}); e.stFx=0.12; continue; }
+    if(burn){ const sd=Math.random()<0.5?-1:1, off=H*rand(0.22,0.34); fx('st_flame'+(1+((Math.random()*3)|0)),e.x+RIGHT.x*sd*off,H*rand(0.08,0.35),e.z+RIGHT.z*sd*off,H*0.24,0.32,0xB09888,{grow:0.9,rot:rand(-0.3,0.3),vy:H*0.6}); e.stFx=0.16; continue; }
     if(slow){ const a=TIME*4+e.seed; fx('st_frost',e.x+Math.cos(a)*0.55,H*0.85,e.z+Math.sin(a)*0.55,0.7,0.42,0x9AA6AA,{spin:2.5}); e.stFx=0.34; } } }
 function updateETowers(dt){
   if(!G.etowers) return;
@@ -2807,15 +2810,16 @@ function castUlt0(){
   if(!ultReady()) return; const h=G.hero, HD=G.heroDef; G.ultCd=ultMax();
   const U0=ULTS[HD.id]||ULTS.ronin, R0=MOD('ultR')*U0.r, col=U0.col; specialCam(col,false);
   const dmg=MOD('ultDmg')*MOD('heroDmg')*HD.dmg*U0.mult*(1+0.5*G.si)*(1+0.12*PK('hero'))*(1+0.1*LV('m_hero'))*(PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg');
+  const ULT_NERF=0.6;   /* v78: specials were near one-shotting bosses; 40% less damage */
   const hits=U0.hits||1, K0=ULT_FX[HD.id]||'slash';
   const UEL={inferno:'fire',flame:'fire',frost:'ice',storm:'bolt'}[K0]||({flame:'fire',fox:'fire',ice:'ice',bolt:'bolt'}[HD.attack]||null);
   for(const e of G.enemies){ if(e.dead) continue; const d=Math.hypot(e.x-h.x,e.z-h.z); if(d>R0+e.rad) continue;
     const fall=1-0.3*Math.min(1,d/R0), boss=e.cls==='boss';
-    for(let q=0;q<hits;q++) hitEnemy(e,dmg*fall/hits,h,q===0?UEL:null,1);
+    for(let q=0;q<hits;q++) hitEnemy(e,dmg*ULT_NERF*fall/hits,h,q===0?UEL:null,1);
     if(U0.stun) e.stunT=Math.max(e.stunT,boss?U0.stun*0.35:U0.stun);
     if(U0.freeze){ e.slowT=Math.max(e.slowT,U0.freeze*2); e.slowF=Math.max(e.slowF,boss?0.3:(U0.slow||0.6)); if(!boss) e.freezeT=Math.max(e.freezeT,U0.freeze); }
     else if(U0.slow){ e.slowT=Math.max(e.slowT,3); e.slowF=Math.max(e.slowF,boss?U0.slow*0.5:U0.slow); }
-    if(U0.burn){ e.burnT=4; e.burnDps=Math.max(e.burnDps||0,U0.burn*(1+0.35*G.si)); }
+    if(U0.burn){ e.burnT=4; e.burnDps=Math.max(e.burnDps||0,U0.burn*ULT_NERF*(1+0.35*G.si)); }
     if(U0.knock&&!boss){ const k=Math.max(0.01,d); e.x+=(e.x-h.x)/k*U0.knock; e.z+=(e.z-h.z)/k*U0.knock; }
     if(U0.chain){ for(let q=0;q<6;q++){ const t2=q/5; spawnParticles(lerp(h.x,e.x,t2),1.4,lerp(h.z,e.z,t2),1,col,0.8,0.25,0.9,0); } }
   }
