@@ -1261,6 +1261,42 @@ const ADD=(b,x,y,z)=>{ if(b){ b.rotation.x+=x||0; b.rotation.y+=y||0; b.rotation
 const OFF=(b,x,y,z)=>{ if(b){ const r=b.userData.rest; b.position.set(r.x+(x||0),r.y+(y||0),r.z+(z||0)); } };
 
 /* attack styles: wind-up (u<0.3), strike (0.3-0.5), follow-through and recover */
+const WSTYLE={club:'melee',mallet:'melee',greatsword:'melee',bell:'melee',none:'melee',katana:'blade',dagger:'blade',sickle:'blade',naginata:'blade',
+  spear:'thrust',trident:'thrust',staff:'cast',orb:'cast',fan:'wind',talisman:'cast',lute:'cast',lantern:'cast',bellstaff:'cast',gohei:'cast',pipe:'cast',umbrella:'blade',bow:'arrow',sunbow:'arrow'};
+const SALIAS={bow:'arrow',fox:'cast',orb:'cast',talisman:'cast',fan:'wind',lute:'cast',lantern:'cast',dagger:'blade',sickle:'blade',ice:'spin',flame:'spin',bolt:'thrust',spear:'thrust',trident:'thrust'};
+function styleOf(sp,want){ const w=want||WSTYLE[(sp.weapon&&sp.weapon.kind)||'none']||'melee'; return SALIAS[w]||w; }
+/* a = wind-up weight, h = impact weight; they overlap so the body never jumps between poses */
+function atkWeights(u,st){
+  if(st==='arrow') return {a:sm(u/0.22)*(1-sm((u-0.46)/0.1)), h:sm((u-0.42)/0.1)*(1-sm((u-0.68)/0.32))};
+  if(st==='cast') return {a:sm(u/0.3)*(1-sm((u-0.4)/0.14)), h:sm((u-0.34)/0.16)*(1-sm((u-0.66)/0.34))};
+  return {a:sm(u/0.3)*(1-sm((u-0.34)/0.14)), h:sm((u-0.3)/0.16)*(1-sm((u-0.64)/0.36))}; }
+function attackPose(st,b,a,h,mv){ const P=(bn,x,y,z)=>ADD(b[bn],x,y,z), legs=1-mv*0.7;
+  switch(st){
+    case 'arrow':   /* draw to the cheek, hold, loose: the drawing hand flies back */
+      P('armL',-1.5*(a+h),0,-0.05*(a+h)); P('elbowL',0.1*(a+h),0,0); P('armR',-1.45*a-1.3*h,0,0.2*a-0.55*h); P('elbowR',-2.2*a-0.5*h,0,0);
+      P('spine',0,-0.55*(a+h),0); P('head',0,0.5*(a+h),0); OFF(b.root,0,0,-0.06*h); break;
+    case 'cast':    /* gather energy at the chest, then thrust both palms forward */
+      P('armR',-0.9*a-1.6*h,0,-0.5*a-0.1*h); P('elbowR',-1.3*a,0,0); P('armL',-0.9*a-1.6*h,0,0.5*a+0.1*h); P('elbowL',-1.3*a,0,0);
+      P('spine',-0.25*a+0.25*h,0,0); P('head',-0.15*a+0.05*h,0,0); OFF(b.root,0,0.03*a,0.15*h);
+      P('thighL',-0.35*h*legs,0,0); P('kneeL',0.35*h*legs,0,0); break;
+    case 'blade':   /* wide horizontal slash: coil to the right, uncoil across the body with a lunge */
+      P('armR',-1.2*a-1.3*h,0,-1.3*a+0.7*h); P('elbowR',-0.5*a-0.1*h,0,0); P('spine',0,0.7*a-0.9*h,0); P('chest',0.05*h,0.2*a-0.3*h,0);
+      P('armL',-0.6*a+0.3*h,0,0.5*a+0.3*h); OFF(b.root,0,-0.02*a,-0.08*a+0.3*h);
+      P('thighL',-0.5*h*legs,0,0); P('kneeL',0.5*h*legs,0,0); P('thighR',0.2*a*legs+0.3*h*legs,0,0); break;
+    case 'thrust':  /* draw the weapon back, then drive it forward with the whole body */
+      P('armR',-1.4*a-1.55*h,0,-0.3*a-0.05*h); P('elbowR',-1.6*a,0,0); P('spine',-0.1*a+0.25*h,0.5*a-0.4*h,0);
+      P('armL',-1.0*a+0.4*h,0,0.4*h); OFF(b.root,0,0,-0.12*a+0.38*h);
+      P('thighL',-0.7*h*legs,0,0); P('kneeL',0.7*h*legs,0,0); P('thighR',0.45*h*legs,0,0); break;
+    case 'spin':    /* crouch and coil, then whirl the weapon around */
+      P('armR',-1.5*(a+h),0,-1.2*(a+h)); P('armL',-0.5*a-0.6*h,0,0.6*(a+h)); P('spine',0,0.9*a-1.8*h,0);
+      OFF(b.root,0,-0.06*a,0.1*h); P('thighL',-0.3*a*legs,0,0); P('thighR',-0.3*a*legs,0,0); P('kneeL',0.4*a*legs,0,0); P('kneeR',0.4*a*legs,0,0); break;
+    case 'wind':    /* raise the fan high, then sweep it across in a wide arc */
+      P('armR',-2.6*a-1.0*h,0,-0.8*a+0.6*h); P('elbowR',-0.3*a,0,0); P('spine',0,0.6*a-0.7*h,0); P('armL',-0.4*(a+h),0,0.4*(a+h));
+      OFF(b.root,0,0,0.2*h); P('thighL',-0.4*h*legs,0,0); P('kneeL',0.4*h*legs,0,0); break;
+    default:        /* melee: rear back with the weapon high, then crash it down with a lunge */
+      P('armR',-2.9*a-0.5*h,0,-0.2*a); P('armL',-2.6*a-0.4*h,0,0.2*a); P('elbowR',-0.8*a-0.1*h,0,0); P('elbowL',-0.8*a-0.1*h,0,0);
+      P('spine',-0.35*a+0.55*h,0,0); P('chest',-0.15*a+0.25*h,0,0); OFF(b.root,0,0.04*a-0.08*h,-0.12*a+0.28*h);
+      P('thighL',-0.25*a*legs-0.55*h*legs,0,0); P('kneeL',0.35*a*legs+0.6*h*legs,0,0); P('thighR',0.35*h*legs,0,0); P('kneeR',0.25*h*legs,0,0); } }
 function attackCurve(u){ const wind=sm(u/0.3)*(1-sm((u-0.3)/0.15)), strike=sm((u-0.28)/0.14)*(1-sm((u-0.6)/0.4)); return {wind,strike}; }
 
 function poseHuman(I,s,dt){ const b=I.b, S=I.st, t=S.t, mv=S.move, ph=S.phase;
@@ -1275,37 +1311,19 @@ function poseHuman(I,s,dt){ const b=I.b, S=I.st, t=S.t, mv=S.move, ph=S.phase;
     ADD(b.armR,-0.4*k0,0,-0.1*k0); ADD(b.elbowR,-0.6*k0,0,0); ADD(b.armL,-0.15*k0,0,0.16*k0); ADD(b.elbowL,-0.35*k0,0,0); ADD(b.chest,-0.06*k0,0,0); ADD(b.head,0.17,0,0); }
   else if(sta==='regal'){ ADD(b.armL,0,0,0.12*k0); ADD(b.armR,-0.25*k0,0,-0.1*k0); ADD(b.elbowR,-0.4*k0,0,0); ADD(b.head,0.14,0,0); ADD(b.chest,-0.08,0,0); }
   /* walk / run cycle */
-  const A=0.55*run+0.25*mv;
+  const A=0.62*run+0.28*mv;
   ADD(b.thighL,-sw*A,0,0); ADD(b.thighR,sw*A,0,0);
   ADD(b.kneeL,Math.max(0,-cw)*A*1.4+0.05,0,0); ADD(b.kneeR,Math.max(0,cw)*A*1.4+0.05,0,0);
   ADD(b.footL,-Math.max(0,-cw)*A*0.4,0,0); ADD(b.footR,-Math.max(0,cw)*A*0.4,0,0);
   ADD(b.armL,sw*A*0.9,0,0); ADD(b.armR,-sw*A*0.9,0,0); ADD(b.elbowL,-A*0.4,0,0); ADD(b.elbowR,-A*0.4,0,0);
   ADD(b.spine,0.08*mv,sw*0.12*mv,0); ADD(b.chest,0.04*mv,-sw*0.1*mv,0); ADD(b.hips,0,-sw*0.1*mv,0);
-  OFF(b.hips,0,Math.abs(cw)*0.06*mv-0.03*mv,0);
+  OFF(b.hips,0,Math.abs(cw)*0.07*mv-0.035*mv,0); ADD(b.head,-0.06*mv-0.04*Math.abs(cw)*mv,-sw*0.06*mv,0);
   ADD(b.skirt,-sw*0.12*mv,0,0); ADD(b.hair,0.25*mv+Math.sin(t*3)*0.04,0,0); ADD(b.tail,0.3*mv+Math.sin(t*2)*0.15,Math.sin(t*1.5)*0.2,0);
   for(const w of ['wingL','wingR']) if(b[w]){ const sd=w==='wingL'?1:-1; ADD(b[w],0,sd*(0.25+Math.sin(t*(mv?8:2.2))*(mv?0.35:0.12)),sd*Math.sin(t*(mv?8:2.2))*0.15); }
   if(b.orbit) b.orbit.rotation.y=t*0.6;
-  /* attacks */
-  const st=I.sp.weapon?I.sp.weapon.kind:'none', style=s.style||st, u=S.atkU, active=u>=0&&u<1;
-  if(active){ const {wind,strike}=attackCurve(u);
-    if(style==='arrow'||style==='bow'){ /* aim and loose */
-      const aim=Math.min(1,u*5)*(1-sm((u-0.75)/0.25));
-      ADD(b.armL,-1.45*aim,0,-0.1*aim); ADD(b.elbowL,0.15*aim,0,0);
-      ADD(b.armR,-1.35*aim,0,0.25*aim); ADD(b.elbowR,-2.1*aim*(1-strike*0.8),0,0); ADD(b.spine,0,-0.5*aim,0); ADD(b.head,0,0.45*aim,0); }
-    else if(style==='orb'||style==='fox'||style==='cast'||style==='talisman'||style==='fan'||style==='lute'||style==='lantern'){ /* gather and release */
-      ADD(b.armR,-0.6*wind-1.5*strike,0,-0.3*wind); ADD(b.armL,-0.3*wind-1.2*strike,0,0.3*wind); ADD(b.elbowR,-1.2*wind+0.5*strike,0,0); ADD(b.elbowL,-1.0*wind+0.5*strike,0,0);
-      ADD(b.spine,-0.15*wind+0.18*strike,0,0); ADD(b.head,-0.1*wind,0,0); }
-    else if(style==='blade'||style==='dagger'||style==='sickle'){ /* fast cross slash */
-      ADD(b.armR,-0.8*wind-1.3*strike,0,-0.9*wind+0.6*strike); ADD(b.elbowR,-0.6*wind,0,0); ADD(b.spine,0,0.6*wind-0.9*strike,0); ADD(b.chest,0.1*strike,0,0);
-      ADD(b.armL,-0.4*strike,0,0.4*strike); OFF(b.root,0,0,0.25*strike); }
-    else if(style==='ice'||style==='flame'||style==='spin'){ /* sweeping spin */
-      ADD(b.armR,-1.3*(wind+strike),0,-0.5); ADD(b.spine,0,0.9*wind-1.6*strike,0); ADD(b.armL,-0.6*strike,0,0.6*strike); }
-    else if(style==='bolt'||style==='spear'||style==='trident'||style==='thrust'){ /* raise, then thrust */
-      ADD(b.armR,-2.6*wind-1.4*strike,0,-0.2); ADD(b.elbowR,-0.4*wind,0,0); ADD(b.spine,-0.12*wind+0.2*strike,0,0); OFF(b.root,0,0,0.2*strike); }
-    else if(style==='wind'){ ADD(b.armR,-2.2*wind-0.8*strike,0,-0.6*wind+0.4*strike); ADD(b.spine,0,0.5*wind-0.8*strike,0); }
-    else { /* melee: heavy overhead swing */
-      ADD(b.armR,-2.7*wind-0.9*strike,0,-0.15); ADD(b.armL,-2.2*wind-0.7*strike,0,0.15); ADD(b.elbowR,-0.5*wind,0,0); ADD(b.elbowL,-0.5*wind,0,0);
-      ADD(b.spine,-0.25*wind+0.45*strike,0,0); ADD(b.chest,-0.1*wind+0.2*strike,0,0); OFF(b.root,0,0.06*wind,0.15*strike); ADD(b.thighL,-0.3*strike,0,0); ADD(b.kneeL,0.4*strike,0,0); } }
+  /* attacks: each style has an anticipation pose and an impact pose; smooth weights carry the body
+     from wind-up through the strike into a held follow-through and back to stance */
+  const u=S.atkU; if(u>=0&&u<1){ const st=styleOf(I.sp,s.style), W=atkWeights(u,st); attackPose(st,b,W.a,W.h,mv); }
   /* boss casts */
   bossCast(I,s,b,(x,y,z,bn)=>ADD(b[bn],x,y,z));
   /* hit flinch */
@@ -1332,7 +1350,11 @@ function poseQuad(I,s){ const b=I.b, S=I.st, t=S.t, mv=S.move, ph=S.phase;
   OFF(b.body,0,Math.abs(Math.cos(ph))*0.05*mv+Math.sin(t*2)*0.01,0); ADD(b.body,Math.sin(ph*2)*0.03*mv,0,0);
   ADD(b.neck,-0.1+Math.sin(t*1.7)*0.05,Math.sin(t*0.8)*0.15*(1-mv),0); ADD(b.head,0.1+Math.sin(t*2.3)*0.04,Math.sin(t*1.1)*0.2*(1-mv),0);
   for(let i=0;i<5;i++) ADD(b['tail'+i],(i===0?0.35:-0.08)+Math.sin(t*3-i*0.6)*0.06,Math.sin(t*2.5-i*0.7)*0.25,0);
-  const u=S.atkU; if(u>=0&&u<1){ const {wind,strike}=attackCurve(u); ADD(b.front,-0.4*wind,0,0); ADD(b.neck,-0.4*wind+0.6*strike,0,0); ADD(b.head,0.4*strike,0,0); ADD(b.tFL,-0.8*wind+0.6*strike,0,0); ADD(b.tFR,-0.8*wind+0.6*strike,0,0); OFF(b.root,0,0.1*wind,0.4*strike); }
+  const u=S.atkU; if(u>=0&&u<1){ const W=atkWeights(u,'melee'), a=W.a, h=W.h;   /* crouch low, then pounce: claws reach, jaws lunge */
+    ADD(b.body,0.15*a-0.2*h,0,0); ADD(b.front,0.25*a-0.3*h,0,0); ADD(b.neck,0.3*a-0.5*h,0,0); ADD(b.head,-0.2*a+0.35*h,0,0);
+    ADD(b.tFL,0.4*a-1.1*h,0,0); ADD(b.tFR,0.4*a-1.0*h,0,0); ADD(b.kFL,0.6*a-0.3*h,0,0); ADD(b.kFR,0.6*a-0.3*h,0,0);
+    ADD(b.tBL,-0.4*a+0.3*h,0,0); ADD(b.tBR,-0.4*a+0.3*h,0,0); ADD(b.kBL,-0.5*a,0,0); ADD(b.kBR,-0.5*a,0,0);
+    OFF(b.root,0,-0.12*a+0.12*h,-0.1*a+0.55*h); for(let i=0;i<5;i++) ADD(b['tail'+i],0.15*a,0,0); }
   if(s.cast){ const e=sm(Math.min(1,(s.castU||0)*1.4)); ADD(b.body,-0.5*e,0,0); OFF(b.body,0,0.25*e,0); ADD(b.tFL,-1.2*e,0,0); ADD(b.tFR,-1.0*e,0,0); ADD(b.neck,-0.5*e,0,0); ADD(b.head,-0.3*e,0,0); }
   if(S.hit>0) { ADD(b.body,0,0,0.15*S.hit); OFF(b.root,0,0,-0.15*S.hit); } }
 function poseSerpent(I,s){ const b=I.b, S=I.st, t=S.t, n=I.B.b.heads, seg=I.B.b.seg;
@@ -1366,6 +1388,14 @@ function poseFish(I,s){ const b=I.b, S=I.st, t=S.t, mv=S.move;
   OFF(b.f0,0,Math.sin(t*1.5)*0.05+Math.abs(Math.sin(f))*0.03*mv,0); ADD(b.f0,Math.sin(t*1.2)*0.03,Math.sin(f)*0.05,0);
   const u=S.atkU; if(u>=0&&u<1){ const c=attackCurve(u); ADD(b.f0,-0.3*c.wind+0.25*c.strike,0,0); OFF(b.root,0,0.2*c.wind,0.4*c.strike); }
   if(s.cast){ const e=sm(Math.min(1,(s.castU||0)*1.4)); OFF(b.root,0,0.6*e,0); ADD(b.f0,-0.4*e,0,0); } }
+/* critically damped spring on every bone: velocity stays continuous, so poses flow into each other instead of popping */
+function smoothPose(I,dt){ const w=24, P=I.prev||(I.prev={}), h=Math.min(dt,0.05), n2=Math.max(1,Math.ceil(h/0.0084)), sdt=h/n2;
+  for(const n in I.b){ const bn=I.b[n]; let pr=P[n];
+    const tr=[bn.rotation.x,bn.rotation.y,bn.rotation.z,bn.position.x,bn.position.y,bn.position.z];
+    if(!pr){ P[n]={x:tr.slice(),v:[0,0,0,0,0,0]}; continue; }
+    for(let c=0;c<6;c++){ let tgt=tr[c]; if(c<3){ let d=tgt-pr.x[c]; d=Math.atan2(Math.sin(d),Math.cos(d)); tgt=pr.x[c]+d; }
+      for(let k=0;k<n2;k++){ const a=w*w*(tgt-pr.x[c])-2*w*pr.v[c]; pr.v[c]+=a*sdt; pr.x[c]+=pr.v[c]*sdt; } }
+    bn.rotation.set(pr.x[0],pr.x[1],pr.x[2]); bn.position.set(pr.x[3],pr.x[4],pr.x[5]); } }
 const POSE={human:poseHuman,quad:poseQuad,serpent:poseSerpent,spider:poseSpider,blob:poseBlob,fish:poseFish};
 
 /* ================================================================ public driver */
@@ -1374,7 +1404,7 @@ const _tint=new T.Color(), WHITE=new T.Color(1,1,1);
 function acquire(ent,key){ let I=live.get(ent); if(I&&I.key===key){ I.tag=frameTag; return I; }
   if(I) release(ent,I);
   const p=pool[key]; I=(p&&p.length)?p.pop():makeInstance(key); if(!I) return null;
-  I.st.last=null; I.st.atkU=-1; I.st.hit=0; I.tag=frameTag; I.grp.visible=true; live.set(ent,I); if(opt.scene&&!I.grp.parent) opt.scene.add(I.grp); return I; }
+  I.st.last=null; I.st.atkU=-1; I.st.hit=0; I.st.hitT=0; I.prev=null; I.tag=frameTag; I.grp.visible=true; live.set(ent,I); if(opt.scene&&!I.grp.parent) opt.scene.add(I.grp); return I; }
 function release(ent,I){ live.delete(ent); I.grp.visible=false; (pool[I.key]=pool[I.key]||[]).push(I); }
 const API={
   has:key=>!!DEFS[key],
@@ -1396,10 +1426,11 @@ const API={
     const want=p.moving?clamp(spd/(p.H*2.2+0.01),0.35,1):0; S.move=lerp(S.move,want,1-Math.exp(-dt*10));
     S.phase+=dt*(1.5+spd/Math.max(0.3,p.H*0.38))*(S.move>0.05?1:0.3);
     /* attack progress: the game sets atk to ~0.9 on each strike and lets it decay */
-    const a=p.atk||0; if(a>(S.prevAtk||0)+0.2) S.atkU=0; S.prevAtk=a;
+    const a=p.atk||0; if(a>(S.prevAtk||0)+0.2) S.atkU=p.atkStart!=null?p.atkStart:0.18; S.prevAtk=a;   /* start just into the wind-up so the impact lands as the hit happens */
     if(S.atkU>=0){ S.atkU+=dt/(p.atkDur||0.42); if(S.atkU>=1) S.atkU=-1; }
-    S.hit=Math.max(S.hit-dt*5,p.flash>0.5?1:0);
+    S.hitT=Math.max((S.hitT||0)-dt*5,p.flash>0.5?1:0); S.hit+=(S.hitT-S.hit)*(1-Math.exp(-dt*(S.hitT>S.hit?30:9)));
     POSE[I.kind](I,{style:p.style,cast:!!p.cast,castKind:p.castKind,castU:p.castU,stun:p.stun},dt);
+    smoothPose(I,dt);
     /* place, face and scale */
     const sc=(p.H||2)/I.B.height*(p.scale||1);
     I.grp.position.set(p.x,p.y||0,p.z); I.grp.scale.setScalar(sc);

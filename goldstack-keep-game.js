@@ -3391,7 +3391,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
                  :((e.st==='cast'||e.st==='dash'||(e.st==='recover'&&(e.timer||0)>0.45))?((ANIM_META[e.kind]||{}).atkF??2):null);
       { const rec=e.st==='recover', ck=e.st==='dash'?'dash':e.castKind;
         if(!draw3D(e,e.kind,e.x,y,e.z,e.rot,{H:sprH(e.kind,sc)*0.92,scale:1,moving:e.moving,flash:e.flash,frozen:e.slowT>0.8||e.freezeT>0,burn:e.burnT>0,stun:e.stunT>0,
-            cast:e.st==='cast'||e.st==='dash',castKind:ck,castU:e.st==='cast'?Math.min(1,(e.castT||0)/(e.castDur||1)):1,atk:rec?0.9*Math.max(0,Math.min(1,(e.timer||0)/0.8)):0,atkDur:0.55,style:'melee',wide:0.6}))
+            cast:e.st==='cast'||e.st==='dash',castKind:ck,castU:e.st==='cast'?Math.min(1,(e.castT||0)/(e.castDur||1)):1,atk:Math.max(e.atk||0,rec?0.9*Math.max(0,Math.min(1,(e.timer||0)/0.8)):0),atkDur:0.6,style:null,wide:0.6}))
           drawSprite(e.kind,e,e.x,y,e.z,e.rot,e.flash,e.moving,e.seed,e.slowT>0.8,0,sc,e.burnT>0,bf); }
       if(e.kind==='shogun'&&Math.random()<dt*10) spawnParticles(e.x+rand(-1,1),5.2,e.z,1,0xFF7A2A,1,0.6,1,3);
       if(e.kind==='kitsune'&&Math.random()<dt*6) spawnParticles(e.x+rand(-1.5,1.5),rand(1.5,4),e.z,1,0x6FE3FF,0.6,0.7,0.9,1);
