@@ -216,17 +216,20 @@ const UPG = [
   {grp:'fence',id:'f_hp',    rep:true, max:12, name:'Oak Palisade', desc:'+18% fence health, repairs fences', g:35, gs:20, i:0},
   {grp:'castle',id:'c_hp',   rep:true, max:12, name:'Castle Walls', desc:'+12% castle health, heals castle', g:40, gs:22, i:0},
   {grp:'res', id:'r_loot',   rep:true, max:12, name:'Spoils of War', desc:'+15% gold from defeated foes', g:40, gs:22, i:0},
-  {grp:'squad', id:'m_arrow', br:'Mastery', rep:true, max:15, name:'Arrow Mastery', desc:'+8% damage for all arrows', g:40, gs:20, i:0},
-  {grp:'squad', id:'m_vital', br:'Mastery', rep:true, max:15, name:'Squad Vitality', desc:'+10% health for your squad', g:40, gs:20, i:0},
+  {grp:'squad', id:'m_arrow', br:'Mastery', tt:'all', rep:true, max:15, name:'Weapon Mastery', desc:'+6% damage for every troop, tower and hero arrow', g:40, gs:20, i:0},
+  {grp:'squad', id:'m_vital', br:'Mastery', tt:'all', rep:true, max:15, name:'Squad Vitality', desc:'+10% health for every troop', g:40, gs:20, i:0},
+  {grp:'squad', id:'d_arrow', br:'Drills', tt:'arrow', rep:true, max:12, name:'Archery Drills', desc:'Arrow troops: +12% damage, +6% health', g:30, gs:18, i:0},
+  {grp:'squad', id:'d_sword', br:'Drills', tt:'sword', rep:true, max:12, name:'Sword Drills', desc:'Sword troops: +12% damage, +6% health', g:30, gs:18, i:0},
+  {grp:'squad', id:'d_magic', br:'Drills', tt:'magic', rep:true, max:12, name:'Spirit Drills', desc:'Magic troops: +12% damage, +6% health and healing', g:30, gs:18, i:0},
+  {grp:'squad', id:'d_oni',   br:'Drills', tt:'oni',   rep:true, max:12, name:'Oni Drills', desc:'Oni troops: +12% damage, +6% health', g:30, gs:18, i:0},
   {grp:'hero', id:'m_hero',  br:'Mastery', rep:true, max:15, name:'Hero Might', desc:'+10% hero damage, +20 hero health', g:40, gs:25, i:0},
   {grp:'tower', id:'m_tower', br:'Mastery', rep:true, max:15, name:'Tower Drills', desc:'+10% tower fire rate', g:45, gs:25, i:0},
   {grp:'fence', id:'m_wall',  br:'Mastery', rep:true, max:15, name:'Stone Footings', desc:'+20% fence health, repairs fences', g:35, gs:20, i:0},
   {grp:'res', id:'m_rich',  br:'Mastery', rep:true, max:10, name:'Rich Veins', desc:'+25% mine gold and forge ingot output', g:50, gs:30, i:0},
   {grp:'castle', id:'m_repair',br:'Mastery', rep:true, max:999, name:'Castle Repair', desc:'Restore 25% castle health', g:30, gs:10, i:0},
-  {grp:'squad', id:'steel1', br:'Steel',  name:'Tamahagane Tips',  desc:'+20% arrow damage',                  g:15, i:0},
-  {grp:'squad', id:'steel2', br:'Steel',  req:'steel1', name:'Masterwork Heads', desc:'+20% arrow damage',     g:30, i:0},
-  {grp:'squad', id:'steel3', br:'Steel',  req:'steel2', name:'Demon Piercer',    desc:'+30% damage, +25% vs bosses', g:20, i:4},
-  {grp:'squad', id:'vol1',   br:'Volley', name:'Twin Nock',        desc:'Archers loose a 2nd arrow at another foe', g:20, i:0},
+  {grp:'squad', id:'steel1', br:'Steel', tt:'all', name:'Tamahagane Steel', desc:'+15% damage for every troop and arrow', g:15, i:0},
+  {grp:'squad', id:'steel2', br:'Steel', tt:'all', req:'steel1', name:'Masterwork Steel', desc:'+15% damage for every troop and arrow', g:30, i:0},
+  {grp:'squad', id:'steel3', br:'Steel', tt:'all', req:'steel2', name:'Demon Piercer', desc:'+25% damage for everything, arrows +25% vs bosses', g:20, i:4},
   {grp:'hero', id:'vol2',   br:'Volley', req:'vol1', att:['arrow','wind'], name:'Storm Bow',  desc:'Hero fires a 3-arrow spread',   g:35, i:0},
   {grp:'hero', id:'h_sweep', br:'Hero', att:['melee'],  name:'Whirlwind Edge', desc:'Sweeps hit a wider arc and strike twice', g:45, i:0},
   {grp:'hero', id:'h_edge',  br:'Hero', att:['blade'],  name:"Assassin's Edge", desc:'+15% critical chance and +60% critical damage', g:45, i:0},
@@ -235,40 +238,52 @@ const UPG = [
   {grp:'hero', id:'h_burn',  br:'Hero', att:['flame'],  name:'Everburn', desc:'+70% burn damage from hero flames', g:45, i:0},
   {grp:'hero', id:'h_fork',  br:'Hero', att:['bolt'],   name:'Forked Lightning', desc:'Hero lightning chains through 3 more foes', g:45, i:0},
   {grp:'tower', id:'vol3',   br:'Volley', req:'vol1', name:'Rain of Arrows', desc:'Towers fire an extra arrow',g:20, i:5},
-  {grp:'squad', id:'fire1',  br:'Fire',   el:'fire',  name:'Fire Arrows',   desc:'Burns foes over 3s',          g:25, i:0},
-  {grp:'squad', id:'fire2',  br:'Fire',   req:'fire1', name:'Ember Burst',  desc:'Burning foes explode on death',g:30, i:3},
-  {grp:'squad', id:'fire3',  br:'Fire',   req:'fire2', name:'Inferno',      desc:'Burn damage doubled',         g:30, i:6},
-  {grp:'squad', id:'frost1', br:'Frost',  el:'frost', name:'Frost Arrows',  desc:'Slows foes by 35%',           g:25, i:0},
-  {grp:'squad', id:'frost2', br:'Frost',  req:'frost1', name:'Glacial Bite',desc:'8% chance to freeze solid',   g:30, i:3},
-  {grp:'squad', id:'frost3', br:'Frost',  req:'frost2', name:'Absolute Zero',desc:'55% slow, 15% freeze',       g:30, i:6},
-  {grp:'squad', id:'bolt1',  br:'Thunder',el:'bolt',  name:'Thunder Arrows',desc:'Arrows chain to 1 more foe',  g:25, i:0},
-  {grp:'squad', id:'bolt2',  br:'Thunder',req:'bolt1', name:'Raijin Chain', desc:'Chain to 2 more foes',        g:30, i:3},
-  {grp:'squad', id:'bolt3',  br:'Thunder',req:'bolt2', name:'Heaven Splitter',desc:'Chain 3, stuns bosses',     g:30, i:6},
-  {grp:'squad', id:'blade1', br:'Blades', name:'Honed Katana',     desc:'+25% melee damage',                  g:20, i:0},
-  {grp:'squad', id:'blade2', br:'Blades', req:'blade1', name:'Crescent Cleave', desc:'Samurai hit 2 extra foes', g:30, i:2},
-  {grp:'squad', id:'blade3', br:'Blades', req:'blade2', name:'Shadow Strike',   desc:'Ninja crits deal x3.5',   g:20, i:5},
-  {grp:'squad', id:'spirit1',br:'Spirit', name:'Paper Wards',      desc:'Onmyoji blasts 35% larger',          g:25, i:0},
-  {grp:'squad', id:'spirit2',br:'Spirit', req:'spirit1', name:'Healing Charms', desc:'Blasts heal nearby squad',g:25, i:3},
+  {grp:'squad', id:'fire1',  br:'Fire',  tt:'all', el:'fire',  name:'Fire Weapons',   desc:'Every troop hit and arrow burns foes for 3s', g:25, i:0},
+  {grp:'squad', id:'fire2',  br:'Fire',  tt:'all', req:'fire1', name:'Ember Burst',  desc:'Burning foes explode on death',g:30, i:3},
+  {grp:'squad', id:'fire3',  br:'Fire',  tt:'all', req:'fire2', name:'Inferno',      desc:'Burn damage doubled',         g:30, i:6},
+  {grp:'squad', id:'frost1', br:'Frost', tt:'all', el:'frost', name:'Frost Weapons',  desc:'Every troop hit and arrow slows foes 35%', g:25, i:0},
+  {grp:'squad', id:'frost2', br:'Frost', tt:'all', req:'frost1', name:'Glacial Bite',desc:'8% chance to freeze solid',   g:30, i:3},
+  {grp:'squad', id:'frost3', br:'Frost', tt:'all', req:'frost2', name:'Absolute Zero',desc:'55% slow, 15% freeze',       g:30, i:6},
+  {grp:'squad', id:'bolt1',  br:'Thunder', tt:'all', el:'bolt',  name:'Thunder Weapons',desc:'Every troop hit and arrow chains to 1 more foe', g:25, i:0},
+  {grp:'squad', id:'bolt2',  br:'Thunder', tt:'all', req:'bolt1', name:'Raijin Chain', desc:'Chain to 2 more foes',        g:30, i:3},
+  {grp:'squad', id:'bolt3',  br:'Thunder', tt:'all', req:'bolt2', name:'Heaven Splitter',desc:'Chain 3, stuns bosses',     g:30, i:6},
+  {grp:'squad', id:'vol1',   br:'Arrow', tt:'arrow', name:'Twin Shot', desc:'Arrow troops fire a 2nd shot at another foe', g:20, i:0},
+  {grp:'squad', id:'blade1', br:'Sword', tt:'sword', name:'Honed Blades',  desc:'Sword troops +25% damage', g:20, i:0},
+  {grp:'squad', id:'blade2', br:'Sword', tt:'sword', req:'blade1', name:'Crescent Cleave', desc:'Sword troops hit 2 extra foes', g:30, i:2},
+  {grp:'squad', id:'blade3', br:'Sword', tt:'sword', req:'blade2', name:'Shadow Strike',   desc:'Sword troops +15% crit chance, crits deal x3.5', g:20, i:5},
+  {grp:'squad', id:'spirit1',br:'Magic', tt:'magic', name:'Paper Wards', desc:'Magic blasts 35% larger, healing +35%', g:25, i:0},
+  {grp:'squad', id:'spirit2',br:'Magic', tt:'magic', req:'spirit1', name:'Healing Charms', desc:'Magic attacks heal nearby troops',g:25, i:3},
+  {grp:'squad', id:'oni1',   br:'Oni', tt:'oni', name:'Iron Hide', desc:'Oni troops +40% health, take 20% less damage', g:25, i:0},
+  {grp:'squad', id:'oni2',   br:'Oni', tt:'oni', req:'oni1', name:'Earthshaker', desc:'Oni troop hits splash and stagger nearby foes', g:30, i:3},
+  {grp:'squad', id:'oni3',   br:'Oni', tt:'oni', req:'oni2', name:'Demon Fury', desc:'Oni troops +40% vs bosses, crack boss guard 3x faster', g:25, i:6},
   {grp:'fence', id:'spirit3',br:'Spirit', req:'spirit2', name:'Blessed Barrier',desc:'Fences regenerate 8 HP/s', g:30, i:5}
 ];
 const PERKS = [
-  {id:'vet',     name:'Standing Army',   desc:'+1 extra archer waiting at the start', base:60, at:l=>l?`${l} archer${l>1?'s':''} at the start`:'no extra archers'},
+  {id:'vet',     name:'Standing Army',   desc:'+1 extra archer waiting at the start', base:60, max:10, at:l=>l?`${l} archer${l>1?'s':''} at the start`:'no extra archers'},
   {id:'cap',     name:'Command Tent',    desc:'+2 squad command points',              base:80, at:l=>`${10+2*l} command points`},
   {id:'towerdmg',name:'Tower Fletchers', desc:'+8% watchtower arrow damage',          base:70, at:l=>`towers +${8*l}% damage`},
   {id:'cannon',  name:'Siege Engineers', desc:'+10% cannon tower damage',             base:80, at:l=>`cannons +${10*l}% damage`},
   {id:'arrows',  name:'Fletcher Guild',  desc:'+8% squad and tower arrow damage',     base:70, at:l=>`arrows +${8*l}% damage`},
   {id:'hero',    name:'Hero Training',   desc:'+12% hero damage',                     base:70, at:l=>`hero +${12*l}% damage`},
-  {id:'ult',     name:'Focused Spirit',  desc:'Special attack recharges 5% faster',   base:90, at:l=>`special every ${Math.round(26*Math.max(0.35,1-0.05*l))}s`},
+  {id:'ult',     name:'Focused Spirit',  desc:'Special attack recharges 5% faster',   base:90, max:13, at:l=>`special every ${Math.round(26*Math.max(0.35,1-0.05*l))}s`},
   {id:'squadhp', name:'Battle Hardened', desc:'+8% health for every squad unit',      base:70, at:l=>`squad +${8*l}% health`},
+  {id:'c_arrow', name:'🏹 Arrow Corps',  desc:'Arrow troops +8% damage, +5% health',  base:70, at:l=>`arrow troops +${8*l}% damage`},
+  {id:'c_sword', name:'⚔️ Sword Corps',  desc:'Sword troops +8% damage, +5% health',  base:70, at:l=>`sword troops +${8*l}% damage`},
+  {id:'c_magic', name:'🔮 Magic Corps',  desc:'Magic troops +8% damage and healing, +5% health', base:70, at:l=>`magic troops +${8*l}% damage`},
+  {id:'c_oni',   name:'👹 Oni Corps',    desc:'Oni troops +8% damage, +5% health',    base:70, at:l=>`oni troops +${8*l}% damage`},
+  {id:'slayer',  name:'Monster Slayer',  desc:'+5% damage to bosses',                 base:90, at:l=>`bosses take +${5*l}% damage`},
+  {id:'guard',   name:'Siege Breakers',  desc:'+15% damage to boss guard',            base:80, max:15, at:l=>`guard breaks ${15*l}% faster`},
+  {id:'herohp',  name:'Hero Constitution',desc:'+8% hero health',                     base:65, at:l=>`hero +${8*l}% health`},
   {id:'bless',   name:'Blessed Castle',  desc:'+10% castle health',                   base:60, at:l=>`castle +${10*l}% health`},
   {id:'fence',   name:'Iron Walls',      desc:'+12% fence health',                    base:55, at:l=>`fences +${12*l}% health`},
-  {id:'build',   name:'Master Builders', desc:'Buildings cost 4% less',               base:75, at:l=>`buildings ${4*l}% cheaper`},
+  {id:'build',   name:'Master Builders', desc:'Buildings cost 4% less',               base:75, max:12, at:l=>`buildings ${4*l}% cheaper`},
   {id:'train',   name:'Rapid Training',  desc:'Units train 7% faster',                base:65, at:l=>`training ${7*l}% faster`},
   {id:'chest',   name:'War Chest',       desc:'+10 starting gold',                    base:45, at:l=>`start with ${6+10*l} gold`},
   {id:'magnet',  name:'Gold Magnet',     desc:'+15% coin pickup range',               base:50, at:l=>`pickup range +${15*l}%`}
 ];
-const PERK_MAX=10;
-const perkCost=(p,lv)=>Math.round(p.base*Math.pow(1.42,lv)/5)*5;
+const PERK_MAX=20;   /* v80: 10 -> 20 levels; past Lv 10 each level costs 20% more instead of 42% */
+const pmax=p=>p.max||PERK_MAX;
+const perkCost=(p,lv)=>Math.round(p.base*(lv<10?Math.pow(1.42,lv):Math.pow(1.42,9)*Math.pow(1.2,lv-9))/5)*5;
 const PK=id=>(SAVE.perks&&SAVE.perks[id])||0;
 const HEROES = {
   ronin:  {name:'Ronin Archer',     sprite:'hero',    rarity:'Starter',   price:0,    jade:0,  hp:260, speed:5.6, h:2.15, attack:'arrow', dmg:18, cd:0.5,  range:7.5, desc:'Rapid arrows. The Storm Bow upgrade adds a 3-arrow spread.', passive:'Balanced all-rounder'},
@@ -1099,9 +1114,10 @@ function v65Layout(si,L){ const rule=stageRule(si), FEAT=stageFeat(si);
   return L; }
 const fogMul=a=>(G&&G.rule==='fog'&&Math.hypot(a.x-G.hero.x,a.z-G.hero.z)>9)?0.65:1;
 function sigAnnounce(S){ toast(`${S.icon} Signature wave: ${S.name}!`,2.8); sfx('warn'); flashRing(0xFF5A3A); G.shake=Math.max(G.shake,0.35); }
-function stageBriefHtml(si){ const r=stageRule(si), S=stageSig(si), F=stageFeat(si); if(!r&&!S&&!F.length) return '';
+function stageBriefHtml(si){ const r=stageRule(si), S=stageSig(si), F=stageFeat(si), BT=TRAITS[traitOf(STAGES[si].boss)];
   const R=r?RULES[r]:null, own=SAVE.units||[];
   return `<div class="loadsec"><h4>This stage</h4><div class="v65row">`+
+    (BT?`<div class="v65card"><b>${BT.ic} Boss trait: ${BT.n}</b>${BT.tip} Bosses now fight in 3 phases and carry a guard: break it to stun them.</div>`:'')+
     (R?`<div class="v65card"><b>${R.icon} ${R.name}</b>${R.desc}</div>`:'')+
     (S?`<div class="v65card"><b>${S.icon} ${S.name}</b>Signature wave ${sigWave(si)+1}: ${S.desc}</div>`:'')+
     (F.length?`<div class="v65card"><b>🎖️ Trial troops</b><span class="v65imgs">${F.map(c=>`<span class="v65u"><img src="${ART[UNIT_SPR[c]]||''}" alt=""><i>${RECRUITS[c].name}</i></span>`).join('')}</span>Pre-built and free this stage.${F.some(c=>!own.includes(c))?' Win to get 30% off them in Recruits.':''}</div>`:'')+
@@ -1707,7 +1723,7 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
   buildEnvironment(si); fxInit(); vfx2Init(); for(const k in FX) FX[k].items.length=0;
   const st=STAGES[si];
   G={ si, st, state:'play', time:0, clock:0, waves:genWaves(si), waveIdx:0, spawners:[], kills:0, built:0,
-    hero:{x:0,z:6,vx:0,vz:0,rot:Math.PI,hp:HD.hp,max:HD.hp,cd:0,alive:true,respawn:0,target:null,rt:0,flash:0,ax:0,moving:false,isHero:true,vel:heroVel(HD)},
+    hero:{x:0,z:6,vx:0,vz:0,rot:Math.PI,hp:HD.hp*(1+0.08*PK('herohp')),max:HD.hp*(1+0.08*PK('herohp')),cd:0,alive:true,respawn:0,target:null,rt:0,flash:0,ax:0,moving:false,isHero:true,vel:heroVel(HD)},
     units:[], enemies:[], eshots:[], arrows:[], orbs:[], coins:[], parts:[], tgs:[], towerArchers:[], barracks:[], towers:{}, fences:{}, pads:[], builtIds:new Set(), up:new Set(),
     mine:null, forge:null, armory:null, heroDef:HD, ultCd:Math.min(8,ultMax()*0.3), ultFx:0, lvls:{}, armRemote:false, stack:6+PK('chest')*10, bonusTotal:0, diff:0, diffMul:1, sky2Cd:0, skyFall:null, bossScale:0, bossBounty:0, breaks:{}, breakT:0, ingots:0, keepMax:Math.round((HD.id==='shachi'?1.8:HD.id==='gasha'?1.3:HD.id==='orochi'?1.4:HD.id==='daidara'?1.5:HD.id==='enma'?1.6:HD.id==='brute'?1.15:(HD.pass&&HD.pass.castle)||1)*CFG.keepHp*(1+0.15*si)*(1+0.10*PK('bless'))), lean:{x:0,v:0}, wob:{x:0,v:0}, tweens:[],
     cards:[], mods:{}, cardOpen:false, cardPick:null, cardWaves:{}, shake:0, hitStop:0, focus:new T.Vector3(0,0,6), lastStack:-1, lastIng:-1, pillT:0, cpCap:CFG.cpBase+2*PK('cap'), gear:{archer:0,samurai:0,onmyoji:0,ninja:0,oniw:0,yari:0,teppo:0,sohei:0,miko:0,tanuki:0,sumo:0,kabuki:0,falcon:0,kusari:0,komainu:0,shugen:0,kunoichi:0,taiko:0,naginata:0,tate:0,foxmage:0},
@@ -1777,29 +1793,35 @@ const cpUsed=()=>G.units.reduce((s,u)=>s+CLS[u.cls].cp,0);
 
 /* ================================================================ spawning */
 function spawnUnit(cls,x,z){
-  const D=CLS[cls], hpMul=MOD('squadHp')*((cls==='samurai'||cls==='oniw')?1+0.4*(G.gear[cls]||0):1)*(1+0.1*LV('m_vital'))*(1+0.08*PK('squadhp'))*(PASS('samurai')?1.15:1)*(PASS('namazu')?1.25:1)*(PASS('shuten')?1.3:1)*(PASS('benkei')?1.45:1)*PG('squadHp');
-  G.units.push({cls,x,z,rot:Math.PI,hp:D.hp*hpMul,max:D.hp*hpMul,cd:rand(0,D.cd),alive:true,target:null,rt:rand(0,0.3),flash:0,moving:false,seed:rand(0,10),xp:0,rank:0,st:'idle',slot:G.units.length});
+  const D=CLS[cls], hpMul=MOD('squadHp')*((cls==='samurai'||cls==='oniw')?1+0.4*(G.gear[cls]||0):1)*(1+0.1*LV('m_vital'))*(1+0.08*PK('squadhp'))*(PASS('samurai')?1.15:1)*(PASS('namazu')?1.25:1)*(PASS('shuten')?1.3:1)*(PASS('benkei')?1.45:1)*PG('squadHp')*troopHpMul(cls);
+  G.units.push({cls,hpK:troopHpMul(cls),x,z,rot:Math.PI,hp:D.hp*hpMul,max:D.hp*hpMul,cd:rand(0,D.cd),alive:true,target:null,rt:rand(0,0.3),flash:0,moving:false,seed:rand(0,10),xp:0,rank:0,st:'idle',slot:G.units.length});
 }
-const MUTS=[
-  {id:'shield', name:'Warded',   col:0x7FC8FF, from:4,  w:3},
-  {id:'swift',  name:'Swift',    col:0xFFE27A, from:6,  w:3},
-  {id:'rage',   name:'Enraged',  col:0xFF6A4A, from:7,  w:3},
-  {id:'split',  name:'Splitting',col:0xC8FF7A, from:10, w:2},
-  {id:'healer', name:'Chanting', col:0x8CFFB4, from:13, w:2}];
+const MUTS=[   /* v80: elites appear from stage 2, more kinds, double loot */
+  {id:'iron',   name:'Ironclad',     col:0xB8C4D0, from:1, w:3},
+  {id:'shield', name:'Warded',       col:0x7FC8FF, from:2, w:3},
+  {id:'swift',  name:'Swift',        col:0xFFE27A, from:2, w:3},
+  {id:'rage',   name:'Enraged',      col:0xFF6A4A, from:3, w:3},
+  {id:'warlord',name:'Warlord',      col:0xFF9A3A, from:4, w:2},
+  {id:'regen',  name:'Regenerating', col:0x6CFF8C, from:5, w:2},
+  {id:'split',  name:'Splitting',    col:0xC8FF7A, from:6, w:2},
+  {id:'phase',  name:'Phasing',      col:0xB49CFF, from:7, w:2},
+  {id:'healer', name:'Chanting',     col:0x8CFFB4, from:8, w:2}];
 function rollMutation(e){
-  if(!e||e.cls==='boss'||e.noMut) return;
-  const chance=Math.min(0.35,0.04+0.008*G.si);
+  if(!e||e.cls==='boss'||e.noMut||G.si<1) return;
+  const chance=Math.min(0.3,0.06+0.01*G.si);
   if(Math.random()>chance) return;
   const pool=MUTS.filter(m=>G.si>=m.from); if(!pool.length) return;
   let tot=pool.reduce((a,m)=>a+m.w,0), r=Math.random()*tot, pick=pool[0];
   for(const m of pool){ r-=m.w; if(r<=0){ pick=m; break; } }
+  applyMut(e,pick); }
+function applyMut(e,pick){ const ED=EN[e.cls]; if(!pick||(ED&&(ED.treasure||ED.sapper))) return;
   e.mut=pick.id; e.mutCol=pick.col; e.max=Math.round(e.max*(1.6+0.02*G.si)); e.hp=e.max;
   if(pick.id==='shield') e.ward=e.max*0.6;
   if(pick.id==='swift') e.speed*=1.45;
   if(pick.id==='rage') e.rage=true;
   if(pick.id==='split') e.split=2;
   if(pick.id==='healer') e.healer=true;
-  popText(e.x,2.2,e.z,pick.name,'crit');
+  popText(e.x,2.2,e.z,'ELITE · '+pick.name,'crit');
 }
 function splitEnemy(e){
   if(!e.split) return; const n=e.split; e.split=0;
@@ -1819,11 +1841,11 @@ function spawnEnemy(type,laneIdx,near){
     { const base=BOSSES[G.st.boss].hp+(G.st.boss2?BOSSES[G.st.boss2].hp:0);
       if(!G.bossScale) G.bossScale=Math.min(1,((BOSSES[G.st.boss].super?9000:2600)*Math.pow(G.si+1,1.25))/base); }
     Object.assign(e,{cls:'boss',kind,hp:(e.mini?BOSSES.brute.hp*(1+0.35*G.si)*(kind!=='brute'?1.3:1):D.hp*G.bossScale)*(G.diffMul||1),speed:D.speed,rad:D.rad,st:'move',atkT:1.5,pi:0,timer:0,dmg:30*(1+0.25*G.si)*(G.diffMul||1)*(D.super?1.95:1)});
-    e.max=e.hp;
+    e.max=e.hp; bossInit(e);
     const m={g:new T.Group()};
     Object.assign(e,m); e.mats=bossMats(e.g);
     if(e.mini){ sfx('warn'); toast(kind==='brute'?'An aooni brute approaches!':`Mini-boss: a shade of ${D.name} approaches!`,2.2); }
-    else { G.boss=e; setTimeout(()=>bossCine(e),40); $('bossName').textContent=D.name; $('bossbar').style.display='block'; }
+    else { G.boss=e; setTimeout(()=>bossCine(e),40); $('bossName').textContent=D.name; $('bossbar').style.display='block'; bossUiInit(e); }
   } else {
     const D=EN[type], dm=G.diffMul||1;
     const grow=1+0.16*G.si, hurt=1+0.08*G.si;
@@ -1871,14 +1893,14 @@ function nearestPlayer(x,z,range){ let best=null, bd=range*range; const h=G.hero
 const ELCOL={fire:0xFF7A2A, frost:0x7FE3FF, ice:0x9FEFFF, bolt:0xFFE45C};
 function arrowEl(){ return U('fire1')?'fire':U('frost1')?'frost':U('bolt1')?'bolt':null; }
 const LV=id=>(G&&G.lvls&&G.lvls[id])||0;
-function arrowMul(){ return (PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg')*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg')*(1+(U('steel1')?0.2:0)+(U('steel2')?0.2:0)+(U('steel3')?0.3:0))*(1+0.08*PK('arrows'))*(1+0.08*LV('m_arrow')); }
+function arrowMul(){ return armyPass()*steelMul()*(1+0.08*PK('arrows'))*(1+0.06*LV('m_arrow')); }
 const BRANCHES={
   fire:   {name:'Fire Archers', col:0xFF7A2A, desc:'Arrows set foes ablaze',            dmg:1.0, cd:1.0},
   ballista:{name:'Ballista',    col:0xD9C49A, desc:'Huge bolts that pierce a whole line', dmg:2.1, cd:1.7},
   frost:  {name:'Frost Archers',col:0x9FE6FF, desc:'Arrows slow and can freeze foes',    dmg:0.9, cd:0.95}};
 function fireArrow(sx,sy,sz,target,dmg,src,branch){ const d=Math.hypot(target.x-sx,target.z-sz);
   const B=branch&&BRANCHES[branch];
-  G.arrows.push({sx,sy,sz,t:0,dur:Math.max(0.07,d/CFG.arrowSpeed/(branch==='ballista'?0.8:1)),target,dmg:dmg*arrowMul()*(B?B.dmg:1),src,
+  G.arrows.push({sx,sy,sz,t:0,dur:Math.max(0.07,d/CFG.arrowSpeed/(branch==='ballista'?0.8:1)),target,dmg:dmg*(src&&src.cls&&TTYPE[src.cls]?troopMul(src.cls):arrowMul())*(B?B.dmg:1),src,
     el:branch==='fire'?'fire':branch==='frost'?'ice':arrowEl(),branch}); sfx('bow'); }
 function offerBranch(tw){
   G.cardOpen=true; G.branchFor=tw;
@@ -1934,17 +1956,149 @@ function elementCombo(e,el,dmg,src){
     spawnParticles(e.x,1,e.z,30,0xFFB13B,8,0.5,1.5,-6); G.shake=Math.max(G.shake,0.3); sfx('slam'); sfx('zap'); }
   popText(e.x,H+0.7,e.z,C.n,'crit');
   SAVE.combos=SAVE.combos||{}; if(!SAVE.combos[key]){ SAVE.combos[key]=1; persist(); toast('Element combo! '+C.tip,2.6); } }
+/* ================================================================ v80: troop types, boss phases / guard / traits, elites */
+const TTYPE={archer:'arrow',teppo:'arrow',falcon:'arrow',tanuki:'arrow',
+  samurai:'sword',yari:'sword',ninja:'sword',kusari:'sword',naginata:'sword',kunoichi:'sword',
+  onmyoji:'magic',miko:'magic',kabuki:'magic',foxmage:'magic',shugen:'magic',
+  oniw:'oni',sohei:'oni',sumo:'oni',komainu:'oni',tate:'oni',taiko:'oni'};
+const TTN={arrow:['Arrow','🏹'],sword:['Sword','⚔️'],magic:['Magic','🔮'],oni:['Oni','👹']};
+const armyPass=()=>(PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg');
+const steelMul=()=>1+(U('steel1')?0.15:0)+(U('steel2')?0.15:0)+(U('steel3')?0.25:0);
+/* one damage multiplier for every soldier: shared upgrades + the drills and perks of its type */
+function troopMul(cls){ const t=TTYPE[cls]||'sword';
+  return MOD('squadDmg')*armyPass()*steelMul()*(1+0.06*LV('m_arrow'))*(1+0.12*LV('d_'+t))*(1+0.08*PK('c_'+t))
+    *(t==='arrow'?1+0.08*PK('arrows'):1)*(t==='sword'&&U('blade1')?1.25:1); }
+function troopHpMul(cls){ const t=TTYPE[cls]||'sword'; return (1+0.06*LV('d_'+t))*(1+0.05*PK('c_'+t))*(t==='oni'&&U('oni1')?1.4:1); }
+const spiritRad=cls=>TTYPE[cls]==='magic'?(U('spirit1')?1.35:1)*(1+0.03*LV('d_magic')):1;
+const healMul=()=>(U('spirit1')?1.35:1)*(1+0.06*LV('d_magic'))*(1+0.08*PK('c_magic'));
+const critOf=cls=>(CLS[cls].crit||0)+(TTYPE[cls]==='sword'&&U('blade3')?0.15:0);
+const critX=cls=>(TTYPE[cls]==='sword'&&U('blade3'))?3.5:2.2;
+function rescaleHp(){ for(const u of G.units){ const k=troopHpMul(u.cls), r=k/(u.hpK||1); if(Math.abs(r-1)>1e-4){ u.max*=r; u.hp=Math.min(u.max,u.hp*r); u.hpK=k; } } }
+function oniQuake(t,dm,u){ let n=0; eachEnemyNear(t.x,t.z,3,o=>{ if(n>=4||o===t||o.dead||Math.hypot(o.x-t.x,o.z-t.z)>2.2) return; hitEnemy(o,dm*0.6,u,null,1); if(o.cls!=='boss') o.stunT=Math.max(o.stunT,0.35); n++; });
+  if(t.cls!=='boss') t.stunT=Math.max(t.stunT,0.35); if(Math.random()<0.3) fx('fx_dust',t.x,0.5,t.z,3.2,0.35,0xC8BBA6,{grow:1.2}); }
+
+/* ---------------- boss traits: each boss demands a different answer */
+const TRAITS={
+  fireproof:{n:'Fireproof',ic:'🔥',tip:'Immune to burns; fire hits deal 60% less. Bring frost or thunder.'},
+  arrowward:{n:'Arrow Ward',ic:'🛡️',tip:'Arrows deal half damage. Lean on Sword, Magic and Oni troops.'},
+  spellward:{n:'Spell Ward',ic:'🪬',tip:'Magic deals half damage. Lean on arrows and blades.'},
+  frostborn:{n:'Frostborn',ic:'❄️',tip:'Cannot be slowed or frozen.'},
+  undying:{n:'Undying',ic:'💀',tip:'Regenerates while its guard holds. Break the guard fast.'},
+  hydra:{n:'Hydra',ic:'🐍',tip:'Splits off a shade at every new phase.'},
+  tempest:{n:'Tempest',ic:'⚡',tip:'Calls lightning on your hero from phase 2. Keep moving.'},
+  colossus:{n:'Colossus',ic:'⛰️',tip:'Guard is twice as thick. Oni troops and specials crack it.'},
+  warlord:{n:'Warlord',ic:'👺',tip:'Summons 50% more minions, some of them elites.'},
+  swift:{n:'Swift',ic:'💨',tip:'Moves 30% faster and closes gaps quickly.'}};
+const BTRAIT={brute:'colossus',akaoni:'colossus',tengu:'swift',kitsune:'spellward',yuki:'frostborn',shogun:'arrowward',kappa:'undying',gasha:'undying',raijin:'tempest',nue:'hydra',
+  ryujin:'frostborn',tsuchi:'warlord',nurari:'warlord',orochi:'hydra',namazu:'colossus',mao:'warlord',umibozu:'spellward',kamaitachi:'swift',daidara:'colossus',hannya:'spellward',
+  mikaboshi:'tempest',ushioni:'arrowward',shuten:'warlord',kirin:'swift',enma:'undying',susanoo:'tempest',jorogumo:'warlord',karura:'fireproof',kuzuryu:'hydra',izanami:'undying',
+  tsukuyomi:'spellward',raiju:'tempest',baku:'undying',onryo:'spellward',shachi:'arrowward',amaterasu:'fireproof',fujin:'swift',yukionna:'frostborn',benkei:'arrowward',kagutsuchi:'fireproof',
+  izanagi:'hydra',takemika:'tempest',hachiman:'arrowward',bishamon:'colossus',inari:'spellward',saruta:'colossus',minaka:'undying',kunitoko:'colossus',yatono:'hydra',marishi:'fireproof',
+  mioya:'tempest',wata:'frostborn',oyama:'colossus',kurao:'frostborn',magatsu:'fireproof',ryugu:'hydra',chochin:'fireproof',kane:'colossus',karakasa:'warlord',ungai:'spellward',
+  orizuru:'swift',daruma:'colossus',biwa:'spellward',okina:'undying',kotoryu:'hydra',tsukumo:'warlord'};
+const TRAIT_CYCLE=Object.keys(TRAITS);
+const traitOf=k=>BTRAIT[k]||TRAIT_CYCLE[[...String(k)].reduce((a,c)=>a+c.charCodeAt(0),0)%TRAIT_CYCLE.length];
+const PHASE_AT=[0.66,0.33];
+function bossInit(e){ e.phase=0; e.trait=e.mini?null:traitOf(e.kind);
+  e.guardMax=e.max*(e.mini?0.15:0.2)*(e.trait==='colossus'?2:1); e.guard=e.guardMax; e.brokeT=0; e.invT=0; e.tempT=4;
+  if(e.trait==='swift') e.speed*=1.3; }
+const isMagicSrc=s=>!!s&&((s.cls&&TTYPE[s.cls]==='magic')||(s.isHero&&G.heroDef&&['orb','fox'].includes(G.heroDef.attack)));
+function bossIntake(e,dmg,src,el,isArrow){
+  if(e.invT>0){ if(Math.random()<0.12) popText(e.x,(BOSSES[e.kind]||{}).h||5,e.z,'IMMUNE','crit'); return 0; }
+  const tr=e.trait;
+  if(tr==='fireproof'&&el==='fire') dmg*=0.4;
+  if(tr==='arrowward'&&isArrow) dmg*=0.5;
+  if(tr==='spellward'&&isMagicSrc(src)) dmg*=0.5;
+  const oni=src&&src.cls&&TTYPE[src.cls]==='oni';
+  dmg*=MOD('bossDmg')*(1+0.05*PK('slayer'))*(oni&&U('oni3')?1.4:1);
+  if(e.brokeT>0) return dmg*1.3;
+  if(e.guard>0){ const gm=(G._gb||1)*(oni?(U('oni3')?6:2):1)*(1+0.15*PK('guard'));
+    e.guard-=dmg*gm; if(e.guard<=0) guardBreak(e); return dmg*0.5; }
+  return dmg; }
+function bossBurn(e,d){ if(e.invT>0||e.trait==='fireproof'){ if(e.trait==='fireproof') e.burnT=0; return 0; } return d*(e.brokeT>0?1.3:e.guard>0?0.5:1); }
+function guardBreak(e){ e.guard=0; e.brokeT=4.5; e.stunT=Math.max(e.stunT,e.trait==='colossus'?1.4:2.2);
+  G.tgs=G.tgs.filter(t=>t.owner!==e); if(e.st==='cast'||e.st==='dash'){ e.st='recover'; e.timer=0.2; }
+  const H=(BOSSES[e.kind]||{}).h||5; popText(e.x,H+0.6,e.z,'GUARD BROKEN','gold'); sfx('crit'); sfx('slam'); G.shake=Math.max(G.shake,0.5); G.hitStop=Math.max(G.hitStop,0.08);
+  fx('fx_glow',e.x,H*0.6,e.z,H*1.4,0.5,0xFFD15A,{grow:1.6}); spawnParticles(e.x,H*0.6,e.z,30,0xFFD15A,7,0.6,1.3,-6);
+  if(!e.mini) toast('Guard broken! Stunned and taking +30% damage',2.2); }
+function bossGate(e){ if(e.mini||e.dead||(e.phase||0)>=2) return; const th=PHASE_AT[e.phase];
+  if(e.hp<=e.max*th){ e.hp=e.max*th; phaseUp(e); } }
+function phaseUp(e){ e.phase++; e.invT=1.8; e.guard=e.guardMax; e.brokeT=0; e.stunT=0; e.burnT=0; e.speed*=1.12;
+  G.tgs=G.tgs.filter(t=>t.owner!==e); e.st='recover'; e.timer=1.8; e.atkT=Math.min(e.atkT,0.6);
+  const D=BOSSES[e.kind], H=D.h||5, short=(D.name||'').split(',')[0];
+  sfx('warn'); sfx('slam'); G.shake=Math.max(G.shake,0.8); G.camPunch=-0.18; try{ flashRing(e.phase===2?0xFF3A3A:0xFF9A3A); }catch(_){}
+  fx('fx_seal',e.x,0.2,e.z,13,0.8,e.phase===2?0xFF3A3A:0xFF9A3A,{flat:true,spin:3,grow:1.4}); spawnParticles(e.x,H*0.5,e.z,40,0xFF5A3A,8,0.7,1.5,-6);
+  for(const u of [G.hero,...G.units]){ if(!u||u.alive===false) continue; const dx=u.x-e.x, dz=u.z-e.z, d=Math.hypot(dx,dz)||1;   /* roar shockwave */
+    if(d<6.5){ u.x+=dx/d*(6.5-d)*0.6; u.z+=dz/d*(6.5-d)*0.6; damagePlayer(u,e.dmg*0.5); } }
+  toast(e.phase===2?`${short} — FINAL PHASE: relentless and furious!`:`${short} — PHASE 2: guard restored, attacks faster!`,2.8);
+  if(D.summon){ const [type,n]=D.summon; for(let k=0;k<Math.ceil(n*0.6);k++){ const m=spawnEnemy(type,e.lane,e); if(m&&k===0) forceMut(m); } }
+  if(e.trait==='hydra'){ const s=spawnEnemy('mini:'+e.kind,e.lane,e); if(s){ s.x=e.x+rand(-2.5,2.5); s.z=e.z+rand(-2.5,2.5); s.hp=s.max=e.max*0.12; s.guardMax=s.max*0.1; s.guard=s.guardMax; } toast(`${short} splits — a shade breaks away!`,2.2); } }
+const bossCadence=(e,enr)=>e.mini?(enr?1.5:2.5):[2.4,1.85,1.35][e.phase||0];
+function furyBarrage(e){ const h=G.hero; if(!h.alive) return;
+  for(let k=0;k<3;k++){ const a=rand(0,6.283), r=k?rand(1.6,3.4):0; addTg({shape:'circle',x:h.x+Math.cos(a)*r,z:h.z+Math.sin(a)*r,r:1.5,dur:1.15+k*0.15,dmg:e.dmg*0.7,owner:e,shake:0.12,sound:'fire',col:0xFF4A3A,keepDmg:6,fenceDmg:30}); } }
+function bossTick(e,dt){
+  if(e.invT>0){ e.invT-=dt; e.stunT=0; e.slowT=0; e.freezeT=0; }
+  if(!e.mini){ const cap=e.max*[1,PHASE_AT[0],PHASE_AT[1]][e.phase||0]; if(e.hp>cap) e.hp=cap; }   /* healers can't lift a boss back past a phase it has lost */
+  if(e.trait==='frostborn'){ e.slowT=0; e.freezeT=0; }
+  if(e.brokeT>0){ e.brokeT-=dt; if(e.brokeT<=0){ e.brokeT=0; e.guardRegen=2.5; } }
+  if(e.guardRegen>0){ e.guardRegen-=dt; e.guard=Math.min(e.guardMax,e.guard+e.guardMax/2.5*dt); }
+  if(e.trait==='undying'&&e.guard>0&&!e.brokeT&&!e.dead){ const cap=e.max*[1,PHASE_AT[0],PHASE_AT[1]][e.phase||0];
+    if(e.hp<cap){ e.hp=Math.min(cap,e.hp+e.max*0.006*dt); if((e.regFx=(e.regFx||0)-dt)<=0){ e.regFx=0.3; spawnParticles(e.x,2,e.z,2,0x8CFFB4,1.5,0.5,1.1,2); } } }
+  if(e.trait==='tempest'&&(e.phase||0)>=1&&!e.dead&&G.hero.alive&&(e.tempT-=dt)<=0){ e.tempT=e.phase>=2?2.8:4.2;
+    addTg({shape:'circle',x:G.hero.x+rand(-0.8,0.8),z:G.hero.z+rand(-0.8,0.8),r:2.1,dur:1.1,dmg:e.dmg*0.9,owner:e,shake:0.2,sound:'zap',col:0xFFF27A}); } }
+
+/* ---------------- elite enemies */
+function forceMut(e,id){ if(!e||e.cls==='boss'||e.mut) return; const pool=MUTS.filter(m=>!id||m.id===id); applyMut(e,pool[Math.floor(Math.random()*pool.length)]); }
+function eliteIntake(e,dmg){ if(e.mut==='iron') dmg*=0.55; return dmg; }
+function eliteTick(e,dt){
+  if(e.mut==='warlord'&&(e.wT=(e.wT||0)-dt)<=0){ e.wT=0.4; eachEnemyNear(e.x,e.z,6,o=>{ if(o!==e&&!o.dead&&o.cls!=='boss') o.wbuff=0.6; }); }
+  if(e.mut==='regen'&&e.hp<e.max){ e.hp=Math.min(e.max,e.hp+e.max*0.03*dt); }
+  if(e.mut==='phase'&&(e.phT=(e.phT==null?rand(3,5):e.phT)-dt)<=0){ e.phT=5;
+    const {mx,mz}=laneDir(e); if(!fenceBlocking(e.x,e.z,e.x+mx*4,e.z+mz*4)&&Math.hypot(e.x+mx*4-KEEP.x,e.z+mz*4-KEEP.z)>4){
+      spawnParticles(e.x,1,e.z,10,0xB49CFF,4,0.4,1.1,0); e.x+=mx*4; e.z+=mz*4; spawnParticles(e.x,1,e.z,10,0xB49CFF,4,0.4,1.1,0); sfx('magic'); } } }
+
+/* ---------------- boss bar: phase pips, guard bar, trait chip */
+(function(){ const st=document.createElement('style'); st.textContent=`
+#bossbar .bar{ position:relative; overflow:visible; }
+#bossbar .ptick{ position:absolute; top:-3px; bottom:-3px; width:3px; margin-left:-1px; background:#fff; border-radius:2px; box-shadow:0 0 0 1px rgba(0,0,0,.45); }
+#bossbar .ptick.past{ background:#5A2020; }
+#bossbar .gbar{ height:7px; margin:4px auto 0; width:86%; border-radius:5px; background:rgba(20,24,40,.55); overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.35); }
+#bossbar .gbar i{ display:block; height:100%; width:100%; transform-origin:left; background:linear-gradient(#E9F2FF,#8FB2E0); }
+#bossbar.broke .gbar i{ background:linear-gradient(#FFE07A,#FF8A2A); animation:gbk .35s infinite alternate; }
+@keyframes gbk{ from{opacity:1} to{opacity:.45} }
+#bossbar .bmeta{ display:block; font-size:12px; margin-top:3px; letter-spacing:.3px; }
+#bossbar .bmeta b{ background:rgba(0,0,0,.42); border-radius:9px; padding:1px 7px; margin:0 2px; font-weight:700; }
+#bossbar .bmeta .gl{ color:#CFE0FF; } #bossbar.broke .bmeta .gl{ color:#FFD15A; }
+#bossbar.inv .fill{ filter:grayscale(.6) brightness(1.3); }
+.card .ttc{ float:right; margin:-2px -2px 0 4px; font-style:normal; }
+.card .ttc i{ font-style:normal; font-size:12px; opacity:.35; margin-left:1px; } .card .ttc i.on{ opacity:1; }
+.card.nofit{ opacity:.62; }
+`; document.head.appendChild(st); })();
+function bossUiInit(e){ const bb=$('bossbar'); if(!bb) return; const bar=bb.querySelector('.bar');
+  bb.querySelectorAll('.ptick,.gbar,.bmeta').forEach(x=>x.remove());
+  for(const p of PHASE_AT){ const t=document.createElement('span'); t.className='ptick'; t.style.left=(p*100)+'%'; bar.appendChild(t); }
+  const g=document.createElement('div'); g.className='gbar'; g.innerHTML='<i id="bossGuard"></i>'; bar.after(g);
+  const m=document.createElement('span'); m.className='bmeta'; const T0=TRAITS[e.trait];
+  m.innerHTML=`<b id="bossPh">Phase 1/3</b>${T0?`<b title="${T0.tip}">${T0.ic} ${T0.n}</b>`:''}<b class="gl" id="bossGl">🛡️ Guard</b>`; g.after(m);
+  if(T0) setTimeout(()=>{ if(G&&G.boss===e&&G.state==='play') toast(`${T0.ic} ${T0.n}: ${T0.tip}`,3.6); },4200); }
+function bossUi(e){ const gi=$('bossGuard'); if(!gi) return; const bb=$('bossbar');
+  gi.style.transform=`scaleX(${e.brokeT>0?e.brokeT/4.5:clamp(e.guard/Math.max(1,e.guardMax),0,1)})`;
+  bb.classList.toggle('broke',e.brokeT>0); bb.classList.toggle('inv',e.invT>0);
+  const ph=(e.phase||0)+1; if(bb._ph!==ph){ bb._ph=ph; $('bossPh').textContent=ph===3?'FINAL PHASE':`Phase ${ph}/3`; bb.querySelectorAll('.ptick').forEach((t,i)=>t.classList.toggle('past',i<ph-1)); }
+  const gl=e.brokeT>0?'💥 BROKEN +30%':'🛡️ Guard'; if(bb._gl!==gl){ bb._gl=gl; $('bossGl').textContent=gl; } }
+
 function hitEnemy(e,dmg,src,el,depth=0,isArrow=false){
   if(e.dead) return;
   if(isArrow&&e.cls==='boss'&&U('steel3')) dmg*=1.25;
   { const ED=EN[e.cls]; if(ED&&ED.armor) dmg*=(1-ED.armor); }
+  if(e.cls==='boss'){ dmg=bossIntake(e,dmg,src,el,isArrow); if(dmg<=0){ e.flash=Math.max(e.flash,0.4); return; } }
+  else { dmg*=MOD('normDmg'); if(e.mut) dmg=eliteIntake(e,dmg); if(e.wbuff>0) dmg*=0.75; }
   if(e.ward>0){ const soak=Math.min(e.ward,dmg*0.6); e.ward-=soak; dmg-=soak;
     if(e.ward<=0){ e.ward=0; spawnParticles(e.x,1.3,e.z,10,0x7FC8FF,5,0.4,1.3,0); popText(e.x,2.3,e.z,'WARD BROKEN','crit'); }
     else spawnParticles(e.x,1.3,e.z,2,0x7FC8FF,2,0.25,1,0); }
-  e.hp-=dmg; e.flash=1;
+  e.hp-=dmg; e.flash=1; if(e.cls==='boss') bossGate(e);
   if(e.cls==='etreasure'&&Math.random()<0.5){ const a=Math.random()*6.283; G.coins.push({kind:'gold',st:0,x:e.x,y:0.9,z:e.z,vx:Math.cos(a)*2.5,vy:5,vz:Math.sin(a)*2.5,t:0,bounces:0,spin:rand(0,6)}); }
   if(e.cls==='boss'||Math.random()<0.3) popText(e.x,(e.cls==='boss'?BOSSES[e.kind].h:1.9),e.z,'-'+Math.round(dmg));
-  if(e.cls==='boss') dmg*=MOD('bossDmg'); else dmg*=MOD('normDmg');
   const vel=el||(src&&src.vel)||null;
   if(depth===0&&src&&src.isHero){ spawnParticles(e.x,e.cls==='boss'?2:1.1,e.z,6,vel?ELCOL[vel]:0xFFE9A8,4,0.28,1.5,0); fx('fx_glow',e.x,1.3,e.z,1.0,0.16,vel?ELCOL[vel]:0xFFE9A8,{grow:1.3}); }
   if(depth===0) spawnParticles(e.x,e.cls==='boss'?2:0.9,e.z,3,el?(ELCOL[el]||0xBFEFFF):0xBFEFFF,3.5,0.28,0.8,-4);
@@ -1984,11 +2138,11 @@ function killEnemy(e,src){
     G.shake=0.7; G.hitStop=0.12; sfx('slam'); toast(big?`${BOSSES[e.kind].name} defeated!`:(e.kind==='brute'?'Brute defeated':'Mini-boss defeated'));
     dyn.remove(e.g); G.tgs=G.tgs.filter(t=>t.owner!==e);
     if(G.boss===e){ G.boss=null; $('bossbar').style.display='none'; G.bossBounty=50*(G.si+1); }
-  } else { { let n=irand(...EN[e.cls].loot); n=Math.round(n*MOD('kill')); if(LV('r_loot')) n=Math.round(n*(1+0.15*LV('r_loot'))); if(PASS('kitsune')) n=Math.floor(n*1.25+Math.random()); if(PASS('hannya')) n=Math.floor(n*1.4+Math.random()); if(PASS('izanami')) n=Math.floor(n*1.6+Math.random()); if(MOD('ingot')>1) n=Math.floor(n*MOD('ingot')+Math.random()); if(PASS('nurari')) n=Math.floor(n*1.35+Math.random()); if(PG('gold',0)) n=Math.floor(n*PG('gold')+Math.random()); if(G.tod&&todState(G.tod.t).n>0.5) n=Math.floor(n*1.2+Math.random()); spawnLoot(e.x,e.z,n); if(e.cls==='oni'&&G.si>=2&&Math.random()<0.25+0.03*G.si) spawnLoot(e.x,e.z,1,'ingot'); } spawnParticles(e.x,0.8,e.z,10,0xF2F2F2,4,0.45,1,-8); spawnParticles(e.x,0.8,e.z,5,e.cls==='oni'?0x7C6BD6:0xD7393A,3.5,0.4,1,-8); }
+  } else { { let n=irand(...EN[e.cls].loot); n=Math.round(n*MOD('kill')); if(e.mut) n*=2; if(LV('r_loot')) n=Math.round(n*(1+0.15*LV('r_loot'))); if(PASS('kitsune')) n=Math.floor(n*1.25+Math.random()); if(PASS('hannya')) n=Math.floor(n*1.4+Math.random()); if(PASS('izanami')) n=Math.floor(n*1.6+Math.random()); if(MOD('ingot')>1) n=Math.floor(n*MOD('ingot')+Math.random()); if(PASS('nurari')) n=Math.floor(n*1.35+Math.random()); if(PG('gold',0)) n=Math.floor(n*PG('gold')+Math.random()); if(G.tod&&todState(G.tod.t).n>0.5) n=Math.floor(n*1.2+Math.random()); spawnLoot(e.x,e.z,n); if(e.mut) spawnLoot(e.x,e.z,1,'ingot'); if(e.cls==='oni'&&G.si>=2&&Math.random()<0.25+0.03*G.si) spawnLoot(e.x,e.z,1,'ingot'); } spawnParticles(e.x,0.8,e.z,10,0xF2F2F2,4,0.45,1,-8); spawnParticles(e.x,0.8,e.z,5,e.cls==='oni'?0x7C6BD6:0xD7393A,3.5,0.4,1,-8); }
   sfx('die');
 }
 function damagePlayer(t,dmg){
-  if(!t.alive) return; if(t.cls&&CLS[t.cls]&&CLS[t.cls].guard) dmg*=1-CLS[t.cls].guard; t.hp-=dmg; t.flash=1;
+  if(!t.alive) return; if(t.cls&&CLS[t.cls]&&CLS[t.cls].guard) dmg*=1-CLS[t.cls].guard; if(t.cls&&TTYPE[t.cls]==='oni'&&U('oni1')) dmg*=0.8; t.hp-=dmg; t.flash=1;
   if(t.isHero){ popText(t.x,2.4,t.z,'-'+Math.round(dmg),'hurt'); G.shake=Math.max(G.shake,0.12); sfx('hurt'); }
   if(t.hp<=0){ t.alive=false; spawnParticles(t.x,0.8,t.z,12,0x2E3A57,4,0.5,1,-8);
     if(t.isHero){ t.respawn=3.5; const lost=Math.floor(G.stack/2); G.stack-=lost; spawnLoot(t.x,t.z,Math.min(lost,60)); toast('Hero down. Back in 3'); closeArmory(); } }
@@ -2188,7 +2342,9 @@ function renderArmory(){
   let html='<div class="ugrp">'+GRP.map(g=>`<button class="ug${g[0]===armGrp?' on':''}" data-g="${g[0]}">${g[2]}<span>${g[1]}</span></button>`).join('')+'</div><div class="ustrip">';
   for(const u of list){ const c=upgCost(u), elCls=u.br==='Fire'?'el-fire':u.br==='Frost'?'el-frost':u.br==='Thunder'?'el-bolt':'';
     const lv=u.rep&&u.id!=='m_repair'?` <small>Lv ${LV(u.id)}</small>`:'';
-    html+=`<button class="card ${elCls}" data-id="${u.id}"><b>${u.name}${lv}</b>${u.desc}<div class="cost">${c.g?`<span class="g">${c.g}</span>`:''}${c.i?`<span class="i">${c.i}</span>`:''}</div></button>`; }
+    const tts=u.tt?(u.tt==='all'?['arrow','sword','magic','oni']:[u.tt]):null, have=new Set(G.units.map(x=>TTYPE[x.cls])), fit=!tts||tts.some(t=>have.has(t))||!G.units.length;
+    const chips=tts?`<span class="ttc">${tts.map(t=>`<i class="${have.has(t)?'on':''}" title="${TTN[t][0]} troops">${TTN[t][1]}</i>`).join('')}</span>`:'';
+    html+=`<button class="card ${elCls}${fit?'':' nofit'}" data-id="${u.id}">${chips}<b>${u.name}${lv}</b>${u.desc}<div class="cost">${c.g?`<span class="g">${c.g}</span>`:''}${c.i?`<span class="i">${c.i}</span>`:''}</div></button>`; }
   html+='</div>';
   $('armBody').innerHTML=html; refreshArmoryStates();
 }
@@ -2211,6 +2367,7 @@ $('armBody').addEventListener('click',e=>{
     if(u.id==='m_wall') for(const k in G.fences){ const f=G.fences[k]; f.max=Math.round(f.max*1.2); if(f.built) f.hp=f.max; }
     if(u.id==='m_repair'){ G.keepHp=Math.min(G.keepMax,G.keepHp+G.keepMax*0.25); spawnParticles(KEEP.x,3,KEEP.z,24,0x9BF57E,5,0.7,1.1,-4); }
   } else G.up.add(u.id);
+  if(u.id==='oni1'||/^d_/.test(u.id)) rescaleHp();
   const fx=G.armRemote?{x:G.hero.x,z:G.hero.z+1.2}:{x:G.armory.x,z:G.armory.z-1.9};
   if(c.g) payFx(Math.min(c.g,18),fx.x,fx.z,'gold'); if(c.i) payFx(c.i,fx.x,fx.z,'ingot');
   sfx('buy'); spawnParticles(fx.x,1.5,fx.z,20,0xFFE27A,5,0.6,1.1,-6); toast(u.rep&&u.id!=='m_repair'?`${u.name} Lv ${G.lvls[u.id]}`:u.name);
@@ -2273,7 +2430,7 @@ const sky2Lv=()=>Math.max(1,Math.min(3,(SAVE.sky2Lv&&SAVE.sky2Lv[SAVE.sky2])||1)
 const hasSky=()=>!!(G&&G.state==='play'&&SAVE.sky2&&sky2Def());
 const sky2Max=()=>Math.round(ultMax()*1.7);
 const sky2Ready=()=>hasSky()&&(G.sky2Cd||0)<=0&&G.hero.alive;
-function castSky(){ G._vfx=true; try{ castSky0(); } finally{ G._vfx=false; } }
+function castSky(){ G._vfx=true; G._gb=3; try{ castSky0(); } finally{ G._vfx=false; G._gb=0; } }
 function castSky0(){
   if(!sky2Ready()) return; const h=G.hero, HD=G.heroDef, S=sky2Def(), L=sky2Lv()-1; G.sky2Cd=sky2Max();
   const R0=MOD('ultR')*S.r[L], col=S.col; specialCam(col,!!S.pillar||sky2Lv()>=3); skyCastFx(S,h.x,h.z,R0);
@@ -2293,7 +2450,7 @@ function castSky0(){
   popText(h.x,3.6,h.z,S.name.toUpperCase(),'crit'); toast(S.name+(sky2Lv()>1?' Lv'+sky2Lv():'')+'!',1.5); sfx(S.pillar?'boss':'slam');
 }
 function updateSky(dt){
-  if(!G.skyFall||!G.skyFall.length) return; G._vfx=true; try{ updateSky0(dt); } finally{ G._vfx=false; } }
+  if(!G.skyFall||!G.skyFall.length) return; G._vfx=true; G._gb=3; try{ updateSky0(dt); } finally{ G._vfx=false; G._gb=0; } }
 function updateSky0(dt){
   for(const b of G.skyFall){ if(b.done) continue; b.t+=dt;
     if(b.t<0) continue;
@@ -2825,7 +2982,7 @@ function syncSumBtn(){ let b=$('sumBtn'); if(!b) return; const id=G&&G.state==='
   @media (max-height:700px){ #sumBtn{ width:58px; height:58px; bottom:calc(env(safe-area-inset-bottom) + 108px); } }`; document.head.appendChild(st);
   const b=document.createElement('button'); b.id='sumBtn'; b.setAttribute('aria-label','Summon a god'); b.innerHTML='<img alt=""><small>SUMMON</small>';
   const hud=document.getElementById('hud'); if(hud) hud.appendChild(b); })();
-function castUlt(){ G._vfx=true; try{ castUlt0(); } finally{ G._vfx=false; } }
+function castUlt(){ G._vfx=true; G._gb=3; try{ castUlt0(); } finally{ G._vfx=false; G._gb=0; } }
 function castUlt0(){
   if(!ultReady()) return; const h=G.hero, HD=G.heroDef; G.ultCd=ultMax();
   const U0=ULTS[HD.id]||ULTS.ronin, R0=MOD('ultR')*U0.r, col=U0.col; specialCam(col,false);
@@ -2933,19 +3090,19 @@ function update(dt){
       u.rt-=dt; if(u.rt<=0){ u.rt=0.25; const e=nearestEnemy(u.x,u.z,4.5); u.target=(e&&Math.hypot(e.x-cx,e.z-cz)<7.5)?e:null; }
       if(u.target&&!u.target.dead){ chase=u.target; mx=chase.x-u.x; mz=chase.z-u.z; const d=Math.hypot(mx,mz)-chase.rad*0.6;
         if(d<=D.range){ mx=mz=0; u.rot=lerpAngle(u.rot,Math.atan2(chase.x-u.x,chase.z-u.z),0.4);
-          if(u.cd<=0){ u.cd=MOD('squadCd')*D.cd; u.atk=1; const dmg=MOD('squadDmg')*D.dmg*rankMul*(1+0.15*(G.gear[u.cls]||0))*(u.rally>0?1.25:1)*(U('blade1')?1.25:1)*(u.cls==='yari'?1.1:1)*(PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg'); if(D.knock&&chase.cls!=='boss'){ const dx=chase.x-u.x,dz=chase.z-u.z,dd=Math.hypot(dx,dz)||1; chase.x+=dx/dd*D.knock; chase.z+=dz/dd*D.knock; chase.stunT=Math.max(chase.stunT,0.5); }
+          if(u.cd<=0){ u.cd=MOD('squadCd')*D.cd; u.atk=1; const dmg=D.dmg*rankMul*(1+0.15*(G.gear[u.cls]||0))*(u.rally>0?1.25:1)*(u.cls==='yari'?1.1:1)*troopMul(u.cls); if(D.knock&&chase.cls!=='boss'){ const dx=chase.x-u.x,dz=chase.z-u.z,dd=Math.hypot(dx,dz)||1; chase.x+=dx/dd*D.knock; chase.z+=dz/dd*D.knock; chase.stunT=Math.max(chase.stunT,0.5); }
             if(D.pull&&chase.cls!=='boss'){ const dx=u.x-chase.x,dz=u.z-chase.z,dd=Math.hypot(dx,dz)||1; chase.x+=dx/dd*1.6; chase.z+=dz/dd*1.6; chase.slowT=Math.max(chase.slowT,1.2); chase.slowF=Math.max(chase.slowF,0.4); }
-            { let dm=dmg; if(D.crit&&Math.random()<D.crit){ dm*=2.2; popText(chase.x,2.3,chase.z,'CRIT','crit'); }
-              hitEnemy(chase,dm,u,D.el||null);
+            { let dm=dmg; if(Math.random()<critOf(u.cls)){ dm*=critX(u.cls); popText(chase.x,2.3,chase.z,'CRIT','crit'); }
+              hitEnemy(chase,dm,u,D.el||arrowEl()); if(TTYPE[u.cls]==='oni'&&U('oni2')) oniQuake(chase,dm,u);
               if(D.cleave){ let n=0; eachEnemyNear(chase.x,chase.z,3,o2=>{ if(n>=D.cleave||o2===chase||o2.dead||Math.hypot(o2.x-chase.x,o2.z-chase.z)>2.4) return; hitEnemy(o2,dm*0.8,u,null,1); n++; });
                 fx('fx_slash',chase.x,1.1,chase.z,4.2,0.25,0xFFFFFF,{rot:-Math.atan2(chase.x-u.x,chase.z-u.z)+Math.PI/2,grow:0.6}); } } sfx('slash');
             spawnParticles(chase.x,1,chase.z,4,D.el==='ice'?0xBFEFFF:0xFFFFFF,4,0.2,0.9,0);
-            if(U('blade2')){ let n=0; for(const o2 of G.enemies){ if(n>=2) break; if(o2.dead||o2===chase) continue; if(Math.hypot(o2.x-chase.x,o2.z-chase.z)<1.8){ hitEnemy(o2,dmg*0.7,u,null,1); n++; } } } } } }
+            if(U('blade2')&&TTYPE[u.cls]==='sword'){ let n=0; for(const o2 of G.enemies){ if(n>=2) break; if(o2.dead||o2===chase) continue; if(Math.hypot(o2.x-chase.x,o2.z-chase.z)<1.8){ hitEnemy(o2,dmg*0.7,u,null,1); n++; } } } } } }
     } else if(u.cls==='ninja'){
       if(u.st==='idle'){ if(u.cd<=0){ let best=null,bs=-1; for(const e of G.enemies){ if(e.dead) continue; const d=Math.hypot(e.x-u.x,e.z-u.z); const score=(e.cls==='boss'&&d<12)?1e6:(d<8?e.max:-1); if(score>bs){ bs=score; best=e; } } if(best&&bs>0){ u.target=best; u.st='dash'; } } }
       if(u.st==='dash'){ const e=u.target; if(!e||e.dead){ u.st='back'; } else { mx=e.x-u.x; mz=e.z-u.z; speed=16*SQUAD_SPEED; const d=Math.hypot(mx,mz);
-        if(d<e.rad+0.7){ const crit=Math.random()<Math.min(0.9,D.crit+0.15*G.gear.ninja); const mul=crit?(U('blade3')?3.5:2.5):1; const dmg=D.dmg*rankMul*mul*(U('blade1')?1.25:1)*(PASS('shogun')?1.15:1);
-          hitEnemy(e,dmg,u); if(crit){ popText(e.x,2.3,e.z,'CRIT','crit'); sfx('crit'); } spawnParticles(e.x,1,e.z,8,0xB04FD6,5,0.3,1,0); sfx('slash'); u.atk=1; u.cd=MOD('squadCd')*D.cd; u.st='back'; } } }
+        if(d<e.rad+0.7){ const crit=Math.random()<Math.min(0.9,critOf('ninja')+0.15*G.gear.ninja); const mul=crit?(U('blade3')?3.5:2.5):1; const dmg=D.dmg*rankMul*mul*troopMul('ninja');
+          hitEnemy(e,dmg,u,arrowEl()); if(crit){ popText(e.x,2.3,e.z,'CRIT','crit'); sfx('crit'); } spawnParticles(e.x,1,e.z,8,0xB04FD6,5,0.3,1,0); sfx('slash'); u.atk=1; u.cd=MOD('squadCd')*D.cd; u.st='back'; } } }
       if(u.st==='back'){ speed=12*SQUAD_SPEED; if(Math.hypot(tx-u.x,tz-u.z)<0.6) u.st='idle'; }
     } else {
       u.rt-=dt; if(u.rt<=0){ u.rt=0.25; u.target=nearestEnemy(u.x,u.z,D.range); } if(u.target&&u.target.dead) u.target=null;
@@ -2954,30 +3111,31 @@ function update(dt){
         if(u.cls==='archer'||u.cls==='teppo'||u.cls==='falcon'){ const dmg=D.dmg*rankMul*(1+0.25*(G.gear[u.cls]||0)); fireArrow(u.x,1.0,u.z,u.target,dmg,u);
           if(u.cls==='teppo'){ spawnParticles(u.x,1.2,u.z,6,0xE8E8E8,2,0.5,1,1); sfx('zap'); }
           if(u.cls==='falcon'){ spawnParticles(u.x,1.4,u.z,5,0xC8A46E,3,0.4,1.1,0.6); }
-          if(U('vol1')&&u.cls==='archer'){ const o2=nearestEnemy(u.x,u.z,D.range,u.target); if(o2) fireArrow(u.x,1.0,u.z,o2,dmg*0.5,u); } }
-        else if(u.cls==='miko'){ const heal=D.heal*(1+0.3*(G.gear.miko||0))*rankMul;
+          if(U('vol1')){ const o2=nearestEnemy(u.x,u.z,D.range,u.target); if(o2) fireArrow(u.x,1.0,u.z,o2,dmg*0.5,u); } }
+        else if(u.cls==='miko'){ const heal=D.heal*(1+0.3*(G.gear.miko||0))*rankMul*healMul();
           for(const o of G.units) if(o!==u&&o.hp<o.max&&Math.hypot(o.x-u.x,o.z-u.z)<5) o.hp=Math.min(o.max,o.hp+heal);
           if(G.hero.alive&&Math.hypot(G.hero.x-u.x,G.hero.z-u.z)<5) G.hero.hp=Math.min(G.hero.max,G.hero.hp+heal);
           G.keepHp=Math.min(G.keepMax,G.keepHp+heal*0.5);
-          spawnParticles(u.x,1.4,u.z,10,0xFFE9A8,3,0.6,1,2); sfx('rank'); if(u.target) hitEnemy(u.target,D.dmg*rankMul,u); }
-        else if(u.cls==='kabuki'){ const D2=CLS.kabuki, dmg=D2.dmg*rankMul*(1+0.3*(G.gear.kabuki||0));
-          for(const e of G.enemies){ if(e.dead) continue; const d=Math.hypot(e.x-u.target.x,e.z-u.target.z); if(d<D2.aoe+e.rad*0.5){ hitEnemy(e,dmg,u,null,1); e.slowT=Math.max(e.slowT,1.5); e.slowF=Math.max(e.slowF,0.3); } }
-          for(const o of G.units) if(Math.hypot(o.x-u.x,o.z-u.z)<6){ o.rally=1.2; }
+          spawnParticles(u.x,1.4,u.z,10,0xFFE9A8,3,0.6,1,2); sfx('rank'); if(u.target) hitEnemy(u.target,D.dmg*rankMul*troopMul('miko'),u,arrowEl()); }
+        else if(u.cls==='kabuki'){ const D2=CLS.kabuki, dmg=D2.dmg*rankMul*(1+0.3*(G.gear.kabuki||0))*troopMul('kabuki'), KR=D2.aoe*spiritRad('kabuki');
+          for(const e of G.enemies){ if(e.dead) continue; const d=Math.hypot(e.x-u.target.x,e.z-u.target.z); if(d<KR+e.rad*0.5){ hitEnemy(e,dmg,u,arrowEl(),1); e.slowT=Math.max(e.slowT,1.5); e.slowF=Math.max(e.slowF,0.3); } }
+          for(const o of G.units) if(Math.hypot(o.x-u.x,o.z-u.z)<6){ o.rally=1.2; if(U('spirit2')) o.hp=Math.min(o.max,o.hp+6*healMul()); }
           for(let q=0;q<14;q++){ const a=q/14*6.3; spawnParticles(u.target.x+Math.sin(a)*D2.aoe*0.7,1,u.target.z+Math.cos(a)*D2.aoe*0.7,1,0xF7B6D2,2,0.5,1.2,0.4); } sfx('slash'); }
-        else if(u.cls==='foxmage'){ const dm=D.dmg*rankMul*(1+0.3*(G.gear.foxmage||0)); const t2=nearestEnemy(u.target.x,u.target.z,6,u.target)||u.target;
-          for(const tg of [u.target,t2]){ const d=Math.hypot(tg.x-u.x,tg.z-u.z); G.orbs.push({sx:u.x,sy:1.4,sz:u.z,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.3,d/12),src:u,dmg:dm,rad:D.aoe,burn:dm*0.15,fox:true}); }
+        else if(u.cls==='foxmage'){ const dm=D.dmg*rankMul*(1+0.3*(G.gear.foxmage||0))*troopMul('foxmage'); const t2=nearestEnemy(u.target.x,u.target.z,6,u.target)||u.target;
+          for(const tg of [u.target,t2]){ const d=Math.hypot(tg.x-u.x,tg.z-u.z); G.orbs.push({sx:u.x,sy:1.4,sz:u.z,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.3,d/12),src:u,dmg:dm,rad:D.aoe*spiritRad('foxmage'),burn:dm*0.15,fox:true,el:arrowEl()}); }
           spawnParticles(u.x,1.4,u.z,6,0x6FE3FF,2,0.35,1.1,1); sfx('fire'); }
-        else if(u.cls==='shugen'){ const d=Math.hypot(u.target.x-u.x,u.target.z-u.z), dm=D.dmg*rankMul*(1+0.3*(G.gear.shugen||0));
-          G.orbs.push({sx:u.x,sy:1.3,sz:u.z,tx:u.target.x,tz:u.target.z,t:0,dur:Math.max(0.3,d/13),src:u,dmg:dm,rad:D.aoe,burn:dm*0.2,flame:true}); sfx('fire'); }
-        else if(u.cls==='taiko'){ const dm=D.dmg*rankMul*(1+0.3*(G.gear.taiko||0)); let n=0;
+        else if(u.cls==='shugen'){ const d=Math.hypot(u.target.x-u.x,u.target.z-u.z), dm=D.dmg*rankMul*(1+0.3*(G.gear.shugen||0))*troopMul('shugen');
+          G.orbs.push({sx:u.x,sy:1.3,sz:u.z,tx:u.target.x,tz:u.target.z,t:0,dur:Math.max(0.3,d/13),src:u,dmg:dm,rad:D.aoe*spiritRad('shugen'),burn:dm*0.2,flame:true}); sfx('fire'); }
+        else if(u.cls==='taiko'){ const dm=D.dmg*rankMul*(1+0.3*(G.gear.taiko||0))*troopMul('taiko'); let n=0;
           eachEnemyNear(u.x,u.z,D.aoe+1,e=>{ if(e.dead||Math.hypot(e.x-u.x,e.z-u.z)>D.aoe+e.rad*0.5) return; hitEnemy(e,dm,u,'bolt',1); n++; });
           for(const o of G.units) if(Math.hypot(o.x-u.x,o.z-u.z)<6) o.rally=1.4;
           fx('fx_bolt',u.x,0.4,u.z,D.aoe*2,0.3,0xFFF27A,{flat:true,grow:0.8}); spawnParticles(u.x,1.1,u.z,10,0xFFF27A,4,0.35,1.2,0); sfx('zap'); }
         else if(u.cls==='tanuki'){ const d=Math.hypot(u.target.x-u.x,u.target.z-u.z);
           G.orbs.push({sx:u.x,sy:1.4,sz:u.z,tx:u.target.x,tz:u.target.z,t:0,dur:Math.max(0.35,d/13),src:u,bomb:true,
-            dmg:D.dmg*rankMul*(1+0.3*(G.gear.tanuki||0)), rad:D.aoe*(1+0.15*(G.gear.tanuki||0))}); sfx('bow'); }
+            dmg:D.dmg*rankMul*(1+0.3*(G.gear.tanuki||0))*troopMul('tanuki'), rad:D.aoe*(1+0.15*(G.gear.tanuki||0))}); sfx('bow');
+          if(U('vol1')){ const o2=nearestEnemy(u.x,u.z,D.range,u.target); if(o2) G.orbs.push({sx:u.x,sy:1.4,sz:u.z,tx:o2.x,tz:o2.z,t:0,dur:Math.max(0.35,Math.hypot(o2.x-u.x,o2.z-u.z)/13),src:u,bomb:true,dmg:D.dmg*rankMul*(1+0.3*(G.gear.tanuki||0))*troopMul('tanuki')*0.5,rad:D.aoe*0.8}); } }
         else { const d=Math.hypot(u.target.x-u.x,u.target.z-u.z); G.orbs.push({sx:u.x,sy:1.2,sz:u.z,tx:u.target.x,tz:u.target.z,t:0,dur:Math.max(0.3,d/14),src:u,
-          dmg:D.dmg*rankMul*(1+0.3*G.gear.onmyoji), rad:D.aoe*(U('spirit1')?1.35:1)*(1+0.25*G.gear.onmyoji)}); sfx('magic'); }
+          dmg:D.dmg*rankMul*(1+0.3*G.gear.onmyoji)*troopMul('onmyoji'), rad:D.aoe*spiritRad('onmyoji')*(1+0.25*G.gear.onmyoji), el:arrowEl()}); sfx('magic'); }
       }
     }
     if(u.target&&!u.target.dead&&!chase) u.rot=lerpAngle(u.rot,Math.atan2(u.target.x-u.x,u.target.z-u.z),1-Math.exp(-dt*12));
@@ -3022,7 +3180,8 @@ function update(dt){
     if(e.dead) continue;
     e.flash=Math.max(0,e.flash-dt*10); e.atk=Math.max(0,e.atk-dt*4); e.cd-=dt;
     if(e.slowT>0) e.slowT-=dt; if(e.freezeT>0) e.freezeT-=dt; if(e.stunT>0) e.stunT-=dt;
-    if(e.burnT>0){ e.burnT-=dt; e.hp-=e.burnDps*dt; e.burnFx-=dt; if(e.burnFx<=0){ e.burnFx=0.15; spawnParticles(e.x,e.cls==='boss'?2.5:1,e.z,1,0xFF7A2A,1.2,0.5,0.9,3); } if(e.hp<=0){ killEnemy(e,e.burnSrc); continue; } }
+    if(e.cls==='boss') bossTick(e,dt); else if(e.wbuff>0) e.wbuff-=dt;
+    if(e.burnT>0){ e.burnT-=dt; if(e.cls==='boss'){ e.hp-=bossBurn(e,e.burnDps*dt); bossGate(e); } else e.hp-=e.burnDps*dt; e.burnFx-=dt; if(e.burnFx<=0){ e.burnFx=0.15; spawnParticles(e.x,e.cls==='boss'?2.5:1,e.z,1,0xFF7A2A,1.2,0.5,0.9,3); } if(e.hp<=0){ killEnemy(e,e.burnSrc); continue; } }
     if(e.freezeT>0||e.stunT>0){ e.moving=false; continue; }
     if(e.cls==='boss') updateBoss(e,dt); else updateGrunt(e,dt);
   }
@@ -3058,8 +3217,8 @@ function update(dt){
   G.eshots=G.eshots.filter(o=>!o.done);
   for(const o of G.orbs){ o.t+=dt; if(o.t>=o.dur){ o.done=true; { const hs=o.src&&o.src.isHero; fx(o.bomb||o.fox||o.flame?'fx_fire':'fx_splash',o.tx,hs?0.15:0.9,o.tz,(o.rad||2)*(hs?1.5:2.4),0.4,o.bomb||o.flame?0xFF9A3C:(o.fox?0x6FE3FF:0xC58CFF),hs?{grow:0.6,flat:true}:{grow:0.9}); }
   spawnParticles(o.tx,0.4,o.tz,o.bomb?24:(o.big?16:12),o.bomb?0xFF9A3C:(o.fox?0x6FE3FF:0xC58CFF),o.bomb?6:4.5,0.6,1.3,-4); if(o.bomb){ G.shake=Math.max(G.shake,0.12); sfx('slam'); } sfx('magic');
-      for(const e of G.enemies){ if(e.dead) continue; if(Math.hypot(e.x-o.tx,e.z-o.tz)<o.rad+e.rad*0.5){ hitEnemy(e,o.dmg,o.src,o.burn?'fire':null,1); if(o.burn){ e.burnT=3; e.burnDps=Math.max(e.burnDps||0,o.burn); } else { e.slowT=Math.max(e.slowT,1.2); e.slowF=Math.max(e.slowF,0.25); } } }
-      if(U('spirit2')) for(const u of G.units) if(Math.hypot(u.x-o.sx,u.z-o.sz)<3.5) u.hp=Math.min(u.max,u.hp+6); } }
+      for(const e of G.enemies){ if(e.dead) continue; if(Math.hypot(e.x-o.tx,e.z-o.tz)<o.rad+e.rad*0.5){ hitEnemy(e,o.dmg,o.src,o.burn?'fire':(o.el||null),1); if(o.burn){ e.burnT=3; e.burnDps=Math.max(e.burnDps||0,o.burn); } else { e.slowT=Math.max(e.slowT,1.2); e.slowF=Math.max(e.slowF,0.25); } } }
+      if(U('spirit2')&&o.src&&TTYPE[o.src.cls]==='magic') for(const u of G.units) if(Math.hypot(u.x-o.sx,u.z-o.sz)<3.5) u.hp=Math.min(u.max,u.hp+6*healMul()); } }
   G.orbs=G.orbs.filter(o=>!o.done);
 
   // coins & ingots
@@ -3238,7 +3397,8 @@ function updateGrunt(e,dt){
     if(e.rage&&!e.raged&&e.hp<e.max*0.5){ e.raged=true; e.speed*=1.5; e.dmg*=1.6; spawnParticles(e.x,1.2,e.z,12,0xFF6A4A,5,0.5,1.5,0); popText(e.x,2.2,e.z,'ENRAGED','crit'); }
     if(e.healer&&(e.healT=(e.healT||0)-dt)<=0){ e.healT=1.2;
       for(const o of G.enemies){ if(o.dead||o===e) continue; if(Math.hypot(o.x-e.x,o.z-e.z)<5.5&&o.hp<o.max){ o.hp=Math.min(o.max,o.hp+o.max*0.06); spawnParticles(o.x,1.4,o.z,2,0x8CFFB4,1.5,0.5,1,1.5); } } }
-    if((e.auraT=(e.auraT||0)-dt)<=0){ e.auraT=0.25; spawnParticles(e.x,0.5,e.z,1,e.mutCol,0.8,0.5,1.1,0.6); }
+    eliteTick(e,dt);
+    if((e.auraT=(e.auraT||0)-dt)<=0){ e.auraT=0.12; spawnParticles(e.x+rand(-0.4,0.4),0.3,e.z+rand(-0.4,0.4),1,e.mutCol,0.9,0.6,1.3,1.4); }
   }
   const D=EN[e.cls];
   e.rt-=dt; if(e.rt<=0){ e.rt=0.3; e.target=nearestPlayer(e.x,e.z,D.aggro); } if(e.target&&!e.target.alive) e.target=null;
@@ -3281,7 +3441,7 @@ function bossWatchdog(e,dt){
     e._wx=e.x; e._wz=e.z; e._wt=0; } }
 function updateBoss(e,dt){
   bossWatchdog(e,dt);
-  const D=BOSSES[e.kind], enr=e.hp<e.max*0.4;
+  const D=BOSSES[e.kind], enr=(e.phase||0)>=1||e.hp<e.max*0.4;
   if(e.st==='cast'){ e.moving=false; return; }
   if(e.st==='recover'){ e.timer-=dt; e.moving=false; if(e.timer<=0) e.st='move'; return; }
   if(e.st==='dash'){ const dx=e.dx2-e.x, dz=e.dz2-e.z, d=Math.hypot(dx,dz); const step=22*dt;
@@ -3308,7 +3468,7 @@ function updateBoss(e,dt){
   if(aim) e.stallT=0;
   if(aim&&e.atkT<=0){ let pat=next;
     if(blocked||e.blockT>0.5){ const wall=['slam','donut','line','summon']; if(!wall.includes(pat)) pat=wall[e.pi%wall.length]; }
-    castPattern(e,pat,aim[0],aim[1],enr); e.pi++; e.atkT=enr?1.5:2.5; }
+    castPattern(e,pat,aim[0],aim[1],enr); e.pi++; e.atkT=bossCadence(e,enr); if((e.phase||0)>=2&&e.pi%2===0&&pat!=='summon') furyBarrage(e); }
 }
 function castPattern(e,p,ax,az,enr){
   const D=BOSSES[e.kind], dx0=ax-e.x, dz0=az-e.z, d0=Math.hypot(dx0,dz0)||1, ux=dx0/d0, uz=dz0/d0, dmg=e.dmg;
@@ -3322,7 +3482,7 @@ function castPattern(e,p,ax,az,enr){
   else if(p==='volley'){ for(let k=0;k<5;k++){ const a=rand(0,Math.PI*2), r=k?rand(1.5,3.8):0; addTg({shape:'circle',x:ax+Math.cos(a)*r,z:az+Math.sin(a)*r,r:1.6,dur:0.9+k*0.12,dmg:dmg*0.8,owner:e,shake:0.15,sound:'fire',col:0x6FE3FF,keepDmg:8,fenceDmg:40,onDone:k===4?fin(0.5):null}); } e.castDur=1.4; }
   else if(p==='line'){ addTg({shape:'rect',x:e.x,z:e.z,dx:ux,dz:uz,len:13,w:2.2,dur:1.0,dmg:dmg*1.1,owner:e,sound:'ice',col:e.kind==='shogun'?0xFF7A2A:0xBFF0FF,onDone:fin()}); e.castDur=1.0; }
   else if(p==='donut'){ addTg({shape:'donut',x:e.x,z:e.z,r:7,dur:1.1,dmg:dmg*1.1,owner:e,col:0xFF7A2A,sound:'fire',onDone:fin()}); e.castDur=1.1; }
-  else if(p==='summon'){ const [type,n]=D.summon; for(let k=0;k<n;k++) spawnEnemy(type,e.lane,e); spawnParticles(e.x,1,e.z,30,0xB04FD6,6,0.7,1.3,-4); sfx('magic'); toast('Minions summoned',1.2); e.st='recover'; e.timer=0.6; }
+  else if(p==='summon'){ const [type,n0]=D.summon, wl=e.trait==='warlord', n=wl?Math.ceil(n0*1.5):n0; for(let k=0;k<n;k++){ const m=spawnEnemy(type,e.lane,e); if(wl&&k%4===0) forceMut(m); } spawnParticles(e.x,1,e.z,30,0xB04FD6,6,0.7,1.3,-4); sfx('magic'); toast('Minions summoned',1.2); e.st='recover'; e.timer=0.6; }
   else if(p==='blink'){ const h=G.hero; const bx=(h.alive?h.x:KEEP.x)+rand(-1,1)*6, bz=(h.alive?h.z:KEEP.z)+rand(-1,1)*6; spawnParticles(e.x,1.5,e.z,24,0xF5F5F5,5,0.6,1.2,-2);
     const dk=Math.hypot(bx-KEEP.x,bz-KEEP.z)||1; e.x=dk<3.5?KEEP.x+(bx-KEEP.x)/dk*3.5:bx; e.z=dk<3.5?KEEP.z+(bz-KEEP.z)/dk*3.5:bz; spawnParticles(e.x,1.5,e.z,24,0x6FE3FF,5,0.6,1.2,-2); sfx('magic'); e.st='recover'; e.timer=0.5; }
 }
@@ -3570,7 +3730,7 @@ function updateHud(force){ try{ syncSumBtn(); }catch(err){}
   const title=`Stage ${G.si+1}: ${G.st.name}`, sub=`Wave ${wave} of ${W.length}`+(next!==null?`, next in ${next}s`:(G.enemies.length?', final wave':''));
   if($('wave').dataset.t!==title+sub){ $('wave').dataset.t=title+sub; $('waveTitle').textContent=title; $('waveNext').textContent=sub; }
   $('keepFill').style.transform=`scaleX(${clamp(G.keepHp/G.keepMax,0,1)})`;
-  if(G.boss) $('bossFill').style.transform=`scaleX(${clamp(G.boss.hp/G.boss.max,0,1)})`;
+  if(G.boss){ $('bossFill').style.transform=`scaleX(${clamp(G.boss.hp/G.boss.max,0,1)})`; bossUi(G.boss); }
   if(force||G.stack!==G.lastStack){ const pill=$('coinPill'); $('coinTxt').textContent=G.stack;
     if(!force){ pill.classList.toggle('up',G.stack>G.lastStack); pill.classList.toggle('down',G.stack<G.lastStack); if(G.pillT<=0){ pill.classList.remove('punch'); void pill.offsetWidth; pill.classList.add('punch'); G.pillT=0.12; } G.pillColT=0.3; }
     G.lastStack=G.stack; }
@@ -3807,8 +3967,8 @@ function renderMap(){
   $('stageList').innerHTML=html; $('stageList').className='stagegrid'; renderShops(); if($('walCoins')){ $('walCoins').textContent=SAVE.honor; $('walJade').textContent=SAVE.jade||0; }
 }
 function renderShops(){
-  const h=PERKS.map(p=>{ const lv=PK(p.id), max=lv>=PERK_MAX;
-    return `<button class="perk${max?' max':''}" data-p="${p.id}"><b>${p.name}</b><em>Lv ${lv}/${PERK_MAX}</em><small>${p.desc} per level</small><small class="now">Now: ${p.at?p.at(lv):'+'+lv+' levels'}</small><span>${max?'Max':'🪙 '+perkCost(p,lv)}</span></button>`; }).join('');
+  const h=PERKS.map(p=>{ const lv=PK(p.id), max=lv>=pmax(p);
+    return `<button class="perk${max?' max':''}" data-p="${p.id}"><b>${p.name}</b><em>Lv ${lv}/${pmax(p)}</em><small>${p.desc} per level</small><small class="now">Now: ${p.at?p.at(lv):'+'+lv+' levels'}</small><span>${max?'Max':'🪙 '+perkCost(p,lv)}</span></button>`; }).join('');
   $('perkList').innerHTML=h; $('endShop').innerHTML=h; $('honorTxt').textContent=SAVE.honor; $('endTreas').textContent=SAVE.honor;
 }
 $('acctBtn').addEventListener('click',async()=>{ if(Cloud.user){ await Cloud.signOut(); renderHome(); } else { authMsg(Cloud.enabled?'':'Accounts are not configured for this site yet.'); showAuth(true); } });
@@ -3816,8 +3976,8 @@ $('stageList').addEventListener('click',e=>{ const b=e.target.closest('.stage');
   if(!(PACKS.chars&&PACKS.world&&PACKS.bosses)){ whenPacks(()=>PACKS.chars&&PACKS.world&&PACKS.bosses,()=>{ const el=document.getElementById('streamTag'); if(el) el.style.display='none'; if((SAVE.stars[i]||0)>0&&!window.__skipDiff){ openDiff(i); return; } window.__skipDiff=false; startStage(i); showScreen('hud'); }); return; }
   audioInit(); if(!window.__skipDiff){ window.__pendDiff=0; openLoadout(i); return; } window.__skipDiff=false; startStage(i); });
 function buyPerk(e){ const b=e.target.closest('.perk'); if(!b) return; const p=PERKS.find(x=>x.id===b.dataset.p), lv=PK(p.id), c=perkCost(p,lv);
-  if(lv>=PERK_MAX||SAVE.honor<c){ b.animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'none'}],{duration:250}); return; }
-  SAVE.honor-=c; SAVE.perks[p.id]++; persist(); sfx('buy'); renderShops(); if($('walCoins')) $('walCoins').textContent=SAVE.honor; }
+  if(lv>=pmax(p)||SAVE.honor<c){ b.animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'none'}],{duration:250}); return; }
+  SAVE.honor-=c; SAVE.perks[p.id]=(SAVE.perks[p.id]||0)+1; persist(); sfx('buy'); renderShops(); if($('walCoins')) $('walCoins').textContent=SAVE.honor; }
 $('perkList').addEventListener('click',buyPerk); $('endShop').addEventListener('click',buyPerk);
 function endStage(won){
   if(G.state!=='play') return; G.state=won?'win':'lose'; gsDrive(G); closeArmory(); joy.style.display='none'; inp.active=false; inp.x=inp.y=0;
@@ -3874,5 +4034,5 @@ $('avatar').src=ART.hero; $('titleHero').src=ART[(HEROES[SAVE.hero]||HEROES.roni
 })();
 startStage(0); G.state='title'; showScreen('title'); $('toast').classList.remove('show'); toastTimer=0;
 requestAnimationFrame(frame);
-window.__T={ themes:()=>STAGES.map(x=>x.theme), unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
+window.__T={ themes:()=>STAGES.map(x=>x.theme), unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, boss:()=>{ const e=G&&G.boss; return e&&{kind:e.kind,trait:e.trait,phase:e.phase,hp:e.hp,max:e.max,guard:e.guard,guardMax:e.guardMax,broke:e.brokeT,inv:e.invT,st:e.st}; }, troopMul:c=>troopMul(c), troopHp:c=>troopHpMul(c), buy:id=>{ const u=UPG.find(x=>x.id===id); if(u.rep) G.lvls[id]=(G.lvls[id]||0)+1; else G.up.add(id); if(id==='oni1'||/^d_/.test(id)) rescaleHp(); }, forceMut:(e,id)=>forceMut(e,id), spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
 })();
