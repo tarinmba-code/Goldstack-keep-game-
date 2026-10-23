@@ -677,7 +677,7 @@ if(GFX==='3d') load3DKit().catch(err=>console.warn('3D kit failed to load:',err&
   chip.textContent=GFX==='3d'?'3D on · tap for classic':'Classic · tap for 3D'; bar.appendChild(chip);
   chip.addEventListener('click',()=>{ try{ localStorage.setItem('gk-gfx2',GFX==='3d'?'sprite':'3d'); }catch(e){} const u=new URL(location.href); u.searchParams.delete('gfx'); location.replace(u.toString()); });
   if(GFX==='3d'){ const sb=document.createElement('button'); sb.id='gfxstyle'; sb.type='button'; bar.appendChild(sb);
-    const cur=()=>{ const C=window.GK3D_CHARS&&CH3(); return C?C.style():'anime'; };
+    const cur=()=>{ const C=window.GK3D_CHARS&&CH3(); return C?C.style():'chibi'; };
     const label=()=>{ const a=cur()==='anime'; sb.textContent=a?'Style: Anime · tap for Chibi':'Style: Chibi · tap for Anime'; sb.className=a?'anime':'chibi'; };
     sb.addEventListener('click',e=>{ e.stopPropagation(); const C=CH3(); if(!C) return; C.setStyle(C.style()==='anime'?'chibi':'anime'); label(); if(typeof sfx==='function') try{ sfx('rank'); }catch(_){} });
     setTimeout(label,0); }
