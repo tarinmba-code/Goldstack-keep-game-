@@ -2953,6 +2953,8 @@ function update(dt){
     if(d>0.05){ const sp=chase||u.st==='dash'?speed:Math.min(d*8,speed*(d>4?1.4:1)); const step=Math.min(d,sp*dt); u.x+=mx/d*step; u.z+=mz/d*step; u.moving=sp>0.6;
       if(!(u.target&&!u.target.dead&&u.cls!=='samurai'&&u.cls!=='ninja')) u.rot=lerpAngle(u.rot,Math.atan2(mx,mz),1-Math.exp(-dt*10)); } else u.moving=false;
     if(!u.moving&&!(u.target&&!u.target.dead)) u.rot=lerpAngle(u.rot,CAMROT,1-Math.exp(-dt*4));
+    if(h.alive){ const hx=u.x-cx, hz=u.z-cz, hd=Math.hypot(hx,hz), cl=heroClear()*0.85;   /* never stand on top of the hero */
+      if(hd<cl){ const k=Math.min(1,dt*12)*(cl-hd), nx=hd>0.001?hx/hd:Math.sin(u.seed), nz=hd>0.001?hz/hd:Math.cos(u.seed); u.x+=nx*k; u.z+=nz*k; } }
   }
   for(const u of G.units) if(u.rally>0) u.rally-=dt;
   G.units=G.units.filter(u=>u.alive);
@@ -3135,7 +3137,11 @@ function update(dt){
     } }
 }
 const st_amb_size=()=>G.st.theme==='snow'?0.7:0.55;
-function slotOffset(i){ const sp=0.9; let ring=1,start=0; while(i>=start+6*ring){ start+=6*ring; ring++; } const a=((i-start)/(6*ring))*Math.PI*2+ring*0.5; return {x:Math.cos(a)*ring*sp,z:Math.sin(a)*ring*sp,ring}; }
+/* v69: the squad forms rings that start outside the hero's own footprint, so the hero always stands clear in the middle */
+function heroClear(){ const H=(G&&G.heroDef&&G.heroDef.h)||2.2; return clamp(0.3*H+0.85,1.6,3.1); }
+function slotOffset(i){ const sp=0.9, r0=heroClear(); let k=0,start=0,cap=Math.max(6,Math.floor(Math.PI*2*r0/sp));
+  while(i>=start+cap){ start+=cap; k++; cap=Math.max(6,Math.floor(Math.PI*2*(r0+k*sp)/sp)); }
+  const r=r0+k*sp, a=((i-start)/cap)*Math.PI*2+k*0.5; return {x:Math.cos(a)*r,z:Math.sin(a)*r,ring:k+1,r}; }
 function fenceNear(x,z,pad){ for(const k in G.fences){ const f=G.fences[k]; if(!f.built||f.hp<=0) continue;
     for(const g of f.segs) if(pointSegDist(x,z,g[0],g[1],g[2],g[3])<pad) return f; } return null; }
 function moveEnemy(e,mx,mz,dt,onBlocked){
@@ -3348,7 +3354,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   const bob=h.moving?Math.abs(Math.sin(t*13))*0.12:0;
   hero.g.position.set(h.x,bob,h.z); hero.g.rotation.y=h.rot; hero.g.rotation.z=h.moving?Math.sin(t*13)*0.05:0;
   for(const m of hero.mats) m.emissive.setScalar(h.flash*0.5);
-  const n=G.units.length, rings=n?slotOffset(n-1).ring:0, rr=0.9*(rings+0.9)+0.35, rc=h.alive?h:{x:0,z:6};
+  const n=G.units.length, rr=n?slotOffset(n-1).r+0.55:1.5, rc=h.alive?h:{x:0,z:6};
   hero.ring.position.set(rc.x,0.06,rc.z); hero.ring.scale.setScalar(lerp(hero.ring.scale.x,Math.max(1.5,rr),1-Math.exp(-dt*6)));
 
   hero.g.visible=false;
@@ -3831,5 +3837,5 @@ $('avatar').src=ART.hero; $('titleHero').src=ART[(HEROES[SAVE.hero]||HEROES.roni
 })();
 startStage(0); G.state='title'; showScreen('title'); $('toast').classList.remove('show'); toastTimer=0;
 requestAnimationFrame(frame);
-window.__T={ w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
+window.__T={ unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
 })();
