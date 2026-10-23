@@ -367,7 +367,7 @@ const RECRUITS = {
 };
 const UNIT_SPR={archer:'archer',samurai:'samurai',onmyoji:'onmyoji',ninja:'ninja',oniw:'oni',yari:'yari',teppo:'teppo',sohei:'sohei',miko:'miko',tanuki:'tanuki',sumo:'sumo',kabuki:'kabuki',falcon:'falcon',kusari:'kusari',komainu:'komainu',shugen:'shugen',kunoichi:'kunoichi',taiko:'taiko',naginata:'naginata',tate:'tate',foxmage:'foxmage'};
 const MELEE_CLS=['samurai','oniw','yari','sohei','sumo','kusari','komainu','kunoichi','naginata','tate'];
-const ICONS = {sumopit:'🤼', kabukipit:'🎭', falconpit:'🦅', kusaripit:'⛓️', komainupit:'🦁', shugenpit:'🔥', kunoichipit:'❄️', taikopit:'🥁', naginatapit:'🗡️', tatepit:'🛡️', foxmagepit:'🦊', yaripit:'🔱', teppopit:'💥', soheipit:'🔔', mikopit:'🎐', tanukipit:'🧨', ctower:'💣', onipit:'👹', range:'🏹', dojo:'⚔️', shrine:'⛩️', ninja:'🥷', banner:'🎌', mine:'⛏️', forge:'🔥', armory:'🛡️', tower:'🗼', fence:'🪵', tup:'⬆️', lvl2:'⭐'};
+const ICONS = {acad_ground:'⚔️', acad_heavy:'👹', acad_mage:'⛩️', aup:'⬆️', sumopit:'🤼', kabukipit:'🎭', falconpit:'🦅', kusaripit:'⛓️', komainupit:'🦁', shugenpit:'🔥', kunoichipit:'❄️', taikopit:'🥁', naginatapit:'🗡️', tatepit:'🛡️', foxmagepit:'🦊', yaripit:'🔱', teppopit:'💥', soheipit:'🔔', mikopit:'🎐', tanukipit:'🧨', ctower:'💣', onipit:'👹', range:'🏹', dojo:'⚔️', shrine:'⛩️', ninja:'🥷', banner:'🎌', mine:'⛏️', forge:'🔥', armory:'🛡️', tower:'🗼', fence:'🪵', tup:'⬆️', lvl2:'⭐'};
 
 /* ================================================================ helpers */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -932,7 +932,7 @@ function genLayout(si){
   lanes.forEach((pts,i)=>{ const ca=crossA[i], f=[]; for(let k=-2;k<=2;k++) f.push(polar(ca+k*0.17,12.5+(k%2?0.3:0))); fences[i]=f; });
   // lane order for towers: outer lanes first
   const order=[]; let lo=0, hi=lanes.length-1; while(lo<=hi){ order.push(lo); if(hi!==lo) order.push(hi); lo++; hi--; }
-  P('range1','range',0,0,0);
+  P('range1','acad_ground',0,0,0);
   /* back camp: everything that trains troops sits south of the keep, behind the castle and inside the gates */
   const inCamp=(x,z)=>{ const d=Math.hypot(x-KEEP.x,z-KEEP.z); if(z<KEEP.z+2.4||d>23.5||Math.abs(x)>17) return false;
     return d<=11.2||Math.abs(angOf(x,z))>=2.25; };
@@ -940,7 +940,7 @@ function genLayout(si){
   camp.sort((a,b)=>Math.hypot(a[0],a[1]-(KEEP.z+8))-Math.hypot(b[0],b[1]-(KEEP.z+8)));
   const place=(p)=>{ for(const pd of [3.0,2.8,2.6]) for(const s of camp){ if(okPad(s[0],s[1],pd,1.6)){ p.x=s[0]; p.z=s[1]; return true; } }
     for(let k=0;k<400;k++){ const x=rand(-14,14), z=rand(KEEP.z+3,KEEP.z+21); if(inCamp(x,z)&&okPad(x,z,2.6,1.2)){ p.x=x; p.z=z; return true; } } return false; };
-  pads.pop(); const range1=P('range1','range',0,0,0); place(range1);
+  pads.pop(); const range1=P('range1','acad_ground',0,0,0); place(range1);
   const towers=[];
   order.forEach((li,k)=>{
     const ca=crossA[li]; let spot=null;
@@ -959,30 +959,12 @@ function genLayout(si){
   });
   lanes.forEach((pts,i)=>{ const [x,z]=polar(crossA[i],9.6); P('fence_'+i,'fence',17,x,z,{req:['tower_'+i], fence:i}); });
   const basePad=(id,kind,cost,req,extra={})=>{ const p=P(id,kind,cost,0,0,Object.assign({req},extra)); if(!place(p)) pads.splice(pads.indexOf(p),1); return p; };
-  basePad('dojo','dojo',11,['range1']);
-  basePad('mine','mine',25,['dojo']);
-  basePad('banner1','banner',20,['dojo']);
+  if(ACAD.acad_heavy.order.some(hasSq)) basePad('acad_heavy','acad_heavy',30,['range1']);
+  if(ACAD.acad_mage.order.some(hasSq)) basePad('acad_mage','acad_mage',30,['range1']);
+  basePad('mine','mine',25,['range1']);
+  basePad('banner1','banner',20,['range1']);
   basePad('armory','armory',30,['mine']);
   basePad('forge','forge',45,['mine']);
-  if(hasSq('onmyoji')) basePad('shrine','shrine',25,['banner1']);
-  if(hasSq('ninja')) basePad('ninja','ninja',28,['armory']);
-  if(hasSq('oniw')) basePad('onipit','onipit',32,['banner1']);
-  if(hasSq('yari')) basePad('yaripit','yaripit',14,['range1']);
-  if(hasSq('teppo')) basePad('teppopit','teppopit',25,['dojo']);
-  if(hasSq('sohei')) basePad('soheipit','soheipit',32,['banner1']);
-  if(hasSq('miko')) basePad('mikopit','mikopit',28,['mine']);
-  if(hasSq('tanuki')) basePad('tanukipit','tanukipit',35,['armory']);
-  if(hasSq('sumo')) basePad('sumopit','sumopit',39,['dojo']);
-  if(hasSq('kabuki')) basePad('kabukipit','kabukipit',32,['banner1']);
-  if(hasSq('falcon')) basePad('falconpit','falconpit',35,['range1']);
-  if(hasSq('kusari')) basePad('kusaripit','kusaripit',35,['armory']);
-  if(hasSq('komainu')) basePad('komainupit','komainupit',39,['mine']);
-  if(hasSq('shugen')) basePad('shugenpit','shugenpit',40,['armory']);
-  if(hasSq('kunoichi')) basePad('kunoichipit','kunoichipit',40,['dojo']);
-  if(hasSq('taiko')) basePad('taikopit','taikopit',42,['banner1']);
-  if(hasSq('naginata')) basePad('naginatapit','naginatapit',36,['dojo']);
-  if(hasSq('tate')) basePad('tatepit','tatepit',40,['banner1']);
-  if(hasSq('foxmage')) basePad('foxmagepit','foxmagepit',38,['mine']);
   if(si>=2) basePad('banner2','banner',40,['forge']);
   // level-2 and tower upgrade pads near their parent
   const near=(parent,id,kind,cost,req,extra)=>{ if(!parent||pads.indexOf(parent)<0) return;
@@ -998,7 +980,7 @@ function genLayout(si){
       for(const pd of [2.6,2.3,2.0]) for(const [x,z] of c2) if(okPad(x,z,pd,1.0)){ P(id,kind,cost,x,z,Object.assign({req,cur:'ingot'},extra)); return; } } };
   towers.forEach(t=>near(t,'tup_'+t.id,'tup',5,[t.id,'forge'],{target:t.id}));
   pads.filter(q=>q.kind==='fence').forEach(fp=>near(fp,'fup_'+fp.id,'fup',6,[fp.id,'forge'],{target:fp.fence}));
-  [['range1','range2'],['dojo','dojo2'],['shrine','shrine2'],['ninja','ninja2'],['onipit','onipit2'],['yaripit','yaripit2'],['teppopit','teppopit2'],['soheipit','soheipit2'],['mikopit','mikopit2'],['tanukipit','tanukipit2'],['sumopit','sumopit2'],['kabukipit','kabukipit2'],['falconpit','falconpit2'],['kusaripit','kusaripit2'],['komainupit','komainupit2'],['shugenpit','shugenpit2'],['kunoichipit','kunoichipit2'],['taikopit','taikopit2'],['naginatapit','naginatapit2'],['tatepit','tatepit2'],['foxmagepit','foxmagepit2']].forEach(([a,b])=>{ const par=pads.find(p=>p.id===a); near(par,b,'lvl2',6,[a,'forge'],{target:a}); });
+  [['range1','aup_ground','acad_ground'],['acad_heavy','aup_heavy','acad_heavy'],['acad_mage','aup_mage','acad_mage']].forEach(([a,b,k])=>{ const par=pads.find(p=>p.id===a); near(par,b,'aup',ACAD[k].cost,[a],{target:a,cur:'gold'}); });
   return v65Layout(si,{lanes, fences, pads});
 }
 
@@ -1017,7 +999,7 @@ const RULES={
   drought:{name:'Gold Drought', icon:'🏜️', desc:'No gold mine on this map. Every defeated foe drops double gold.'},
   sky:    {name:'Sky Raid',     icon:'🦅', desc:'Every other wave is flying raiders only.'},
   rams:   {name:'Siege Rams',   icon:'🐏', desc:'Armoured rams join every third wave. Palisades start 50% tougher.'},
-  fort:   {name:'Old Fort',     icon:'🏯', desc:'Every watchtower stands ready. Cannon towers cannot be built.'}};
+  fort:   {name:'Old Fort',     icon:'🏯', desc:'Every watchtower stands ready from the start.'}};
 const RULE_ORDER=['fog','swarm','drought','sky','rams','fort'];
 const stageRule=si=>si>=5?RULE_ORDER[(si-5)%RULE_ORDER.length]:null;
 const _allLanes=nL=>[...Array(nL).keys()];
@@ -1046,10 +1028,10 @@ function applyStageWaves(si,W){
   const S=stageSig(si); if(S){ const w=sigWave(si); W[w].g.push(...S.make(nL,si)); W[w].sig=S; }
   return W; }
 function v65Layout(si,L){ const rule=stageRule(si), FEAT=stageFeat(si);
-  for(const p of L.pads) if(FEAT.some(c=>padKindOf(c)===p.kind)) p.trial=true;
-  const drop=new Set(); if(rule==='drought') drop.add('mine'); if(rule==='fort') L.pads.forEach(p=>{ if(p.kind==='ctower') drop.add(p.id); });
+  for(const p of L.pads) if(ACAD[p.kind]&&FEAT.some(c=>ACAD[p.kind].order.includes(c))) p.trial=true;
+  const drop=new Set(); if(rule==='drought') drop.add('mine'); L.pads.forEach(p=>{ if(p.kind==='ctower') drop.add(p.id); });
   if(drop.size){ let pads=L.pads.filter(p=>!drop.has(p.id));
-    pads.forEach(p=>{ if(p.req.includes('mine')) p.req=p.req.map(r=>r==='mine'?'dojo':r); });
+    pads.forEach(p=>{ if(p.req.includes('mine')) p.req=p.req.map(r=>r==='mine'?'range1':r); });
     pads=pads.filter(p=>!p.req.some(r=>drop.has(r))); L.pads=pads; }
   return L; }
 const fogMul=a=>(G&&G.rule==='fog'&&Math.hypot(a.x-G.hero.x,a.z-G.hero.z)>9)?0.65:1;
@@ -1062,11 +1044,12 @@ function stageBriefHtml(si){ const r=stageRule(si), S=stageSig(si), F=stageFeat(
     (F.length?`<div class="v65card"><b>🎖️ Trial troops</b><span class="v65imgs">${F.map(c=>`<span class="v65u"><img src="${ART[UNIT_SPR[c]]||''}" alt=""><i>${RECRUITS[c].name}</i></span>`).join('')}</span>Pre-built and free this stage.${F.some(c=>!own.includes(c))?' Win to get 30% off them in Recruits.':''}</div>`:'')+
     `</div></div>`; }
 function stageStartV65(si){
-  G.rule=stageRule(si); G.feat=stageFeat(si); G.v2Q=[]; G.v2Burn=[]; G.sqWarnT=0; G.sqToldT=-99; G.tierT=0;
+  G.rule=stageRule(si); G.feat=stageFeat(si); G.acad={}; G.v2Q=[]; G.v2Burn=[]; G.sqWarnT=0; G.sqToldT=-99; G.tierT=0;
   if(G.rule==='drought') G.mods.kill=(G.mods.kill||1)*2;
   if(G.rule==='rams') for(const k in G.fences){ const f=G.fences[k]; f.max=Math.round(f.max*1.5); if(f.built) f.hp=f.max; }
   const pre=p=>{ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); };
   G.pads.filter(p=>p.trial&&!p.done).forEach(pre);
+  for(const id in G.acad){ const A=G.acad[id]; let n=0; while(G.feat.some(c=>ACAD[A.kind].order.includes(c)&&acadAvail(A.kind).includes(c)&&!A.types.includes(c))&&n++<4) acadLevelUp(id); }
   if(G.rule==='fort') G.pads.filter(p=>p.kind==='tower'&&!p.done).forEach(pre);
   { let fg=$('v65fog'); if(!fg){ fg=document.createElement('div'); fg.id='v65fog'; document.body.appendChild(fg); } fg.classList.toggle('on',G.rule==='fog'); }
   /* stage brief: the rule and the trial troops, shown for six seconds, then a chip under the wave panel */
@@ -1131,7 +1114,7 @@ function elFlash(bg,peak,ms){ let el=document.getElementById('v2flash'); if(!el)
    Power = the hero's damage after War Camp, armory and card bonuses. 600+ adds element accents, 1500+ adds the full show. */
 const HCOL={arrow:0xFFE9A8,wind:0xBFF7FF,orb:0xC58CFF,fox:0x6FE3FF,melee:0xFF9A30,blade:0xD8B4FF,ice:0x9FE6FF,bolt:0xFFF27A,flame:0xFF7A2A};
 const dimC=(c,f)=>((((c>>16)&255)*f)<<16)|((((c>>8)&255)*f)<<8)|((c&255)*f|0);
-const heroPower=HD=>HD.dmg*MOD('heroDmg')*(1+0.12*PK('hero'))*(1+0.1*LV('m_hero'))*PG('dmg');
+const heroPower=HD=>HD.dmg*(1+0.12*PK('hero'))*((HD.pass&&HD.pass.dmg)||1);   /* v67: permanent power only, so a hero looks the same in every stage */
 const heroTier=HD=>{ const p=heroPower(HD); return p>=1500?3:p>=600?2:1; };
 function heroFxPlus(h,HD){ const tg=h.target; if(!tg||!h.alive) return; vfx2Init();
   const tier=heroTier(HD), A=HD.attack, c=HCOL[A]||0xFFFFFF, tx=tg.x, tz=tg.z, dx=tx-h.x, dz=tz-h.z, L=Math.max(0.5,Math.hypot(dx,dz)), sr=scrRot(dx,dz);
@@ -1248,6 +1231,8 @@ function skyImpactFx(b,R){ const c=b.col, x=b.x, z=b.z;
   .v65imgs i{ font-style:normal; font-size:11px; }
   .hbtn .deal{ display:block; font-size:10px; color:#2E7D32; }
   #v2flash{ position:fixed; inset:0; pointer-events:none; z-index:7; opacity:0; }
+  .hcard .pow{ display:block; font-size:10.5px; font-weight:800; color:#7A4E12; margin-top:1px; }
+  .pad .lv{ font-size:11px; margin-left:3px; color:#7A4E12; font-family:"Nunito Sans",sans-serif; font-weight:800; }
   #v65fog{ position:fixed; inset:0; pointer-events:none; z-index:6; opacity:0; transition:opacity 1.2s;
     background:radial-gradient(circle at 50% 54%, rgba(12,18,46,0) 16%, rgba(12,18,46,.5) 52%, rgba(6,10,30,.8) 100%); }
   #v65fog.on{ opacity:1; }
@@ -1650,7 +1635,7 @@ function bossIntro(name,kind){ if(G) G.camPunch=-0.22;
 
 /* ================================================================ game state */
 let G=null;
-function startStage(si){ document.body.classList.remove('cinema'); restoreFused(); if(window.G){ G.cleanupT=0; G.bossesDown=0; G.cine=null; G.seenBoss={}; G.lastBoss=null; } { const c=document.getElementById('cine'); if(c){ c.innerHTML=''; c.className=''; } } if(window.G&&G.etowers){ for(const t of G.etowers) scene.remove(t.g); }
+function startStage(si){ document.body.classList.remove('cinema'); restoreFused(); if(G){ G.cleanupT=0; G.bossesDown=0; G.cine=null; G.seenBoss={}; G.lastBoss=null; } { const c=document.getElementById('cine'); if(c){ c.innerHTML=''; c.className=''; } } if(G&&G.etowers){ for(const t of G.etowers) scene.remove(t.g); }
 
   disposeGroup(dyn); $('labels').innerHTML='';
   numPool.forEach(n=>{ n.active=false; n.el.style.display='none'; });
@@ -1679,7 +1664,7 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
     g.add(mk(new T.BoxGeometry(2.45,0.14,2.45),new T.MeshLambertMaterial({color:fupP?0xFFD34D:ing?0x62AEEF:0x6FDB4F}),0,0.1,0,false));
     const fill=mk(new T.BoxGeometry(2.45,0.15,2.45),new T.MeshLambertMaterial({color:0xF4FFE8,transparent:true,opacity:.75}),0,0.11,0,false); fill.scale.set(0.001,1,0.001); g.add(fill);
     g.visible=false; dyn.add(g);
-    const el=document.createElement('div'); el.className='pad'+(fupP?' fup':ing?' ing':''); el.innerHTML=(ICONS[d.kind]?`<span class="ic">${ICONS[d.kind]}</span>`:'')+'<b></b>'; el.style.display='none'; $('labels').appendChild(el);
+    const el=document.createElement('div'); el.className='pad'+(fupP?' fup':ing?' ing':''); el.innerHTML=(ICONS[d.kind]?`<span class="ic">${ICONS[d.kind]}</span>`:'')+'<b></b>'+(d.kind==='aup'?'<i class="lv">Lv 2</i>':''); el.style.display='none'; $('labels').appendChild(el);
     G.pads.push(Object.assign({},d,{paid:0,carry:0,standT:0,active:false,done:false,doneT:-1,g,fill,el,numEl:el.querySelector('b'),shown:-1}));
   }
   refreshPads();
@@ -1779,7 +1764,7 @@ function partCap(){ return QL>=0.9?880:QL>=0.6?600:QL>=0.45?420:300; }
 function newPart(){ const P=G.parts, cap=partCap(); let o;
   if(P.length>=cap){ _partRing=(_partRing+1)%P.length; o=P[_partRing]; }   /* full: recycle an old particle in place */
   else { o=PART_POOL.pop()||{}; P.push(o); } return o; }
-function spawnParticles(x,y,z,n,color,spd=4,life=0.5,size=1,grav=-9){ if(QL<1){ n=Math.max(1,Math.round(n*QL)); if(QL<0.5&&Math.random()>0.6) return; }
+function spawnParticles(x,y,z,n,color,spd=4,life=0.5,size=1,grav=-9){ if(QL<1&&!(G&&G._vfx)){ n=Math.max(1,Math.round(n*QL)); if(QL<0.5&&Math.random()>0.6) return; }
   for(let i=0;i<n;i++){ const a=rand(0,Math.PI*2), s=rand(0.4,1)*spd, o=newPart();
     o.x=x; o.y=y; o.z=z; o.vx=Math.cos(a)*s; o.vy=rand(0.5,1.4)*spd*0.8; o.vz=Math.sin(a)*s; o.life=life; o.max=life; o.size=size*rand(0.7,1.3); o.col=color; o.grav=grav; o.rx=rand(0,3); o.ry=rand(0,3); }
 }
@@ -1980,6 +1965,56 @@ function resolveTg(tg){
 }
 
 /* ================================================================ structures */
+
+/* ================================================================ v67 · academies
+   Three halls replace the 21 single-type barracks. Each upgrade adds the next soldier type you own
+   (trial troops first); once every owned type is in, upgrades add one more of each and better gear. */
+const ACAD={
+  acad_ground:{name:'Ground Troops',       icon:'⚔️', sprite:'b_range',  cost:11, order:['archer','samurai','yari','teppo','falcon','naginata','kusari']},
+  acad_heavy: {name:'Heavy Units',         icon:'👹', sprite:'b_onipit', cost:25, order:['oniw','sohei','tanuki','sumo','komainu','tate','taiko']},
+  acad_mage:  {name:'Mage & Ninja Academy',icon:'⛩️', sprite:'b_shrine', cost:25, order:['onmyoji','ninja','miko','kabuki','foxmage','shugen','kunoichi']}};
+const ACAD_OF=c=>Object.keys(ACAD).find(k=>ACAD[k].order.includes(c));
+const BCAP=c=>c==='archer'?4:(c==='yari'||c==='kusari')?3:2;
+const ACAD_DRILLS=3;
+function acadAvail(kind){ const own=SAVE.units||[], F=(G&&G.feat)||[], ord=ACAD[kind].order;
+  const ok=c=>c==='archer'||c==='samurai'||own.includes(c)||F.includes(c);
+  const head=ord.filter(c=>c==='archer'), tri=ord.filter(c=>c!=='archer'&&F.includes(c)), rest=ord.filter(c=>!head.includes(c)&&!tri.includes(c));
+  return head.concat(tri,rest).filter(ok); }
+const acadMax=A=>acadAvail(A.kind).length+ACAD_DRILLS;
+const acadCanLevel=id=>{ const A=G&&G.acad&&G.acad[id]; return !!A&&A.lvl<acadMax(A); };
+function acadAdd(A,cls,cap){ G.barracks.push({cls,cap,x:A.x,z:A.z,t:0.2,id:A.id,acad:A.id});
+  if(cls!=='archer'&&cls!=='samurai') G.cpCap+=cap*CLS[cls].cp;   /* every soldier type brings the command it needs (v65) */
+  const pend=G.pending.reduce((a,q)=>a+CLS[q.cls].cp,0), room=Math.min(Math.floor((G.cpCap-cpUsed()-pend)/CLS[cls].cp),UNIT_MAX-G.units.length-G.pending.length), n=Math.max(0,Math.min(cap,room));
+  for(let i=0;i<n;i++) G.pending.push({cls,x:A.x,z:A.z+1.5,t:i*0.18}); if(n<cap) G.sqShort=(G.sqShort||0)+cap-n; }
+function acadLevelUp(id){ const A=G.acad&&G.acad[id]; if(!A) return; const D=ACAD[A.kind], next=acadAvail(A.kind).find(c=>!A.types.includes(c)); A.lvl++;
+  if(next){ A.types.push(next); acadAdd(A,next,BCAP(next)); toast(A.lvl===1?`${D.name}: ${CLS[next].name} squad joins`:`${D.name} Lv ${A.lvl}: ${CLS[next].name} squad joins`,2.4); }
+  else { for(const c of A.types){ const b=G.barracks.find(x=>x.acad===A.id&&x.cls===c); if(b){ b.cap+=1; G.cpCap+=CLS[c].cp; } G.gear[c]=(G.gear[c]||0)+1; }
+    toast(`${D.name} Lv ${A.lvl}: +1 of every unit and stronger gear`,2.4); }
+  const q=G.pads.find(x=>x.kind==='aup'&&x.target===A.id); if(q&&q.el){ const lv=q.el.querySelector('.lv'); if(lv) lv.textContent='Lv '+(A.lvl+1); }
+  spawnParticles(A.x,1.5,A.z,24,0xFFE27A,5,0.7,1.2,-6); sfx('rank'); }
+/* recruit cards now name the hall that trains each soldier */
+for(const id in RECRUITS){ const k=ACAD_OF(id); if(k&&RECRUITS[id].desc) RECRUITS[id].desc=RECRUITS[id].desc.replace(/\s*(Unlocks|Trained at) the [^.]*\./,'')+` Trains at ${ACAD[k].name}.`; }
+const heroPowerTag=d=>{ const p=Math.round(heroPower(d)); return `<small class="pow">⚡ Power ${p.toLocaleString('en-US')}${p>=1500?' · legendary effects':p>=600?' · element effects':''}</small>`; };
+
+/* ================================================================ v67 · tower weapon choice
+   Every lane starts with an arrow tower; its first upgrade asks: keep arrows (+1 archer) or become a bomb tower. */
+function offerTowerKind(tw){ if(!G||G.state!=='play'||tw.cannon||tw.kindSet) return; if(G.cardOpen){ setTimeout(()=>offerTowerKind(tw),800); return; }
+  G.cardOpen=true; G.kindFor=tw; $('cardPick').classList.add('show');
+  $('cardPick').querySelector('h3').textContent='Tower upgrade: choose its weapon';
+  $('cardPick').querySelector('p').textContent='This choice is permanent for this tower';
+  const im=k=>SPR[k]?`<img class="loadico" style="width:64px;height:64px;border:0;object-fit:contain" src="${SPR[k]}" alt="">`:'';
+  $('cardRow').innerHTML=`<div class="loadrow"><button class="battlecard" data-twkind="arrow">${im('b_tower')}<b>Arrow Tower</b><span class="good">+1 archer: fast, long-range shots</span><span class="bad">Single target</span></button>`+
+    `<button class="battlecard" data-twkind="bomb">${im('b_cannon')}<b>Bomb Tower</b><span class="good">Cannon blasts hit whole groups</span><span class="bad">Slower, shorter reach</span></button></div>`; }
+function chooseTowerKind(k){ const tw=G.kindFor; $('cardPick').classList.remove('show'); G.cardOpen=false; G.kindFor=null; if(!tw) return; tw.kindSet=true;
+  if(k==='bomb'){ for(const a of tw.archers){ const i=G.towerArchers.indexOf(a); if(i>=0) G.towerArchers.splice(i,1); }
+    const a={x:tw.x+DOWN.x*0.4,z:tw.z+0.4+DOWN.z*0.4,y:2.2,rot:Math.PI,cd:0.3,target:null,rt:0,tower:tw,seed:rand(0,9),hidden:true};
+    tw.archers=[a]; G.towerArchers.push(a); tw.cannon=true;
+    const old=tw.obj, nobj=buildingSprite('b_cannon',tw.x,tw.z); if(tw.deco) nobj.add(tw.deco); dyn.remove(old); dyn.add(nobj); tw.obj=nobj;
+    nobj.scale.setScalar(0.85); G.tweens.push({obj:nobj,t:0,dur:0.35,delay:0,to:1+0.045*(tw.tier-1)});
+    spawnParticles(tw.x,2.2,tw.z,30,0xFFB04A,6,0.7,1.3,-6); G.shake=Math.max(G.shake,0.3); sfx('slam'); toast('Bomb tower: blasts hit whole groups',2); }
+  else { const a={x:tw.x+DOWN.x*0.5,z:tw.z+0.25+DOWN.z*0.5,y:2.45,rot:Math.PI,cd:0,target:null,rt:0,tower:tw,seed:rand(0,9)}; tw.archers.push(a); G.towerArchers.push(a);
+    spawnParticles(tw.x,2.6,tw.z,20,0xFFE9A8,5,0.6,1.1,-6); sfx('rank'); toast('Arrow tower: +1 archer',1.8); }
+  renderer.shadowMap.needsUpdate=true; }
 function buildStructure(p){
   G.built++; sfx('build'); spawnParticles(p.x,0.5,p.z,26,0xFFE27A,6,0.6,1.1,-8);
   G.builtIds.add(p.id);
@@ -1992,6 +2027,9 @@ function buildStructure(p){
     const pend=G.pending.reduce((a,q)=>a+CLS[q.cls].cp,0), room=Math.min(Math.floor((G.cpCap-cpUsed()-pend)/CLS[cls].cp),UNIT_MAX-G.units.length-G.pending.length), n=Math.max(0,Math.min(cap,room));
     for(let i=0;i<n;i++) G.pending.push({cls,x:p.x,z:p.z+1.5,t:i*0.18}); if(n<cap) G.sqShort=cap-n; };
   switch(p.kind){
+    case 'acad_ground': case 'acad_heavy': case 'acad_mage': { obj=buildingSprite(ACAD[p.kind].sprite,p.x,p.z); G.acad=G.acad||{};
+      G.acad[p.id]={kind:p.kind,id:p.id,x:p.x,z:p.z,lvl:0,types:[]}; acadLevelUp(p.id); break; }
+    case 'aup': { acadLevelUp(p.target); break; }
     case 'range': obj=buildingSprite('b_range',p.x,p.z); addBarracks('archer',4); toast('Archery range: archers recruited'); break;
     case 'dojo': obj=buildingSprite('b_dojo',p.x,p.z); addBarracks('samurai',2); toast('Dojo: samurai join your squad'); break;
     case 'shrine': obj=buildingSprite('b_shrine',p.x,p.z); addBarracks('onmyoji',2); toast('Shrine: onmyoji mages join'); break;
@@ -2032,7 +2070,7 @@ function buildStructure(p){
         sfx('rank'); toast(f.tier===2?'Palisade reinforced with iron':'Palisade rebuilt as a stone wall',1.8); }
       break; }
     case 'tup': { const tw=G.towers[p.target]; if(tw){ tw.tier++;
-      if(tw.tier===2){ const a={x:tw.x+DOWN.x*0.5,z:tw.z+0.25+DOWN.z*0.5,y:2.45,rot:Math.PI,cd:0,target:null,rt:0,tower:tw,seed:rand(0,9)}; tw.archers.push(a); G.towerArchers.push(a); }
+      if(tw.tier===2&&!tw.cannon) setTimeout(()=>offerTowerKind(tw),450);
       if(tw.tier>=4&&tw.archers.length<3){ const a2={x:tw.x-DOWN.x*0.5,z:tw.z+0.25-DOWN.z*0.5,y:2.45,rot:Math.PI,cd:0,target:null,rt:0,tower:tw,seed:rand(0,9)}; tw.archers.push(a2); G.towerArchers.push(a2); }
       const TIER=[0xC98A3C,0xD9E2EC,0xF5C542,0x7FE0FF,0xB98CFF], col=TIER[Math.min(4,tw.tier-1)];
       if(tw.deco) tw.obj.remove(tw.deco);
@@ -2047,7 +2085,7 @@ function buildStructure(p){
       tw.obj.add(deco); tw.deco=deco;
       tw.obj.scale.setScalar(0.9); G.tweens.push({obj:tw.obj,t:0,dur:0.35,delay:0,to:1+0.045*(tw.tier-1)});
       spawnParticles(tw.x,2.6,tw.z,22,col,5,0.7,1.2,-5); fx('fx_glow',tw.x,2.4,tw.z,4,0.5,col,{grow:1.2}); sfx('rank');
-      toast(`Tower level ${tw.tier}: ${['','sturdier','extra archer','reinforced','double archers','crowned'][Math.min(5,tw.tier)]}`);
+      toast(`Tower level ${tw.tier}: ${['','sturdier',tw.cannon?'bigger blasts':'choose its weapon','reinforced',tw.cannon?'heavier shells':'double archers','crowned'][Math.min(5,tw.tier)]}`);
       if(tw.tier===3&&!tw.branch&&!tw.cannon) setTimeout(()=>offerBranch(tw),600); }
       break; }
     case 'lvl2': { const b=G.barracks.find(bb=>bb.id===p.target); if(b){ const add=2+(b.cls==='archer'?2:0); b.cap+=add; G.cpCap+=add*CLS[b.cls].cp; G.gear[b.cls]=(G.gear[b.cls]||0)+1; }
@@ -2121,7 +2159,7 @@ function fxInit(){ for(const k of FXK){ if(FX[k]||!SPR[k]) continue;
   const hx=k.startsWith('hx_'), cap=hx?64:k.startsWith('st_')?90:40;
   const m=new T.InstancedMesh(fxGeo,new T.MeshBasicMaterial({map:(hx||k.startsWith('st_'))?tex(k):softTex(k),transparent:true,blending:T.AdditiveBlending,opacity:hx?0.78:1,depthWrite:false,depthTest:false,side:T.DoubleSide}),cap);
   m.frustumCulled=false; m.renderOrder=hx?9:8; scene.add(m); FX[k]={mesh:m,items:[],cap,vital:hx||k.startsWith('st_')}; } }
-function fx(kind,x,y,z,size,life,col,opt){ const F=FX[kind]; if(!F) return; if(QL<0.45&&F.items.length>8&&!F.vital&&!(window.G&&G._vfx)) return; opt=opt||{};
+function fx(kind,x,y,z,size,life,col,opt){ const F=FX[kind]; if(!F) return; if(QL<0.45&&F.items.length>8&&!F.vital&&!(G&&G._vfx)) return; opt=opt||{};
   if(F.items.length>=(F.cap||40)) F.items.shift();
   F.items.push({x,y,z,s0:size,t:0,life,col:col||0xFFFFFF,rot:opt.rot!==undefined?opt.rot:rand(0,6.3),spin:opt.spin||0,grow:opt.grow!==undefined?opt.grow:1.6,flat:!!opt.flat,vy:opt.vy||0,sy:opt.sy||1}); }
 function fxUpdate(dt){
@@ -2980,7 +3018,7 @@ function update(dt){
     } else { p.standT=0; p.carry=0; }
     if(p.paid>=p.cost&&(on||p.cost===0||p.doneT>=0)){ if(p.doneT<0) p.doneT=0.32; p.doneT-=dt;
       if(p.doneT<=0){ p.done=true; p.active=false; p.doneT=-1; p.g.visible=false; p.el.style.display='none'; buildStructure(p);
-        if((p.kind==='tup'||p.kind==='lvl2'||(p.kind==='fup'&&(p.level||1)<2))&&(p.level||1)<5){ p.level=(p.level||1)+1; p.cost=Math.round(p.cost*1.5); p.paid=0; p.done=false; p.active=false; p.shown=-1; activatePad(p); } } }
+        if((p.kind==='aup'&&acadCanLevel(p.target))||((p.kind==='tup'||p.kind==='lvl2'||(p.kind==='fup'&&(p.level||1)<2))&&(p.level||1)<5)){ p.level=(p.level||1)+1; p.cost=Math.round(p.cost*1.5); p.paid=0; p.done=false; p.active=false; p.shown=-1; activatePad(p); } } }
   }
 
   // fences
@@ -3393,6 +3431,7 @@ onTap($('spdBtn'),()=>{ audioInit(); SAVE.speed=(SAVE.speed||1)>1?1:2; persist()
 setTimeout(syncSpeed,0);
 onTap($('etBtn'),()=>{ audioInit(); if(G&&G.state==='play') openETowers(); });
 $('cardRow').addEventListener('click',e=>{
+  const tk=e.target.closest('[data-twkind]'); if(tk){ chooseTowerKind(tk.dataset.twkind); return; }
   const br=e.target.closest('[data-branch]'); if(br){ chooseBranch(br.dataset.branch); return; }
   const eb=e.target.closest('[data-etbuy]'); if(eb){ placeETower(eb.dataset.etbuy); return; }
   const eu=e.target.closest('[data-etup]'); if(eu){ upgradeETower(+eu.dataset.etup); return; }
@@ -3495,7 +3534,7 @@ function renderHome(){
     const owned=SAVE.heroes.includes(id), eq=SAVE.hero===id, locked=d.req!=null&&!(SAVE.stars[d.req]>0);
     if(d.rarity==='Fused'&&!owned) return '';
     const btn=eq?'<button class="hbtn eqd" disabled>Equipped</button>':owned?`<button class="hbtn equip" data-equip="${id}">Equip</button>`:locked?`<button class="hbtn lock" disabled>Stage ${d.req+1}</button>`:`<button class="hbtn buy${canAfford(d)?'':' poor'}" data-buyhero="${id}">${priceTag(d)}</button>`;
-    return `<div class="hcard${eq?' eq':''}${HERO_UP[d.sprite]?' div':''}"><span class="rdot ${d.rarity}"></span><div class="spr${CROP[d.sprite]?' crop':''} spr-${d.sprite}"${d.spark?` style="${heroGlow(d)}"`:''}></div><b>${d.name}</b><span class="rtag ${d.rarity}">${d.rarity}</span><small class="atk">${d.desc}</small><small class="pas">Passive: ${d.passive}</small><small class="nums">${Math.round(d.hp)}hp · ${d.dmg}dmg · ${d.range>=7?'long':d.range>=3?'reach':'close'}</small>${btn}</div>`; }).join('');
+    return `<div class="hcard${eq?' eq':''}${HERO_UP[d.sprite]?' div':''}"><span class="rdot ${d.rarity}"></span><div class="spr${CROP[d.sprite]?' crop':''} spr-${d.sprite}"${d.spark?` style="${heroGlow(d)}"`:''}></div><b>${d.name}</b><span class="rtag ${d.rarity}">${d.rarity}</span><small class="atk">${d.desc}</small><small class="pas">Passive: ${d.passive}</small><small class="nums">${Math.round(d.hp)}hp · ${d.dmg}dmg · ${d.range>=7?'long':d.range>=3?'reach':'close'}</small>${heroPowerTag(d)}${btn}</div>`; }).join('');
   $('unitList').innerHTML=Object.entries(RECRUITS).map(([id,d])=>{
     const owned=d.starter||SAVE.units.includes(id), locked=d.req!=null&&!(SAVE.stars[d.req]>0), c=CLS[id], dd=unitDeal(id,d);
     const btn=owned?`<button class="hbtn own" disabled>${d.starter?'Starter':'Unlocked'}</button>`:locked?`<button class="hbtn lock" disabled>Stage ${d.req+1}</button>`:`<button class="hbtn buy${canAfford(dd)?'':' poor'}" data-buyunit="${id}">${dd.deal?'<span class="deal">Trial deal -30%</span>':''}${priceTag(dd)}</button>`;
@@ -3656,7 +3695,7 @@ $('map').addEventListener('click',e=>{
   if(!canAfford(d)){ b.animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'none'}],{duration:250}); homeMsg(`Need 🪙 ${Math.max(0,d.price-SAVE.honor)} more coins${d.jade&&(SAVE.jade||0)<d.jade?` and 💠 ${d.jade-(SAVE.jade||0)} more jade`:''}. Win stages to earn them.`); return; }
   SAVE.honor-=d.price; SAVE.jade=(SAVE.jade||0)-(d.jade||0);
   if(isHero){ SAVE.heroes.push(id); SAVE.hero=id; homeMsg(`${d.name} joined and is now your hero!`); }
-  else { SAVE.units.push(id); if(SAVE.trialDisc) delete SAVE.trialDisc[id]; homeMsg(`${d.name} unlocked: its building now appears in every stage`); }
+  else { SAVE.units.push(id); if(SAVE.trialDisc) delete SAVE.trialDisc[id]; homeMsg(`${d.name} unlocked: trains at ${ACAD[ACAD_OF(id)]?ACAD[ACAD_OF(id)].name:'its hall'} in every stage`); }
   persist(); sfx('build'); renderHome();
 });
 function renderMap(){
@@ -3733,5 +3772,5 @@ $('avatar').src=ART.hero; $('titleHero').src=ART[(HEROES[SAVE.hero]||HEROES.roni
 })();
 startStage(0); G.state='title'; showScreen('title'); $('toast').classList.remove('show'); toastTimer=0;
 requestAnimationFrame(frame);
-window.__T={ rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
+window.__T={ acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
 })();
