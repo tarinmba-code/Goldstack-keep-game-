@@ -213,7 +213,7 @@ const UPG = [
   {grp:'hero', id:'h_ult',   rep:true, max:10, name:'War Spirit', desc:'Special recharges 6% faster', g:45, gs:25, i:0},
   {grp:'tower',id:'t_range', rep:true, max:10, name:'Watch Posts', desc:'+8% tower range', g:40, gs:22, i:0},
   {grp:'tower',id:'t_cannon',rep:true, max:12, name:'Powder Kegs', desc:'+12% cannon damage and blast', g:45, gs:25, i:0},
-  {grp:'fence',id:'f_hp',    rep:true, max:12, name:'Oak Palisade', desc:'+18% fence health, repairs fences', g:35, gs:20, i:0},
+  {grp:'fence',id:'f_hp',    rep:true, max:10, name:'Oak Palisade', desc:'+12% fence health, repairs fences', g:35, gs:20, i:0},
   {grp:'castle',id:'c_hp',   rep:true, max:12, name:'Castle Walls', desc:'+12% castle health, heals castle', g:40, gs:22, i:0},
   {grp:'res', id:'r_loot',   rep:true, max:12, name:'Spoils of War', desc:'+15% gold from defeated foes', g:40, gs:22, i:0},
   {grp:'squad', id:'m_arrow', br:'Mastery', tt:'all', rep:true, max:15, name:'Weapon Mastery', desc:'+6% damage for every troop, tower and hero arrow', g:40, gs:20, i:0},
@@ -224,7 +224,7 @@ const UPG = [
   {grp:'squad', id:'d_oni',   br:'Drills', tt:'oni',   rep:true, max:12, name:'Oni Drills', desc:'Oni troops: +12% damage, +6% health', g:30, gs:18, i:0},
   {grp:'hero', id:'m_hero',  br:'Mastery', rep:true, max:15, name:'Hero Might', desc:'+10% hero damage, +20 hero health', g:40, gs:25, i:0},
   {grp:'tower', id:'m_tower', br:'Mastery', rep:true, max:15, name:'Tower Drills', desc:'+10% tower fire rate', g:45, gs:25, i:0},
-  {grp:'fence', id:'m_wall',  br:'Mastery', rep:true, max:15, name:'Stone Footings', desc:'+20% fence health, repairs fences', g:35, gs:20, i:0},
+  {grp:'fence', id:'m_wall',  br:'Mastery', rep:true, max:10, name:'Stone Footings', desc:'+12% fence health, repairs fences', g:35, gs:20, i:0},
   {grp:'res', id:'m_rich',  br:'Mastery', rep:true, max:10, name:'Rich Veins', desc:'+25% mine gold and forge ingot output', g:50, gs:30, i:0},
   {grp:'castle', id:'m_repair',br:'Mastery', rep:true, max:999, name:'Castle Repair', desc:'Restore 25% castle health', g:30, gs:10, i:0},
   {grp:'squad', id:'steel1', br:'Steel', tt:'all', name:'Tamahagane Steel', desc:'+15% damage for every troop and arrow', g:15, i:0},
@@ -275,7 +275,7 @@ const PERKS = [
   {id:'guard',   name:'Siege Breakers',  desc:'+15% damage to boss guard',            base:80, max:15, at:l=>`guard breaks ${15*l}% faster`},
   {id:'herohp',  name:'Hero Constitution',desc:'+8% hero health',                     base:65, at:l=>`hero +${8*l}% health`},
   {id:'bless',   name:'Blessed Castle',  desc:'+10% castle health',                   base:60, at:l=>`castle +${10*l}% health`},
-  {id:'fence',   name:'Iron Walls',      desc:'+12% fence health',                    base:55, at:l=>`fences +${12*l}% health`},
+  {id:'fence',   name:'Iron Walls',      desc:'+10% fence health',                    base:55, max:10, at:l=>`fences +${10*l}% health`},
   {id:'build',   name:'Master Builders', desc:'Buildings cost 4% less',               base:75, max:12, at:l=>`buildings ${4*l}% cheaper`},
   {id:'train',   name:'Rapid Training',  desc:'Units train 7% faster',                base:65, at:l=>`training ${7*l}% faster`},
   {id:'chest',   name:'War Chest',       desc:'+10 starting gold',                    base:45, at:l=>`start with ${6+10*l} gold`},
@@ -726,7 +726,8 @@ function buildingSprite(kind,x,z){
   const sh=new T.Mesh(blobGeo0,new T.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.24,depthWrite:false}));
   sh.position.y=0.04; sh.scale.set(W*0.62,1,W*0.32); g.add(sh);
   if(GFX==='3d'&&MODELS3D[kind]) attach3D(g,kind,m,sh);
-  else if(W3()&&W3().has(kind)){ const md=W3().model(kind); g.add(md); m.visible=false; sh.visible=false; g.userData.model3d=md; g.userData.rise3d=true; g.position.y=TH(x,z); }
+  else if(kind!=='b_tower'&&W3()&&W3().has(kind)){ const md=W3().model(kind); g.add(md); m.visible=false; sh.visible=false; g.userData.model3d=md; g.userData.rise3d=true; g.position.y=TH(x,z);
+    if(kind==='b_cannon'&&W3().has('b_cannon_gun')){ const gun=W3().model('b_cannon_gun'); gun.rotation.order='YXZ'; gun.position.y=2.38; gun.rotation.y=Math.PI*0.15; const mz=new T.Object3D(); mz.position.set(0,0.66,1.0); gun.add(mz); gun.userData.muzzle=mz; g.add(gun); g.userData.gun=gun; } }
   return g;
 }
 const blobGeo=new T.CircleGeometry(0.5,18); blobGeo.rotateX(-Math.PI/2);
@@ -739,6 +740,8 @@ function drawSprite(k,ent,x,y,z,rot,flash,moving,seed,frozen,atk,extraScale,burn
   const M=ANIM_META[k], base=SPR_H[k]*(extraScale||1), H=base*M.hs, W=H*M.ar;
   const NF=FRAMES(k), WALK=(M.cycle||(NF>=6?[1,2,3,2]:NF>=5?[1,2,1,0]:[1,0])), ATKF=(M.atkF!=null?M.atkF:(NF>=6?4:2)), HITF=(M.hitF!=null?M.hitF:(NF>=6?5:-1));
   let frame=0;
+  /* v81: a soldier with a live target holds its aim / guard pose, coils back just before it strikes, then lunges */
+  const tg=ent&&ent.target, engaged=!!(tg&&!tg.dead&&ent!==(G&&G.hero)&&!moving), coil=engaged&&(ent.cd!=null)&&ent.cd>0&&ent.cd<0.28&&(atk||0)<0.3?1-ent.cd/0.28:0;
   if(forceFrame!=null) frame=forceFrame;
   else if(HITF>=0&&flash>0.55) frame=HITF;
   else if((atk||0)>0.3) frame=ATKF;
@@ -750,16 +753,18 @@ function drawSprite(k,ent,x,y,z,rot,flash,moving,seed,frozen,atk,extraScale,burn
   /* five-beat motion: contact, pass, contact, pass, with a lean and a step bounce on each beat */
   const beat=moving?((TIME*spd*0.5+seed)%1):0, phase=Math.floor(beat*4);
   const step=Math.sin(beat*Math.PI*2), stepAbs=Math.abs(step);
-  const bob=moving?(stepAbs*0.1+Math.max(0,Math.sin(beat*Math.PI*4))*0.035)*Math.min(1,base/2)
+  const bob=moving?(stepAbs*0.16+Math.max(0,Math.sin(beat*Math.PI*4))*0.05)*Math.min(1,base/2)
+                  :engaged?Math.abs(Math.sin(TIME*5.2+seed*2))*0.055*Math.min(1.4,base/2)
                   :Math.sin(TIME*2.2+seed)*0.012*base+Math.sin(TIME*0.9+seed*2)*0.004*base;
   const a01=clamp((atk||0),0,1), wind=a01>0.65?(a01-0.65)/0.35:0, strike=a01<=0.65?a01/0.65:0;
   const land=moving?Math.max(0,-Math.sin(beat*Math.PI*4))*0.05:0;   /* squash as the foot lands */
-  const sq=(atk||0)>0.3 ? (1.12+wind*0.08-strike*0.16)
+  const sq=(atk||0)>0.3 ? (1.1+wind*0.1-strike*0.18)
          : flash>0.4 ? 0.9
-         : moving?1+step*0.045-land:1+Math.sin(TIME*2.6+seed)*0.025;
-  const lean=moving?step*0.09*Math.min(1.6,base/2):0;
+         : coil ? 1-coil*0.12
+         : moving?1+step*0.06-land:engaged?1+Math.sin(TIME*5.2+seed*2)*0.03:1+Math.sin(TIME*2.6+seed)*0.025;
+  const lean=moving?step*0.13*Math.min(1.6,base/2):0;
   const recoil=flash>0.4?-0.22*Math.min(1,base/2):0;
-  const lunge=(strike?strike*0.5:0)-(wind?wind*0.22:0)+recoil;
+  const lunge=((strike?strike*0.85:0)-(wind?wind*0.25:0)-coil*0.3)*Math.min(1.3,base/2)+recoil;
   const lx=x+Math.sin(rot)*lunge+RIGHT.x*lean, lz=z+Math.cos(rot)*lunge+RIGHT.z*lean;
   _sc.setRGB(1,1,1);
   if(false&&ent===G.hero&&G.heroDef&&G.heroDef.tint){ const t=G.heroDef.tint; _sc.setRGB(((t>>16)&255)/255,((t>>8)&255)/255,(t&255)/255); _sc.lerp(C(0xFFFFFF),0.12); }
@@ -1734,7 +1739,7 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
     for(let i=0;i<pts.length-1;i++){ const [ax,az]=pts[i],[bx,bz]=pts[i+1]; segs.push([ax,az,bx,bz]);
       const len=Math.hypot(bx-ax,bz-az), n=Math.max(1,Math.floor(len/0.42)), rot=Math.atan2(-(bz-az),bx-ax);
       for(let j=0;j<n;j++){ const t=(j+0.5)/n; planks.push({x:lerp(ax,bx,t),z:lerp(az,bz,t),rot,h:0,delay:0,tall:rand(0.9,1.1)}); } }
-    G.fences[k]={key:k,segs,planks,built:false,hp:0,max:Math.round(CFG.fenceHp*(1+0.2*si)*(1+0.12*PK('fence'))),shake:0,mid:pts[2]};
+    G.fences[k]={key:k,segs,planks,built:false,hp:0,max:Math.round(CFG.fenceHp*(1+0.12*si)*(1+0.1*PK('fence'))),shake:0,mid:pts[2]};
   }
   for(const d of LAYOUT.pads){
     const g=new T.Group(); g.position.set(d.x,0,d.z); const ing=d.cur==='ingot';
@@ -1773,7 +1778,7 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
     for(const p of G.pads){ if(p.kind!=='fence'||p.done) continue; const f=G.fences[p.fence]; if(!f) continue;
       p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; G.builtIds.add(p.id);
       f.built=true; f.hp=f.max; f.planks.forEach((pl,i)=>{ pl.h=0; pl.delay=i*0.02; }); n++;
-      if(t2){ f.tier=2; f.max=Math.round(f.max*1.7); f.hp=f.max;
+      if(t2){ f.tier=2; f.max=Math.round(f.max*1.5); f.hp=f.max;
         const up=G.pads.find(q=>q.kind==='fup'&&q.target===p.fence); if(up){ up.level=2; up.cost=Math.round(up.cost*1.5); } } }
     if(n){ refreshPads(); setTimeout(()=>toast(t2?'Iron palisades stand ready · upgrade them on the yellow pads':'Palisades stand ready · upgrade them on the yellow pads',2.6),2700); } }
   stageStartV65(si);
@@ -2016,7 +2021,7 @@ function bossIntake(e,dmg,src,el,isArrow){
     e.guard-=dmg*gm; if(e.guard<=0) guardBreak(e); return dmg*0.5; }
   return dmg; }
 function bossBurn(e,d){ if(e.invT>0||e.trait==='fireproof'){ if(e.trait==='fireproof') e.burnT=0; return 0; } return d*(e.brokeT>0?1.3:e.guard>0?0.5:1); }
-function guardBreak(e){ e.guard=0; e.brokeT=4.5; e.stunT=Math.max(e.stunT,e.trait==='colossus'?1.4:2.2);
+function guardBreak(e){ e.guard=0; e.brokeT=4.5; e.gbStun=true; e.stunOn=false; e.stunImm=0; e.stunT=Math.max(e.stunT,e.trait==='colossus'?1.4:2.2);
   G.tgs=G.tgs.filter(t=>t.owner!==e); if(e.st==='cast'||e.st==='dash'){ e.st='recover'; e.timer=0.2; }
   const H=(BOSSES[e.kind]||{}).h||5; popText(e.x,H+0.6,e.z,'GUARD BROKEN','gold'); sfx('crit'); sfx('slam'); G.shake=Math.max(G.shake,0.5); G.hitStop=Math.max(G.hitStop,0.08);
   fx('fx_glow',e.x,H*0.6,e.z,H*1.4,0.5,0xFFD15A,{grow:1.6}); spawnParticles(e.x,H*0.6,e.z,30,0xFFD15A,7,0.6,1.3,-6);
@@ -2038,6 +2043,11 @@ function furyBarrage(e){ const h=G.hero; if(!h.alive) return;
   for(let k=0;k<3;k++){ const a=rand(0,6.283), r=k?rand(1.6,3.4):0; addTg({shape:'circle',x:h.x+Math.cos(a)*r,z:h.z+Math.sin(a)*r,r:1.5,dur:1.15+k*0.15,dmg:e.dmg*0.7,owner:e,shake:0.12,sound:'fire',col:0xFF4A3A,keepDmg:6,fenceDmg:30}); } }
 function bossTick(e,dt){
   if(e.invT>0){ e.invT-=dt; e.stunT=0; e.slowT=0; e.freezeT=0; }
+  e.freezeT=0;
+  if(e.stunT>0){ if(!e.stunOn){ if((e.stunImm||0)>0&&!e.gbStun) e.stunT=0; else { e.stunOn=true; e.stunLeft=e.gbStun?e.stunT:Math.min(e.stunT,1.0); } }
+    else { e.stunLeft-=dt; e.stunT=Math.max(0,e.stunLeft); } }
+  if(e.stunOn&&e.stunT<=0){ e.stunOn=false; e.stunImm=e.gbStun?2.5:5; e.gbStun=false; }
+  if(e.stunImm>0) e.stunImm-=dt;
   if(!e.mini){ const cap=e.max*[1,PHASE_AT[0],PHASE_AT[1]][e.phase||0]; if(e.hp>cap) e.hp=cap; }   /* healers can't lift a boss back past a phase it has lost */
   if(e.trait==='frostborn'){ e.slowT=0; e.freezeT=0; }
   if(e.brokeT>0){ e.brokeT-=dt; if(e.brokeT<=0){ e.brokeT=0; e.guardRegen=2.5; } }
@@ -2291,7 +2301,7 @@ function buildStructure(p){
     case 'mine': obj=buildingSprite('b_mine',p.x,p.z); G.mine={x:p.x,z:p.z+1.8,t:1}; toast('Gold mine opened'); break;
     case 'forge': obj=buildingSprite('b_forge',p.x,p.z); G.forge={x:p.x,z:p.z,t:1,pile:0,give:0}; $('ingPill').style.display='flex'; toast('Forge lit: ingots unlock upgrades'); break;
     case 'armory': obj=buildingSprite('b_armory',p.x,p.z); G.armory={x:p.x,z:p.z+1.9}; toast('Armory open: stand in front to upgrade'); break;
-    case 'fup': { const f=G.fences[p.target]; if(f){ f.tier=(f.tier||1)+1; const add=f.tier===2?1.7:2.1; f.max=Math.round(f.max*add); f.hp=f.max; f.built=true;
+    case 'fup': { const f=G.fences[p.target]; if(f){ f.tier=(f.tier||1)+1; const add=f.tier===2?1.5:1.6; f.max=Math.round(f.max*add); f.hp=f.max; f.built=true;
         f.planks.forEach((pl,i)=>{ pl.h=0.35; pl.delay=i*0.012; });
         const col=f.tier===2?0x9AA6B2:0xF5C542; for(const pl of f.planks.filter((x,i)=>i%3===0)) spawnParticles(pl.x,1.2,pl.z,3,col,3,0.6,1.1,-6);
         sfx('rank'); toast(f.tier===2?'Palisade reinforced with iron':'Palisade rebuilt as a stone wall',1.8); }
@@ -2302,7 +2312,7 @@ function buildStructure(p){
       const TIER=[0xC98A3C,0xD9E2EC,0xF5C542,0x7FE0FF,0xB98CFF], col=TIER[Math.min(4,tw.tier-1)];
       if(tw.deco) tw.obj.remove(tw.deco);
       const deco=new T.Group();
-      if(_w3d){ const pole=mk(new T.CylinderGeometry(0.035,0.035,2.0,6),toon(0x3A2418),1.38,3.3,1.38); deco.add(pole);
+      if(_w3d&&tw.obj.userData.model3d){ const pole=mk(new T.CylinderGeometry(0.035,0.035,2.0,6),toon(0x3A2418),1.38,3.3,1.38); deco.add(pole);
         const fl=mk(new T.BoxGeometry(0.42,0.75+0.08*tw.tier,0.03),toon(col),1.38+0.23,3.8,1.38); deco.add(fl); deco.add(mk(new T.BoxGeometry(0.48,0.04,0.05),toon(0x3A2418),1.38+0.23,4.22+0.04*tw.tier,1.38));
         for(let i2=0;i2<tw.tier;i2++){ const gem=mk(new T.OctahedronGeometry(0.11,0),new T.MeshLambertMaterial({color:col,emissive:col,emissiveIntensity:0.5}),(i2-(tw.tier-1)/2)*0.28,3.25,1.5,false); deco.add(gem); } }
       else { const bn=new T.Mesh(new T.PlaneGeometry(0.26,0.34+0.07*tw.tier),new T.MeshBasicMaterial({color:col,side:T.DoubleSide,transparent:true,opacity:0.95}));
@@ -2361,10 +2371,10 @@ $('armBody').addEventListener('click',e=>{
   if(u.rep){ const L=(G.lvls[u.id]||0)+1; G.lvls[u.id]=L;
     if(u.id==='h_guard'){ const add=G.hero.max*0.12; G.hero.max+=add; G.hero.hp+=add; }
     if(u.id==='c_hp'){ const add=G.keepMax*0.12; G.keepMax+=add; G.keepHp=Math.min(G.keepMax,G.keepHp+add); }
-    if(u.id==='f_hp') for(const k in G.fences){ const f=G.fences[k]; f.max=Math.round(f.max*1.18); if(f.built) f.hp=f.max; }
+    if(u.id==='f_hp') for(const k in G.fences){ const f=G.fences[k]; f.max=Math.round(f.max*(1+0.12*L)/(1+0.12*(L-1))); if(f.built) f.hp=f.max; }
     if(u.id==='m_vital') for(const un of G.units){ const r=(1+0.1*L)/(1+0.1*(L-1)); un.max*=r; un.hp=Math.min(un.max,un.hp*r+un.max*0.1); }
     if(u.id==='m_hero'){ G.hero.max+=20; G.hero.hp=Math.min(G.hero.max,G.hero.hp+20); }
-    if(u.id==='m_wall') for(const k in G.fences){ const f=G.fences[k]; f.max=Math.round(f.max*1.2); if(f.built) f.hp=f.max; }
+    if(u.id==='m_wall') for(const k in G.fences){ const f=G.fences[k]; f.max=Math.round(f.max*(1+0.12*L)/(1+0.12*(L-1))); if(f.built) f.hp=f.max; }
     if(u.id==='m_repair'){ G.keepHp=Math.min(G.keepMax,G.keepHp+G.keepMax*0.25); spawnParticles(KEEP.x,3,KEEP.z,24,0x9BF57E,5,0.7,1.1,-4); }
   } else G.up.add(u.id);
   if(u.id==='oni1'||/^d_/.test(u.id)) rescaleHp();
@@ -2487,11 +2497,13 @@ function placeETower(k){
   if((G.etowers||[]).some(t=>Math.hypot(t.x-h.x,t.z-h.z)<2.6)){ toast('Too close to another tower',1.4); return; }
   if(G.pads.some(p=>Math.hypot(p.x-h.x,p.z-h.z)<2.2)){ toast('Step off the build pad first',1.4); return; }
   G.stack-=cost;
-  const tex=etTex(k), W=2.4, H=3.4;
+  const tex=etTex(k), W=3.6, H=5.1;
   const g=new T.Group(); g.position.set(h.x,0,h.z);
   if(tex){ const geo=new T.PlaneGeometry(W,H); geo.translate(0,H/2,0);
-    const m=new T.Mesh(geo,new T.MeshBasicMaterial({map:tex,transparent:true,alphaTest:0.4,side:T.DoubleSide})); m.quaternion.copy(camBill); g.add(m); }
-  const ring=new T.Mesh(new T.RingGeometry(1.0,1.25,28),new T.MeshBasicMaterial({color:D.col,transparent:true,opacity:0.35,side:T.DoubleSide,depthWrite:false}));
+    const m=new T.Mesh(geo,new T.MeshBasicMaterial({map:tex,transparent:true,alphaTest:0.4,side:T.DoubleSide})); m.quaternion.copy(camBill); g.add(m); g.userData.spr=m; }
+  { const rr=new T.Mesh(new T.RingGeometry(D.range-0.12,D.range,64),new T.MeshBasicMaterial({color:D.col,transparent:true,opacity:0.16,side:T.DoubleSide,depthWrite:false}));
+    rr.rotation.x=-Math.PI/2; rr.position.y=0.06; g.add(rr); g.userData.rangeRing=rr; }
+  const ring=new T.Mesh(new T.RingGeometry(1.4,1.75,28),new T.MeshBasicMaterial({color:D.col,transparent:true,opacity:0.35,side:T.DoubleSide,depthWrite:false}));
   ring.rotation.x=-Math.PI/2; ring.position.y=0.05; g.add(ring);
   scene.add(g);
   const t={k,x:h.x,z:h.z,lv:1,cd:0.5,g,hp:300*(1+0.1*G.si),max:300*(1+0.1*G.si),flash:0};
@@ -2499,8 +2511,8 @@ function placeETower(k){
   spawnParticles(t.x,1.5,t.z,24,D.col,6,0.7,1.3,-5); fx('fx_glow',t.x,1.8,t.z,4,0.5,D.col,{grow:1.2}); sfx('build');
   toast(D.name+' built',1.4); closeETowers(); }
 function etPips(t){ if(t.pips) t.g.remove(t.pips); const p=new T.Group();
-  for(let i=0;i<t.lv;i++){ const c=new T.Mesh(new T.CircleGeometry(0.11,10),new T.MeshBasicMaterial({color:ETOW[t.k].col,side:T.DoubleSide})); c.quaternion.copy(camBill); c.position.set((i-(t.lv-1)/2)*0.3,3.75,0); p.add(c); }
-  t.g.add(p); t.pips=p; t.g.scale.setScalar(1+0.12*(t.lv-1)); }
+  for(let i=0;i<t.lv;i++){ const c=new T.Mesh(new T.CircleGeometry(0.11,10),new T.MeshBasicMaterial({color:ETOW[t.k].col,side:T.DoubleSide})); c.quaternion.copy(camBill); c.position.set((i-(t.lv-1)/2)*0.34,5.45,0); p.add(c); }
+  t.g.add(p); t.pips=p; t.g.scale.setScalar(1+0.12*(t.lv-1)); const rr=t.g.userData.rangeRing; if(rr) rr.scale.setScalar((1+0.08*(t.lv-1))/(1+0.12*(t.lv-1))); }
 function upgradeETower(i){ const t=G.etowers[i]; if(!t||t.lv>=3) return; const c=etCost(t.k,t.lv);
   if(G.stack<c){ toast('Carry '+c+' gold to upgrade',1.5); return; }
   G.stack-=c; t.lv++; t.max*=1.3; t.hp=t.max; etPips(t);
@@ -2569,19 +2581,46 @@ function updateStatusFx(dt){
     if(slow){ const a=TIME*4+e.seed; fx('st_frost',e.x+Math.cos(a)*0.55,H*0.85,e.z+Math.sin(a)*0.55,0.7,0.42,0x9AA6AA,{spin:2.5}); e.stFx=0.34; } } }
 function updateETowers(dt){
   if(!G.etowers) return;
+  etShotsTick(dt);
   for(let i=G.etowers.length-1;i>=0;i--){ const t=G.etowers[i], D=ETOW[t.k];
     if(t.hp<=0){ scene.remove(t.g); G.etowers.splice(i,1); spawnParticles(t.x,1.5,t.z,26,0x8A7A6A,6,0.7,1.4,-8); toast(D.name+' destroyed',1.4); continue; }
+    const S=t.g.scale.x, top=4.3*S, spr=t.g.userData.spr; t.kick=Math.max(0,(t.kick||0)-dt*3.2);
+    if(spr){ const k=t.kick, sy=1+Math.sin(TIME*2.4+i)*0.018-(k>0.6?(k-0.6)*0.25:0)+(k<=0.6?k*0.1:0); spr.scale.set(2-sy,sy,1); }
+    if((t.glowT=(t.glowT||0)-dt)<=0){ t.glowT=0.32; fx('fx_glow',t.x,top,t.z,1.3*S,0.45,D.col,{grow:0.6}); if(Math.random()<0.5) spawnParticles(t.x+rand(-0.6,0.6),top*0.6,t.z+rand(-0.4,0.4),1,D.col,0.5,0.8,1,1.6); }
     t.cd-=dt; if(t.cd>0) continue;
     const tg=nearestEnemy(t.x,t.z,D.range*(1+0.08*(t.lv-1))); if(!tg) continue;
-    t.cd=D.cd*Math.pow(0.88,t.lv-1);
+    t.cd=D.cd*Math.pow(0.88,t.lv-1); t.kick=1;
     const dmg=D.dmg*(1+0.22*G.si)*(1+0.6*(t.lv-1))*MOD('towerDmg');
-    for(let q=1;q<=6;q++) spawnParticles(lerp(t.x,tg.x,q/6),3.2-q*0.35,lerp(t.z,tg.z,q/6),1,D.col,0.6,0.2,1,0);
-    if(t.k==='arcane'){ fx('fx_glow',tg.x,1.2,tg.z,D.splash*1.6,0.4,D.col,{grow:1.3}); eachEnemyNear(tg.x,tg.z,D.splash+1,e=>{ if(Math.hypot(e.x-tg.x,e.z-tg.z)<D.splash+e.rad) hitEnemy(e,dmg,null,null,1); }); }
-    else if(t.k==='frost'){ fx('fx_ice',tg.x,1.2,tg.z,2.6,0.4,D.col,{grow:1.2}); hitEnemy(tg,dmg,null,'ice',1); tg.slowT=Math.max(tg.slowT||0,2.5); tg.slowF=Math.max(tg.slowF||0,D.slow); if(tg.cls!=='boss'&&Math.random()<0.15+0.05*t.lv) tg.freezeT=Math.max(tg.freezeT||0,1.6); }
-    else { let from=tg, hit=[tg]; hitEnemy(tg,dmg,null,'bolt',1); fx('fx_bolt',tg.x,1.6,tg.z,2.4,0.3,D.col,{grow:1.2});
-      for(let c=0;c<D.chain+t.lv-1;c++){ const o=nearestEnemy(from.x,from.z,6,from); if(!o||hit.includes(o)) break; hit.push(o); hitEnemy(o,dmg*0.7,null,'bolt',1);
-        for(let q=1;q<=4;q++) spawnParticles(lerp(from.x,o.x,q/4),1.4,lerp(from.z,o.z,q/4),1,D.col,0.6,0.2,1,0); from=o; } }
+    fx('fx_glow',t.x,top,t.z,3*S,0.3,D.col,{grow:1.5}); spawnParticles(t.x,top,t.z,10,D.col,4,0.4,1.2,0);
+    if(t.k==='thunder'){   /* lightning is instant: a jagged bolt from the totem to the target, then it jumps */
+      etBolt(t.x,top,t.z,tg.x,tg.cls==='boss'?2.2:1.0,tg.z,D.col); let from=tg, hit=[tg]; hitEnemy(tg,dmg,null,'bolt',1); fx('fx_bolt',tg.x,1.6,tg.z,2.8,0.3,D.col,{grow:1.2}); sfx('zap');
+      for(let c=0;c<D.chain+t.lv-1;c++){ const o=nearestEnemy(from.x,from.z,6,from); if(!o||hit.includes(o)) break; hit.push(o); hitEnemy(o,dmg*0.7,null,'bolt',1); etBolt(from.x,1.2,from.z,o.x,1.2,o.z,D.col); from=o; } }
+    else { const d=Math.hypot(tg.x-t.x,tg.z-t.z); (G.etShots=G.etShots||[]).push({k:t.k,lv:t.lv,sx:t.x,sy:top,sz:t.z,tg,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.25,d/(t.k==='frost'?20:13)),dmg,col:D.col}); sfx(t.k==='frost'?'ice':'magic'); }
   } }
+function etBolt(x0,y0,z0,x1,y1,z1,col){ const n=7; let px=x0,py=y0,pz=z0;
+  for(let q=1;q<=n;q++){ const u=q/n, j=q<n?0.45:0, x=lerp(x0,x1,u)+rand(-j,j), y=lerp(y0,y1,u)+rand(-j,j)*0.6, z=lerp(z0,z1,u)+rand(-j,j);
+    fx('fx_bolt',(px+x)/2,(py+y)/2,(pz+z)/2,Math.hypot(x-px,y-py,z-pz)*1.4+0.4,0.16,col,{rot:Math.atan2(x-px,y-py),grow:0.2}); px=x; py=y; pz=z; } }
+function etShotsTick(dt){ const L=G.etShots; if(!L||!L.length) return;
+  for(const s of L){ s.t+=dt; if(s.tg&&!s.tg.dead){ s.tx=s.tg.x; s.tz=s.tg.z; } const u=Math.min(1,s.t/s.dur), x=lerp(s.sx,s.tx,u), z=lerp(s.sz,s.tz,u), y=lerp(s.sy,1.1,u)+Math.sin(u*Math.PI)*(s.k==='frost'?0.6:1.6);
+    fx(s.k==='frost'?'fx_ice':'fx_glow',x,y,z,s.k==='frost'?1.1:1.5,0.12,s.col,{grow:0.3}); spawnParticles(x,y,z,1,s.col,0.6,0.3,1,0);
+    if(u<1) continue; s.done=true; const D=ETOW[s.k];
+    if(s.k==='arcane'){ fx('fx_glow',s.tx,1.2,s.tz,D.splash*1.8,0.45,D.col,{grow:1.4}); fx('fx_splash',s.tx,0.3,s.tz,D.splash*1.6,0.4,D.col,{flat:true,grow:1.3}); spawnParticles(s.tx,1,s.tz,18,D.col,5,0.5,1.3,-4);
+      eachEnemyNear(s.tx,s.tz,D.splash+1,e=>{ if(Math.hypot(e.x-s.tx,e.z-s.tz)<D.splash+e.rad) hitEnemy(e,s.dmg,null,null,1); }); }
+    else { const tg=s.tg; fx('fx_ice',s.tx,1.2,s.tz,2.8,0.4,D.col,{grow:1.2}); spawnParticles(s.tx,1,s.tz,10,0xDFF8FF,4,0.4,1.1,-6);
+      if(tg&&!tg.dead){ hitEnemy(tg,s.dmg,null,'ice',1); tg.slowT=Math.max(tg.slowT||0,2.5); tg.slowF=Math.max(tg.slowF||0,D.slow); if(tg.cls!=='boss'&&Math.random()<0.15+0.05*s.lv) tg.freezeT=Math.max(tg.freezeT||0,1.6); } } }
+  G.etShots=L.filter(s=>!s.done); }
+function cannonFire(tw,tg){ const g=tw.obj, gun=g&&g.userData.gun; if(!gun) { fx('fx_glow',tw.x,3.2,tw.z,2,0.15,0xFFD27A,{grow:1.5}); spawnParticles(tw.x,3.2,tw.z,10,0x9A9A9A,1.6,0.9,1.4,1.5); return null; }
+  gun.userData.aim=Math.atan2(tg.x-tw.x,tg.z-tw.z); gun.rotation.y=gun.userData.aim; gun.userData.recoil=1;
+  gun.updateWorldMatrix(true,true); const p=new T.Vector3(); gun.userData.muzzle.getWorldPosition(p);
+  const dx=Math.sin(gun.rotation.y), dz=Math.cos(gun.rotation.y);
+  fx('fx_glow',p.x,p.y,p.z,2.6,0.16,0xFFE08A,{grow:1.8}); fx('fx_fire',p.x+dx*0.4,p.y,p.z+dz*0.4,1.8,0.2,0xFF8A2A,{grow:1.4});
+  for(let q=0;q<9;q++) spawnParticles(p.x+dx*rand(0.2,0.9),p.y+rand(-0.1,0.2),p.z+dz*rand(0.2,0.9),1,q%3?0xA8A8A8:0x6E6E6E,1.3,rand(0.7,1.2),1.6,1.4);
+  spawnParticles(p.x,p.y,p.z,6,0xFFC24A,5,0.25,0.8,-4); G.shake=Math.max(G.shake,0.07); return {x:p.x,y:p.y,z:p.z}; }
+function cannonAnim(tw,dt){ const g=tw.obj, gun=g&&g.userData.gun; if(!gun) return; const u=gun.userData, a=tw.archers[0];
+  if(a&&a.target&&!a.target.dead) u.aim=Math.atan2(a.target.x-tw.x,a.target.z-tw.z);
+  if(u.aim!=null) gun.rotation.y=lerpAngle(gun.rotation.y,u.aim,1-Math.exp(-dt*6));
+  u.recoil=Math.max(0,(u.recoil||0)-dt*2.8); const r=u.recoil*u.recoil;
+  gun.position.x=-Math.sin(gun.rotation.y)*r*0.42; gun.position.z=-Math.cos(gun.rotation.y)*r*0.42; gun.rotation.x=-r*0.22; }
 function openETowers(){
   G.cardOpen=true; $('cardPick').classList.add('show');
   $('cardPick').querySelector('h3').textContent='Elemental towers';
@@ -3084,7 +3123,7 @@ function update(dt){
   if(!G.sortT||G.sortT<=0){ G.units.sort((a,b)=>CLS[a.cls].order-CLS[b.cls].order); G.sortT=0.5; } G.sortT-=dt;
   for(let i=0;i<G.units.length;i++){
     const u=G.units[i], D=CLS[u.cls], o=slotOffset(i), tx=cx+o.x, tz=cz+o.z, rankMul=1+0.25*u.rank;
-    u.flash=Math.max(0,u.flash-dt*8); u.atk=Math.max(0,(u.atk||0)-dt*4); u.cd-=dt; u.hp=Math.min(u.max,u.hp+dt*1.5);
+    u.flash=Math.max(0,u.flash-dt*8); u.atk=Math.max(0,(u.atk||0)-dt*2.4); u.cd-=dt; u.hp=Math.min(u.max,u.hp+dt*1.5);
     let mx=tx-u.x, mz=tz-u.z, speed=MOD('squadSpd')*D.speed*SQUAD_SPEED, chase=null;
     if(MELEE_CLS.includes(u.cls)){
       u.rt-=dt; if(u.rt<=0){ u.rt=0.25; const e=nearestEnemy(u.x,u.z,4.5); u.target=(e&&Math.hypot(e.x-cx,e.z-cz)<7.5)?e:null; }
@@ -3107,7 +3146,7 @@ function update(dt){
     } else {
       u.rt-=dt; if(u.rt<=0){ u.rt=0.25; u.target=nearestEnemy(u.x,u.z,D.range); } if(u.target&&u.target.dead) u.target=null;
       if(u.target&&u.cd<=0){
-        u.cd=D.cd*rand(1,1.1); u.atk=0.9;
+        u.cd=D.cd*rand(1,1.1); u.atk=1;
         if(u.cls==='archer'||u.cls==='teppo'||u.cls==='falcon'){ const dmg=D.dmg*rankMul*(1+0.25*(G.gear[u.cls]||0)); fireArrow(u.x,1.0,u.z,u.target,dmg,u);
           if(u.cls==='teppo'){ spawnParticles(u.x,1.2,u.z,6,0xE8E8E8,2,0.5,1,1); sfx('zap'); }
           if(u.cls==='falcon'){ spawnParticles(u.x,1.4,u.z,5,0xC8A46E,3,0.4,1.1,0.6); }
@@ -3164,21 +3203,22 @@ function update(dt){
     if(have<cap&&cpUsed()+CLS[b.cls].cp<=G.cpCap&&G.units.length<UNIT_MAX){ b.t-=dt; if(b.t<=0){ b.t=MOD('train')*CLS[b.cls].train*Math.max(0.4,1-0.07*PK('train')); spawnUnit(b.cls,b.x+rand(-0.5,0.5),b.z+1.5); } } }
 
   // towers
-  for(const a of G.towerArchers){ a.atk=Math.max(0,(a.atk||0)-dt*3.5); a.rt-=dt; if(a.rt<=0){ a.rt=0.3; a.target=nearestEnemy(a.x,a.z,CFG.towerRange*(1+0.08*LV('t_range'))*fogMul(a)); } if(a.target&&a.target.dead) a.target=null; a.cd-=dt;
+  for(const a of G.towerArchers){ a.atk=Math.max(0,(a.atk||0)-dt*2.4); a.rt-=dt; if(a.rt<=0){ a.rt=0.3; a.target=nearestEnemy(a.x,a.z,CFG.towerRange*(1+0.08*LV('t_range'))*fogMul(a)); } if(a.target&&a.target.dead) a.target=null; a.cd-=dt;
     if(!a.target) a.rot=lerpAngle(a.rot,CAMROT,1-Math.exp(-dt*3));
     if(a.target){ a.rot=lerpAngle(a.rot,Math.atan2(a.target.x-a.x,a.target.z-a.z),1-Math.exp(-dt*10));
       if(a.cd<=0){ a.atk=0.9; const tr=a.tower.tier-1, cannon=!!a.tower.cannon;
         const dmg=MOD('towerDmg')*CFG.towerDmg*(cannon?1.3*(1+0.10*PK('cannon'))*(1+0.12*LV('t_cannon')):1)*(1+0.08*PK('towerdmg'))*(PASS('kirin')?1.35:1)*PG('tower')*(1+0.5*tr)*(PASS('yuki')?1.2:1);
         a.cd=MOD('towerCd')*CFG.towerCd*(cannon?1.35:1)*Math.max(0.45,1-0.1*tr)/(1+0.1*LV('m_tower'))*rand(1,1.12);
-        if(cannon){ const tg=a.target, d=Math.hypot(tg.x-a.x,tg.z-a.z);
-          { const g2=GS(); if(g2&&AUDIO_MODE>=1) try{ g2.sfx('shootCannon',{gain:0.7}); }catch(e){} } G.orbs.push({sx:a.x,sy:a.y+0.8,sz:a.z,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.3,d/16),src:null,bomb:true,dmg,rad:(2.4+0.25*tr)*(1+0.06*LV('t_cannon'))}); sfx('bow'); }
+        if(cannon){ const tg=a.target, d=Math.hypot(tg.x-a.x,tg.z-a.z), mz=cannonFire(a.tower,tg);
+          { const g2=GS(); if(g2&&AUDIO_MODE>=1) try{ g2.sfx('shootCannon',{gain:0.7}); }catch(e){} } G.orbs.push({sx:mz?mz.x:a.x,sy:mz?mz.y:a.y+0.8,sz:mz?mz.z:a.z,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.35,d/14),src:null,bomb:true,ball:true,dmg,rad:(2.4+0.25*tr)*(1+0.06*LV('t_cannon'))}); sfx('slam'); }
         else { const br=a.tower.branch; if(br) a.cd*=BRANCHES[br].cd; fireArrow(a.x,a.y+0.9,a.z,a.target,dmg,null,br);
           if(U('vol3')){ const o2=nearestEnemy(a.x,a.z,CFG.towerRange*(1+0.08*LV('t_range'))*fogMul(a),a.target); if(o2) fireArrow(a.x,a.y+0.9,a.z,o2,dmg,null,br); } } } } }
 
+  for(const id in G.towers){ const tw=G.towers[id]; if(tw.cannon) cannonAnim(tw,dt); }
   // enemies
   for(const e of G.enemies){
     if(e.dead) continue;
-    e.flash=Math.max(0,e.flash-dt*10); e.atk=Math.max(0,e.atk-dt*4); e.cd-=dt;
+    e.flash=Math.max(0,e.flash-dt*10); e.atk=Math.max(0,e.atk-dt*2.6); e.cd-=dt;
     if(e.slowT>0) e.slowT-=dt; if(e.freezeT>0) e.freezeT-=dt; if(e.stunT>0) e.stunT-=dt;
     if(e.cls==='boss') bossTick(e,dt); else if(e.wbuff>0) e.wbuff-=dt;
     if(e.burnT>0){ e.burnT-=dt; if(e.cls==='boss'){ e.hp-=bossBurn(e,e.burnDps*dt); bossGate(e); } else e.hp-=e.burnDps*dt; e.burnFx-=dt; if(e.burnFx<=0){ e.burnFx=0.15; spawnParticles(e.x,e.cls==='boss'?2.5:1,e.z,1,0xFF7A2A,1.2,0.5,0.9,3); } if(e.hp<=0){ killEnemy(e,e.burnSrc); continue; } }
@@ -3411,7 +3451,7 @@ function updateGrunt(e,dt){
       e.moving=true; if(Math.random()<0.6) spawnParticles(e.x,0.8,e.z,1,0xBFEFFF,1.2,0.35,1.1,0); return; }
     if(e.target&&e.dashCd<=0&&e.freezeT<=0&&e.stunT<=0){ const d=Math.hypot(e.target.x-e.x,e.target.z-e.z); if(d>2.4&&d<9){ e.dashT=0.38; e.dashCd=rand(3.5,5); e.cd=Math.min(e.cd,0.15); sfx('dash'); } } }
   const kd=Math.hypot(e.x-KEEP.x,e.z-KEEP.z), reach=0.55+e.rad+(D.range||0);
-  const hitFence=f=>{ if(e.cd<=0){ e.cd=D.cd; e.atk=1; damageFence(f,e.dmg); sfx('hit'); } };
+  const hitFence=f=>{ if(e.cd<=0){ e.cd=D.cd; e.atk=1; damageFence(f,e.dmg*(2+0.03*G.si)*(e.mut?1.5:1)); sfx('hit'); } };
   const strike=(tx,tz,onHit)=>{ e.cd=D.cd; e.atk=1;
     if(D.proj){ const dd=Math.hypot(tx-e.x,tz-e.z); G.eshots.push({x:e.x,z:e.z,sx:e.x,sz:e.z,tx,tz,t:0,dur:Math.max(0.2,dd/(D.proj==='arrow'?18:11)),kind:D.proj,aoe:D.aoe||0,dmg:e.dmg,onHit}); sfx(D.proj==='arrow'?'bow':'magic'); }
     else { if(D.range){ const a=Math.atan2(tx-e.x,tz-e.z); for(let q=1;q<=5;q++) spawnParticles(e.x+Math.sin(a)*q*0.45,1.1,e.z+Math.cos(a)*q*0.45,1,0xDDE6F0,0.6,0.18,1,0); } onHit(); } };
@@ -3559,7 +3599,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   for(const u of G.units){ const H=drawSprite(UNIT_SPR[u.cls],u,u.x,0,u.z,u.rot,u.flash,u.moving,u.seed,false,u.atk,1,false);
     if(u.cls==='oniw') bYaw(B.badge,u.x,H+0.12,u.z,t*2,1.3,1.3,1.3,C(0x5AD843));
     if(u.rank>0) bYaw(B.badge,u.x,H+0.25+Math.sin(t*3+u.seed)*0.05,u.z,t*2,1,1,1,RANKCOL[u.rank]); }
-  for(const a of G.towerArchers){ if(a.hidden) continue; drawSprite('archer',a,a.x,a.y,a.z,a.rot,0,false,a.seed||0,false,a.atk||0,0.95,false); }
+  for(const a of G.towerArchers){ if(a.hidden) continue; const tw=a.tower, ax=tw?tw.x+(a.x-tw.x)*0.72:a.x, az=tw?tw.z+(a.z-tw.z)*0.72:a.z; drawSprite('archer',a,ax,a.y,az,a.rot,0,false,a.seed||0,false,a.atk||0,0.74,false); }
   for(const e of G.enemies){
     if(e.cls==='boss'){
       let sc=1, y=0;
@@ -3606,10 +3646,12 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   for(const ar of G.arrows){ const tg=ar.target, u=ar.t/ar.dur, ex=tg.x, ez=tg.z, ey=tg.cls==='boss'?2.2:0.8;
     bYaw(B.arrow,lerp(ar.sx,ex,u),lerp(ar.sy,ey,u)+Math.sin(u*Math.PI)*0.4,lerp(ar.sz,ez,u),Math.atan2(ex-ar.sx,ez-ar.sz),1,1,1,C(ar.el?ELCOL[ar.el]:0xEAF6FF)); }
   bEnd(B.arrow);
-  bBegin(B.talis);
-  for(const o of G.orbs){ const u=o.t/o.dur; bEuler(B.talis,lerp(o.sx,o.tx,u),lerp(o.sy,0.5,u)+Math.sin(u*Math.PI)*2,lerp(o.sz,o.tz,u),0,t*12,0.3,1,C(0xFFF6D8));
-    if(Math.random()<0.5) spawnParticles(lerp(o.sx,o.tx,u),lerp(o.sy,0.5,u)+Math.sin(u*Math.PI)*2,lerp(o.sz,o.tz,u),1,0xC58CFF,0.5,0.3,0.7,0); }
-  bEnd(B.talis);
+  bBegin(B.talis); if(!B.ball) B.ball=makeBatch(new T.SphereGeometry(0.3,12,9),40,{mat:toon(0x34343C)}); bBegin(B.ball);
+  for(const o of G.orbs){ const u=o.t/o.dur, ox=lerp(o.sx,o.tx,u), oy=lerp(o.sy,0.5,u)+Math.sin(u*Math.PI)*(o.ball?3:2), oz=lerp(o.sz,o.tz,u);
+    if(o.ball){ bEuler(B.ball,ox,oy,oz,t*6,t*4,0,1,WHITE); if(Math.random()<0.7) spawnParticles(ox,oy,oz,1,0x8A8A8A,0.4,0.45,1.1,0.8); continue; }
+    bEuler(B.talis,ox,oy,oz,0,t*12,0.3,1,C(0xFFF6D8));
+    if(Math.random()<0.5) spawnParticles(ox,oy,oz,1,0xC58CFF,0.5,0.3,0.7,0); }
+  bEnd(B.talis); bEnd(B.ball);
   bBegin(B.part); for(const p of G.parts){ const s=p.size*Math.max(0.05,Math.min(1,p.life/p.max*1.5)); bEuler(B.part,p.x,p.y,p.z,p.rx+t*4,p.ry+t*3,0,s,C(p.col)); } bEnd(B.part);
   if(_w3d&&!window._fb3){ window._fb3={}; for(const k of ['f_wood','f_iron','f_stone']){ const g=_w3d.geo(k); window._fb3[k]=[makeBatch(g.toon,1400,{mat:_w3d.mats.toon,receive:true}),makeBatch(g.ol,1400,{mat:_w3d.mats.ol,shadow:false})]; } }
   const FB=window._fb3; if(FB){ for(const k in FB) for(const bt of FB[k]) bBegin(bt);
@@ -4034,5 +4076,5 @@ $('avatar').src=ART.hero; $('titleHero').src=ART[(HEROES[SAVE.hero]||HEROES.roni
 })();
 startStage(0); G.state='title'; showScreen('title'); $('toast').classList.remove('show'); toastTimer=0;
 requestAnimationFrame(frame);
-window.__T={ themes:()=>STAGES.map(x=>x.theme), unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, boss:()=>{ const e=G&&G.boss; return e&&{kind:e.kind,trait:e.trait,phase:e.phase,hp:e.hp,max:e.max,guard:e.guard,guardMax:e.guardMax,broke:e.brokeT,inv:e.invT,st:e.st}; }, troopMul:c=>troopMul(c), troopHp:c=>troopHpMul(c), buy:id=>{ const u=UPG.find(x=>x.id===id); if(u.rep) G.lvls[id]=(G.lvls[id]||0)+1; else G.up.add(id); if(id==='oni1'||/^d_/.test(id)) rescaleHp(); }, forceMut:(e,id)=>forceMut(e,id), spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
+window.__T={ themes:()=>STAGES.map(x=>x.theme), unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, step:(n,dt)=>{ for(let i=0;i<n;i++){ TIME+=dt; update(dt); } }, towers:()=>Object.values(G.towers).map(t=>({tier:t.tier,cannon:!!t.cannon,d3:!!(t.obj&&t.obj.userData.model3d),gun:!!(t.obj&&t.obj.userData.gun),aim:t.obj&&t.obj.userData.gun?+t.obj.userData.gun.rotation.y.toFixed(2):null})), et:k=>{ G.stack+=9999; placeETower(k); return G.etowers.length; }, fence:()=>Object.values(G.fences).map(f=>[f.built,Math.round(f.max),f.tier||1]), boss:()=>{ const e=G&&G.boss; return e&&{kind:e.kind,trait:e.trait,phase:e.phase,hp:e.hp,max:e.max,guard:e.guard,guardMax:e.guardMax,broke:e.brokeT,inv:e.invT,st:e.st}; }, troopMul:c=>troopMul(c), troopHp:c=>troopHpMul(c), buy:id=>{ const u=UPG.find(x=>x.id===id); if(u.rep) G.lvls[id]=(G.lvls[id]||0)+1; else G.up.add(id); if(id==='oni1'||/^d_/.test(id)) rescaleHp(); }, forceMut:(e,id)=>forceMut(e,id), spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
 })();

@@ -150,9 +150,15 @@ const BUILD={
     R.add(b,G_.cyl(1.2,1.1,0.18,14),STONE_D,{p:[0,2.25,0]});
     for(let i=0;i<8;i++){ const a=i/8*TAU; R.add(b,G_.box(0.32,0.32,0.24),STONE,{p:[Math.sin(a)*1.05,2.5,Math.cos(a)*1.05],r:[0,a,0]}); }
     R.add(b,G_.box(0.55,0.06,0.04),0x2A1E1A,{p:[0,1.2,1.2],ol:false}); R.add(b,G_.box(0.5,0.75,0.06),0x3F2A1C,{p:[0,0.45,1.18]});
-    R.add(b,G_.cyl(0.2,0.24,1.1,12),0x8C6A3A,{p:[0,2.75,0.25],r:[Math.PI/2-0.25,0,0]}); R.add(b,G_.tor(0.21,0.04,6,14),GOLD,{p:[0,2.88,0.78],r:[-0.25,0,0]});
-    for(const sx of [1,-1]) R.add(b,G_.cyl(0.2,0.2,0.08,12),WOOD_D,{p:[sx*0.3,2.45,0],r:[0,0,Math.PI/2]});
-    R.add(b,SPH(0.14),0x2A2A30,{p:[0.6,2.42,-0.5]}); R.add(b,SPH(0.14),0x2A2A30,{p:[0.42,2.42,-0.62]}); } },
+    R.add(b,SPH(0.14),0x2A2A30,{p:[0.66,2.42,-0.55]}); R.add(b,SPH(0.14),0x2A2A30,{p:[0.46,2.42,-0.7]}); R.add(b,SPH(0.14),0x2A2A30,{p:[0.58,2.6,-0.62]});
+    R.add(b,G_.cyl(0.62,0.62,0.06,16),WOOD_D,{p:[0,2.36,0],ol:false}); } },
+  /* v81: the gun is its own model so it can turn to aim, kick back and flash when it fires (pivot at its turntable) */
+  b_cannon_gun:{h:1,fn:(R)=>{ const b='root';
+    R.add(b,G_.box(0.62,0.22,0.9),WOOD,{p:[0,0.11,-0.05]}); for(const sx of [1,-1]){ R.add(b,G_.box(0.08,0.36,0.7),WOOD_D,{p:[sx*0.3,0.32,-0.02]});
+      R.add(b,G_.cyl(0.24,0.24,0.09,14),WOOD_D,{p:[sx*0.37,0.2,0.18],r:[0,0,Math.PI/2]}); R.add(b,G_.cyl(0.07,0.07,0.11,8),GOLD,{p:[sx*0.38,0.2,0.18],r:[0,0,Math.PI/2],ol:false}); }
+    R.add(b,G_.cyl(0.25,0.31,1.45,14),0x8C6A3A,{p:[0,0.46,0.22],r:[Math.PI/2-0.25,0,0]});
+    R.add(b,G_.tor(0.27,0.06,6,16),GOLD,{p:[0,0.63,0.9],r:[-0.25,0,0]}); R.add(b,G_.tor(0.3,0.045,6,16),GOLD,{p:[0,0.37,-0.12],r:[-0.25,0,0]});
+    R.add(b,SPH(0.2),0x6E5230,{p:[0,0.3,-0.5]}); R.add(b,G_.cyl(0.17,0.17,0.04,12),0x111111,{p:[0,0.64,0.93],r:[Math.PI/2-0.25,0,0],ol:false}); } },
   /* -------- props */
   p_lantern:{h:2,fn:(R)=>{ const b='root'; R.add(b,G_.cyl(0.32,0.38,0.12,6),STONE,{p:[0,0.06,0]}); R.add(b,G_.cyl(0.11,0.14,0.75,6),STONE,{p:[0,0.5,0]});
     R.add(b,G_.cyl(0.28,0.24,0.1,6),STONE,{p:[0,0.92,0]}); R.add(b,G_.box(0.34,0.32,0.34),STONE,{p:[0,1.13,0]}); R.add(b,G_.box(0.2,0.18,0.36),0xFFE9A8,{p:[0,1.13,0],glow:true});
