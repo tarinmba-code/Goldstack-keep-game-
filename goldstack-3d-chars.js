@@ -126,7 +126,12 @@ const BUILDS={
   a_youth:  {head:0.2, leg:1.02,torso:0.74,w:0.25,limb:0.062,arm:0.78},
   a_hero:   {head:0.185,leg:1.12,torso:0.92,w:0.36,limb:0.085,arm:0.92},
   a_titan:  {head:0.19, leg:1.06,torso:1.0, w:0.47,limb:0.115,arm:1.0},
-  a_round:  {head:0.22, leg:0.72,torso:0.78,w:0.5, limb:0.1,  arm:0.7}};
+  a_round:  {head:0.22, leg:0.72,torso:0.78,w:0.5, limb:0.1,  arm:0.7},
+  /* chibi class bodies: big heads on bodies shaped by class */
+  c_warrior:{head:0.33, leg:0.64,torso:0.6, w:0.35,limb:0.1,  arm:0.6},
+  c_titan:  {head:0.32, leg:0.64,torso:0.7, w:0.47,limb:0.13, arm:0.7},
+  c_divine: {head:0.33, leg:0.72,torso:0.56,w:0.26,limb:0.07, arm:0.56}};
+const CHIBI_OF={heroic:'c_warrior',titan:'c_titan',divine:'c_divine'};
 const FEMALE=new Set(['kitsune','amaterasu','izanami','marishi','yukionna','hannya','jorogumo','ungai','orizuru','inari','mioya']);
 const YOUTH=new Set(['hero','samurai','onmyoji','ninja','kitsune','amaterasu']);
 function animeBuild(sp){ const b=sp.build||'normal', k=sp.key, fem=FEMALE.has(k);
@@ -363,11 +368,125 @@ function armorOrnate(R,o,B,legL,spineH,chestH){
   if(o.apronMon) R.add('skirt',G_.cyl(B.w*0.18,B.w*0.18,0.012,16),o.apronMon,{p:[0,-legL*0.32,B.w*1.17],r:[Math.PI/2+0.14,0,0],glow:true});
   R.add('back',G_.tor(0.07,0.03,6,12),0xD8342C,{p:[0,-0.3,-0.06],r:[0,0,0.6]}); R.add('back',G_.tor(0.07,0.03,6,12),0xD8342C,{p:[0,-0.3,-0.06],r:[0,0,-0.6]}); }
 
+/* ================================================================ v76 chibi class kit
+   Big-head chibi faces that still tell the classes apart:
+   'elegant' gods: almond eyes under a heavy lash with a wing, eye shadow, forehead mark, tinted lips, no blush
+   'fierce' warriors and oni: narrowed angular eyes cut by a scowling lid, thick slanted brows, small pupils, set jaw
+   'mempo': fierce eyes above a lacquered war mask */
+function faceChibi(R,hr,hy,sp,eyes,hairCol,skin){
+  const mode=sp.face, ec=eyes.col||0x6A4A2A, glow=!!eyes.glow, ink=0x140C10, sk=shade(skin,0.8), browC=shade(eyes.browCol||hairCol,0.5);
+  const el=mode==='elegant';
+  const ew=hr*(el?0.21:0.22), eh=hr*(el?0.22:0.2), sx=hr*0.37, ey=hy-hr*(el?0.12:0.08);
+  for(const sd of [1,-1]){
+    const x=sd*sx, z=hr*0.98*Math.sqrt(Math.max(0,1-(x/hr)**2-((ey-hy)/(1.05*hr))**2)), ry=sd*Math.asin(Math.min(0.9,Math.abs(x)/hr))*0.85;
+    const P=(dx,dy,dz)=>[x+dx*Math.cos(ry)+dz*Math.sin(ry), ey+dy, z-dx*Math.sin(ry)+dz*Math.cos(ry)];
+    const at=(dx,dy,dz,o)=>Object.assign({p:P(dx,dy,dz),r:[0,ry,0],ol:false},o||{});
+    const tube=(pts,r0,r1,col,o)=>R.add('head',G_.tube(pts.map(q=>P(q[0],q[1],q[2])),r0,r1,6,12),col,Object.assign({ol:false},o||{}));
+    /* eye white, iris, pupil */
+    R.add('head',G_.sph(ew*1.08,eh,ew*0.3,18,12),glow?shade(ec,0.5):0xFFFAF4,at(0,0,-ew*0.1,glow?{glow:true}:{}));
+    if(glow){ R.add('head',G_.sph(ew*0.8,eh*0.88,ew*0.3,16,10),ec,at(-sd*ew*0.04,-eh*0.04,-ew*0.04,{glow:true,grad:0xFFFFFF}));
+      R.add('head',G_.sph(ew*0.14,eh*0.62,ew*0.24,8,8),0xFFFFFF,at(-sd*ew*0.04,0,ew*0.04,{glow:true})); }
+    else { R.add('head',G_.sph(ew*(el?0.78:0.66),eh*(el?0.9:0.82),ew*0.28,16,10),shade(ec,0.42),at(-sd*ew*0.05,-eh*0.06,-ew*0.04,{grad:shade(ec,1.55),gax:1.2}));
+      R.add('head',G_.sph(ew*(el?0.34:0.2),eh*(el?0.46:0.5),ew*0.25,10,8),0x120808,at(-sd*ew*0.05,-eh*0.04,0));
+      R.add('head',G_.sph(ew*0.26,eh*0.22,ew*0.2,10,6),0xFFFFFF,at(-ew*0.24,eh*0.3,ew*0.07,{glow:true}));
+      if(el) R.add('head',G_.sph(ew*0.12,eh*0.1,ew*0.15,8,6),0xFFFFFF,at(ew*0.22,-eh*0.38,ew*0.06,{glow:true})); }
+    if(el){
+      /* half-lidded: a skin lid over the top of the eye, then a heavy lash with a long wing */
+      R.add('head',G_.sph(ew*1.15,eh*0.55,ew*0.34,16,8),skin,at(0,eh*0.72,ew*0.02,{grad:shade(sp.liner||0xD86A7A,1.0),gax:2}));
+      tube([[-sd*ew*1.1,eh*0.1,ew*0.02],[-sd*ew*0.3,eh*0.36,ew*0.12],[sd*ew*0.6,eh*0.34,ew*0.1],[sd*ew*1.15,eh*0.12,ew*0.02],[sd*ew*1.7,eh*0.45,-ew*0.08]],ew*0.14,ew*0.03,ink);
+      for(let k=0;k<3;k++) tube([[sd*ew*(0.7+k*0.25),eh*(0.22+k*0.02),ew*0.04],[sd*ew*(0.95+k*0.3),eh*(0.5+k*0.08),0]],ew*0.05,ew*0.01,ink);
+      tube([[sd*ew*0.2,-eh*0.98,0],[sd*ew*0.85,-eh*0.72,0],[sd*ew*1.15,-eh*0.35,0]],ew*0.04,ew*0.015,0x5A2A30);
+      tube([[-sd*ew*0.8,eh*1.7,-ew*0.02],[sd*ew*0.1,eh*1.95,0],[sd*ew*1.1,eh*1.75,-ew*0.1]],ew*0.07,ew*0.02,shade(eyes.browCol||hairCol,0.6)); }
+    else {
+      /* scowl: a skin lid slants down toward the nose and cuts the top of the eye into an angry shape */
+      R.add('head',G_.box(ew*2.4,eh*0.9,ew*0.4),skin,at(sd*ew*0.1,eh*0.82,ew*0.08,{r:[0,ry,sd*0.38]}));
+      tube([[-sd*ew*1.15,eh*0.08,ew*0.06],[-sd*ew*0.2,eh*0.42,ew*0.12],[sd*ew*0.8,eh*0.8,ew*0.08],[sd*ew*1.25,eh*0.62,0]],ew*0.16,ew*0.06,ink);
+      tube([[-sd*ew*1.0,-eh*0.55,0],[sd*ew*0.2,-eh*0.95,0],[sd*ew*1.15,-eh*0.6,0]],ew*0.055,ew*0.02,sk);
+      tube([[-sd*ew*1.3,eh*0.95,ew*0.08],[-sd*ew*0.3,eh*1.45,ew*0.08],[sd*ew*0.9,eh*2.1,0],[sd*ew*1.55,eh*2.2,-ew*0.12]],ew*0.3,ew*0.1,browC);   /* thick brow, low at the nose */
+      if(sp.scar&&sd===sp.scar) tube([[sd*ew*0.3,eh*2.2,ew*0.05],[sd*ew*0.6,eh*0.2,ew*0.18],[sd*ew*0.9,-eh*1.6,ew*0.02]],ew*0.05,ew*0.03,0xC85A5A); } }
+  const zm=hr*0.86;
+  if(!el) for(const sd of [1,-1]) R.add('head',G_.tube([[sd*hr*0.07,ey+hr*0.17,hr*0.96],[sd*hr*0.05,ey+hr*0.07,hr*0.975]],hr*0.014,hr*0.01,4,4),sk,{ol:false});   /* frown furrows */
+  R.add('head',G_.sph(hr*0.04,hr*0.03,hr*0.025),shade(skin,0.85),{p:[0,hy-hr*0.3,hr*0.98],ol:false});
+  if(mode==='mempo'){ faceMempo(R,hr,hy,sp); return; }
+  if(el){ R.add('head',G_.tube([[-hr*0.08,hy-hr*0.52,zm],[0,hy-hr*0.55,zm+hr*0.015],[hr*0.08,hy-hr*0.52,zm]],hr*0.026,hr*0.018,5,8),eyes.lip||0xC04858,{ol:false});
+    if(sp.mark) R.add('head',G_.star(hr*0.11,hr*0.045,4,0.012),sp.mark,{p:[0,hy+hr*0.4,hr*0.94],r:[-0.35,0,0],glow:true}); return; }
+  if(eyes.grin){ R.add('head',G_.box(hr*0.5,hr*0.13,hr*0.06),0x3A1414,{p:[0,hy-hr*0.52,zm],ol:false});
+    R.add('head',G_.box(hr*0.46,hr*0.05,hr*0.065),0xFFFFFF,{p:[0,hy-hr*0.47,zm+0.003],ol:false}); R.add('head',G_.box(hr*0.42,hr*0.04,hr*0.065),0xFFFFFF,{p:[0,hy-hr*0.575,zm+0.003],ol:false});
+    for(const sd of [1,-1]) R.add('head',G_.cone(hr*0.06,hr*0.22,5),0xFFFFFF,{p:[sd*hr*0.2,hy-hr*0.42,zm+hr*0.04],ol:false}); }
+  else { R.add('head',G_.box(hr*0.24,hr*0.035,hr*0.04),0x5A2020,{p:[0,hy-hr*0.52,zm],ol:false});   /* set jaw: a flat grimace */
+    for(const sd of [1,-1]) R.add('head',G_.box(hr*0.06,hr*0.03,hr*0.04),0x5A2020,{p:[sd*hr*0.14,hy-hr*0.54,zm-0.003],r:[0,0,sd*0.5],ol:false}); }
+  if(sp.mark) R.add('head',G_.star(hr*0.1,hr*0.04,4,0.012),sp.mark,{p:[0,hy+hr*0.42,hr*0.93],r:[-0.35,0,0],glow:true}); }
+
+/* kote: armoured sleeves with plates down the forearm and a gilded hand guard */
+function armorKote(R,L,B,o){ const pc=o.plate||o.col2||0x2A2A30, tr=o.trim||0xF5C542;
+  for(let k=0;k<3;k++) R.add('elbow'+L,G_.box(B.limb*2.2,B.limb*0.9,B.limb*0.45),pc,{p:[0,-B.limb*(0.9+k*1.15),B.limb*0.75],grad:shade(pc,0.7)});
+  R.add('elbow'+L,G_.tor(B.limb*1.12,B.limb*0.16,5,14),tr,{p:[0,-B.limb*0.2,0],r:[Math.PI/2,0,0],ol:false});
+  R.add('hand'+L,G_.box(B.limb*1.9,B.limb*0.9,B.limb*0.35),pc,{p:[0,-B.limb*0.55,B.limb*0.95],grad:tr}); }
+
+/* ---------------------------------------------------------------- v76 weapons, crafted like their art */
+const WPN={
+  blade(R,hand,B,W,L,wd,curve){ const c=W.col||0xE6ECF2, c2=W.col2||0x2A1E1E, gl=!!W.glow, hy=-B.limb*0.7, rot=[Math.PI/2,0,0];
+    /* tsuka: wrapped grip with diamond lacing, pommel, tsuba, habaki, then a curved blade with a bright hamon edge */
+    R.add(hand,G_.cyl(0.032,0.034,0.3,8),c2,{p:[0,hy,-0.02],r:rot});
+    for(let k=0;k<5;k++) R.add(hand,G_.box(0.05,0.022,0.02),W.wrap||0xF4F1EA,{p:[0,hy,-0.14+k*0.06],r:[Math.PI/2,0,k%2?0.6:-0.6],ol:false});
+    R.add(hand,G_.cyl(0.038,0.038,0.03,8),0xF5C542,{p:[0,hy,-0.17],r:rot});
+    R.add(hand,G_.cyl(0.085,0.085,0.022,14),W.tsuba||0x2A2A30,{p:[0,hy,0.14],r:rot}); R.add(hand,G_.tor(0.085,0.01,4,16),0xF5C542,{p:[0,hy,0.14],ol:false});
+    R.add(hand,G_.box(0.045,0.03,0.05),0xF5C542,{p:[0,hy,0.17]});
+    const pts=[]; const N=8; for(let i=0;i<=N;i++){ const t=i/N; pts.push([curve*t*t*L,t*L]); }
+    const edge=[], back=[]; for(const [x,y] of pts){ const t=y/L, w=wd*(1-t*0.35); edge.push([x+w*0.5,y]); back.push([x-w*0.5,y]); }
+    const shapePts=[...back,[pts[N][0]+wd*0.35,L*1.04],...edge.reverse()];
+    R.add(hand,G_.shape(shapePts,0.016,0.003),c,{p:[0,hy,0.18],r:rot,glow:gl,grad:shade(c,0.75)});
+    const ham=pts.map(([x,y])=>{ const t=y/L, w=wd*(1-t*0.35); return [x+w*0.25,y]; }); const hp=[...ham,...ham.slice().reverse().map(([x,y])=>[x+wd*0.22,y])];
+    R.add(hand,G_.shape(hp,0.018,0.002),W.edge||0xFFFFFF,{p:[0,hy,0.18],r:rot,glow:true}); },
+  pole(R,hand,B,W,L){ const c2=W.col2||0x2A1E1E, hy=-B.limb*0.7, tilt=0.25;
+    R.add(hand,G_.cyl(0.03,0.032,L,8),c2,{p:[0,hy,0.2],r:[tilt,0,0],grad:shade(c2,1.5)});
+    for(const f of [-0.42,-0.1,0.38]) R.add(hand,G_.cyl(0.036,0.036,0.05,8),0xF5C542,{p:[0,hy+L*f*Math.cos(tilt),0.2+L*f*Math.sin(tilt)],r:[tilt,0,0]});
+    R.add(hand,G_.sph(0.05),0xF5C542,{p:[0,hy-L*0.5*Math.cos(tilt),0.2-L*0.5*Math.sin(tilt)]});
+    return {y:hy+L*0.5*Math.cos(tilt), z:0.2+L*0.5*Math.sin(tilt), tilt}; },
+  tassel(R,hand,y,z,col){ R.add(hand,G_.sph(0.04),0xF5C542,{p:[0,y,z]}); for(let k=0;k<4;k++){ const a=k/4*TAU; R.add(hand,G_.tube([[0,0,0],[Math.sin(a)*0.03,-0.1,Math.cos(a)*0.03],[Math.sin(a)*0.05,-0.24,Math.cos(a)*0.05]],0.025,0.012,4,6),col||0xD8241A,{p:[0,y-0.03,z]}); } },
+};
+function buildWeaponV76(R,sp,B,W){
+  const hand=W.hand==='L'?'handL':'handR', c=W.col||0xE6ECF2, s=(W.s||1)*(STYLE==='chibi'?1.1:1), gl=!!W.glow, hy=-B.limb*0.7;
+  switch(W.kind){
+    case 'katana': WPN.blade(R,hand,B,W,0.95*s,0.06,0.07); return true;
+    case 'greatsword': WPN.blade(R,hand,B,W,1.35*s,0.1,0.1); return true;
+    case 'naginata': { const t=WPN.pole(R,hand,B,W,1.75*s); const bl=[[-0.03,0],[0.03,0],[0.07,0.2],[0.08,0.4],[0.02,0.6],[-0.04,0.48],[-0.02,0.2]];
+      R.add(hand,G_.cyl(0.06,0.06,0.02,12),0x2A2A30,{p:[0,t.y,t.z],r:[t.tilt,0,0]});
+      R.add(hand,G_.shape(bl.map(p=>[p[0]*s,p[1]*s]),0.018,0.003),c,{p:[0,t.y+0.01,t.z],r:[t.tilt,0,0],glow:gl,grad:shade(c,0.75)});
+      WPN.tassel(R,hand,t.y-0.04,t.z-0.02,W.tassel); return true; }
+    case 'spear': case 'trident': { const t=WPN.pole(R,hand,B,W,1.75*s);
+      R.add(hand,G_.cyl(0.07,0.05,0.06,10),0xF5C542,{p:[0,t.y,t.z],r:[t.tilt,0,0]});
+      if(W.kind==='spear'){ const bl=[[0,0],[0.06,0.1],[0.035,0.38],[0,0.48],[-0.035,0.38],[-0.06,0.1]];
+        for(const ry of [0,Math.PI/2]) R.add(hand,G_.shape(bl.map(p=>[p[0]*s,p[1]*s]),0.014,0.003),c,{p:[0,t.y+0.03,t.z+0.01],r:[t.tilt,ry,0],glow:gl,grad:shade(c,0.7)});
+        for(const sd of [1,-1]) R.add(hand,G_.crescent(0.1*s,0.025,0.012),0xF5C542,{p:[sd*0.03,t.y+0.06,t.z],r:[t.tilt,0,sd*0.6]}); }
+      else for(const d of [-1,0,1]) R.add(hand,G_.tube([[0,0,0],[d*0.08,0.12,0],[d*0.09,0.32*(d?0.8:1),0]],0.02,0.006,5,8),c,{p:[0,t.y+0.02,t.z],r:[t.tilt,0,0],glow:gl});
+      WPN.tassel(R,hand,t.y-0.06,t.z-0.02,W.tassel); return true; }
+    case 'club': { /* kanabo: octagonal iron-shod club with rows of studs and bands */
+      const L=1.0*s, r0=0.05*s, r1=0.15*s, z0=-0.08, col=W.col||0x2A2A30;
+      R.add(hand,G_.cyl(r1,r0,L,8),col,{p:[0,hy,z0+L*0.5],r:[Math.PI/2,0,0],grad:shade(col,1.4)});
+      R.add(hand,G_.cyl(r1*1.02,r1,0.08,8),shade(col,0.8),{p:[0,hy,z0+L+0.03],r:[Math.PI/2,0,0]});
+      for(const f of [0.3,0.62,0.95]) R.add(hand,G_.cyl(lerp(r0,r1,f)*1.08,lerp(r0,r1,f)*1.08,0.035,8),0xC8A46E,{p:[0,hy,z0+L*f],r:[Math.PI/2,0,0],ol:false});
+      for(let row=0;row<4;row++) for(let k=0;k<8;k++){ const a=k/8*TAU+row*0.4, f=0.4+row*0.15, rr=lerp(r0,r1,f); R.add(hand,G_.cone(0.028*s,0.07*s,5),0xD9DEE6,{p:[Math.sin(a)*rr,hy+Math.cos(a)*rr,z0+L*f],r:[0,0,-a],ol:false}); }
+      R.add(hand,G_.tor(0.05,0.015,5,12),0xC8A46E,{p:[0,hy,z0-0.06],r:[0,Math.PI/2,0]}); return true; }
+    case 'staff': { const t=WPN.pole(R,hand,B,W,1.7*s);   /* jewelled staff: claws hold a glowing orb */
+      R.add(hand,G_.sph(0.1*s),W.orb||0xC58CFF,{p:[0,t.y+0.12,t.z+0.03],glow:true,grad:0xFFFFFF});
+      for(let k=0;k<4;k++){ const a=k/4*TAU; R.add(hand,G_.tube([[0,0,0],[Math.sin(a)*0.1,0.08,Math.cos(a)*0.1],[Math.sin(a)*0.06,0.22,Math.cos(a)*0.06]],0.018,0.008,5,8),c,{p:[0,t.y,t.z],r:[t.tilt,0,0]}); }
+      R.add(hand,G_.tor(0.14*s,0.012,5,20),c,{p:[0,t.y+0.12,t.z+0.03],r:[t.tilt,0,0]}); return true; }
+    case 'bow': { /* yumi: tall asymmetric bow, grip wrapped low, string, arrow nocked */
+      const p=[0.06,hy,0.04], col=W.col2||0x3A2418;
+      R.add('handL',G_.tube([[-0.02,-0.55,0],[0.1,-0.3,0],[0.15,0,0],[0.13,0.45,0],[0.04,0.85,0],[-0.03,0.98,0]],0.026,0.018,6,24),col,{p,grad:shade(col,1.6)});
+      R.add('handL',G_.cyl(0.032,0.032,0.14,8),W.grip||0xD8241A,{p:[p[0]+0.15,p[1]+0.02,p[2]]});
+      for(const y of [-0.5,0.92]) R.add('handL',G_.cyl(0.03,0.03,0.04,8),0xF5C542,{p:[p[0]+(y<0?-0.01:0),p[1]+y,p[2]]});
+      R.add('handL',G_.cyl(0.004,0.004,1.52,3),0xF4F1EA,{p:[p[0]-0.03,p[1]+0.21,p[2]],ol:false}); return true; }
+  }
+  return false; }
+
 function buildHuman(sp){
   if(STYLE==='anime'){ const fem=FEMALE.has(sp.key); sp=Object.assign({},sp);
     if(!sp.face&&!YOUTH.has(sp.key)) sp.face=fem?'elegant':(sp.eyes&&sp.eyes.fierce)?'fierce':null;
     if(sp.key==='nurari') sp.prop={head:0.19}; }
-  const B=STYLE==='anime'?Object.assign({},BUILDS[animeBuild(sp)],sp.propAnime||{}):Object.assign({},BUILDS[sp.build||'normal'],sp.prop||{}), R=new Rig();
+  if(STYLE==='chibi'){ sp=Object.assign({},sp); if(!sp.face&&sp.eyes&&sp.eyes.fierce&&!YOUTH.has(sp.key)) sp.face='fierce'; }
+  const B=STYLE==='anime'?Object.assign({},BUILDS[animeBuild(sp)],sp.propAnime||{}):Object.assign({},BUILDS[CHIBI_OF[sp.build]||sp.build||'normal'],sp.prop||{}), R=new Rig();
   sp._hk=STYLE==='anime'?clamp(0.3/B.head,1,2.2):1;   /* hair keeps its length when the head is smaller */
   const legL=B.leg, thigh=legL*0.5, shin=legL*0.5-0.05, hipW=B.w*0.42, spineH=B.torso*0.36, chestH=B.torso*0.42, neckH=B.torso*0.12;
   const armSeg=B.arm*0.5, shW=B.w*0.95+B.limb*0.6;
@@ -416,6 +535,7 @@ function buildHuman(sp){
       R.add('elbow'+L,G_.tube(hm,0.016,0.016,5,28),trim,{p:[sd*0.02,0,-0.01],ol:false});
       if(o.pattern) R.add('elbow'+L,o.motif==='star'?G_.star(0.06,0.024,8,0.01):G_.cyl(0.05,0.05,0.01,14),o.pattern,{p:[sd*0.02,-sl*0.45,sw*0.62+0.005],r:o.motif==='star'?[0,0,0]:[Math.PI/2,0,0],ol:false}); }
     if(armor||sp.pauldron) armorSode(R,'arm'+L,sd,B,o,trim);
+    if(armor) armorKote(R,L,B,o);
     /* legs */
     const lc=o.legs||(bare?skin:hakama?oc:ninja?oc:oc2);
     R.add('thigh'+L,G_.cap(B.limb*(bulk?1.45:1.25),thigh*0.7),lc,{p:[0,-thigh*0.5,0]});
@@ -542,11 +662,12 @@ function buildHead(R,sp,B){
     if(eyes.mouth!==false) R.add('head',G_.box(ew*(eyes.grin?3:1.4),eyes.grin?0.03:0.016,0.015),eyes.grin?0xFFFFFF:0x6B2A2A,{p:[0,eyeY-hr*0.55,fz-0.01],ol:false});
     if(eyes.grin) for(const sd of [1,-1]) R.add('head',G_.cone(0.022,0.06,6),0xFFFFFF,{p:[sd*ew*1.1,eyeY-hr*0.62,fz-0.005],r:[Math.PI,0,0],ol:false}); };
   if(hd==='human'||hd==='oni'||hd==='fox'||hd==='stone'||hd==='old'){
-    const adult=!!sp.face;
+    const adult=!!sp.face&&STYLE==='anime';
     R.add('head',G_.sph(hr,hr*(adult?1.12:1.05),hr*0.98,20,14),skin,{p:[0,hy,0],grad:adult?shade(skin,0.88):null});
     R.add('head',G_.sph(hr*(adult?0.56:0.62),hr*(adult?0.62:0.55),hr*0.7),skin,{p:[0,hy-hr*(adult?0.46:0.38),hr*0.12],grad:adult?shade(skin,0.85):null}); /* jaw */
     for(const sd of [1,-1]) R.add('head',G_.sph(hr*0.14,hr*0.22,hr*0.12),skin,{p:[sd*hr*0.97,hy-hr*0.05,0]}); /* ears */
-    if(sp.face) faceAdult(R,hr,hy,sp,eyes,(sp.hair&&sp.hair.col)||(sp.beard&&sp.beard.col)||0x3A2418,skin);
+    if(sp.face&&STYLE==='chibi') faceChibi(R,hr,hy,sp,eyes,(sp.hair&&sp.hair.col)||(sp.beard&&sp.beard.col)||0x3A2418,skin);
+    else if(sp.face) faceAdult(R,hr,hy,sp,eyes,(sp.hair&&sp.hair.col)||(sp.beard&&sp.beard.col)||0x3A2418,skin);
     else if(!(eyes.n>2)) faceAnime(R,hr,hy,eyes,(sp.hair&&sp.hair.col)||(sp.beard&&sp.beard.col)||0x3A2418,skin,sp);
     else { face(hr*0.9,hy-hr*0.08,hr*0.36,hr*(sp.build==='chibi'?0.2:0.15),hr*(sp.build==='chibi'?0.25:0.18));
     R.add('head',G_.sph(hr*0.07,hr*0.05,hr*0.05),shade(skin,0.88),{p:[0,hy-hr*0.32,hr*0.98],ol:false}); }
@@ -711,8 +832,11 @@ function buildHat(R,sp,B,hr,hy){
   }
 }
 
-function buildWeapon(R,sp,B){
-  const W=sp.weapon; if(!W||W.kind==='none') return; const hand=W.hand==='L'?'handL':'handR', c=W.col||0xE6ECF2, c2=W.col2||0x3A2418, s=W.s||1, gl=!!W.glow;
+function buildWeapon(R,sp,B){ const W=sp.weapon; if(!W||W.kind==='none') return;
+  if(!buildWeaponV76(R,sp,B,W)) buildWeaponBase(R,sp,B);
+  if(W.off){ const o=Object.assign({},sp,{weapon:Object.assign({},W.off,{hand:'L'})}); buildWeapon(R,o,B); } }
+function buildWeaponBase(R,sp,B){
+  const W=sp.weapon; const hand=W.hand==='L'?'handL':'handR', c=W.col||0xE6ECF2, c2=W.col2||0x3A2418, s=W.s||1, gl=!!W.glow;
   const fwd=(len)=>({p:[0,-B.limb*0.7,len*0.5],r:[Math.PI/2,0,0]});
   switch(W.kind){
     case 'katana': case 'greatsword': { const L=(W.kind==='greatsword'?1.25:0.9)*s, wdt=W.kind==='greatsword'?0.09:0.045;
@@ -745,7 +869,6 @@ function buildWeapon(R,sp,B){
     case 'lantern': R.add(hand,G_.lathe([[0.02,0.2],[0.15,0.14],[0.18,0],[0.15,-0.14],[0.02,-0.2]],12),0xFF6A2A,{p:[0,-B.limb*0.6-0.25,0.12],glow:true}); break;
     case 'gohei': R.add(hand,G_.cyl(0.02,0.02,0.7,5),0xC8A46E,{p:[0,-B.limb*0.6,0.2],r:[Math.PI/2-0.6,0,0]}); for(const sd of [1,-1]) R.add(hand,G_.box(0.06,0.25,0.01),0xFFFFFF,{p:[sd*0.05,-B.limb*0.6+0.3,0.42],r:[0,0,sd*0.3],ol:false}); break;
   }
-  if(W.off){ const o=Object.assign({},sp,{weapon:Object.assign({},W.off,{hand:'L'})}); buildWeapon(R,o,B); }
 }
 
 function buildBack(R,sp,B){
