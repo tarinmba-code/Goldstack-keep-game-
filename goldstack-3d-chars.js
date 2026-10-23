@@ -16,7 +16,7 @@ const TAU=Math.PI*2;
    Every helper returns a non-indexed BufferGeometry with position + normal only, so parts merge freely. */
 function ni(g){ let n=g.index?g.toNonIndexed():g; for(const k of Object.keys(n.attributes)) if(k!=='position'&&k!=='normal') n.deleteAttribute(k); if(!n.attributes.normal) n.computeVertexNormals(); return n; }
 const G_={
-  sph:(rx,ry,rz,ws=16,hs=12)=>{ const g=new T.SphereGeometry(1,ws,hs); g.scale(rx,ry==null?rx:ry,rz==null?rx:rz); return ni(g); },
+  sph:(rx,ry,rz,ws,hs)=>{ const m=Math.max(rx,ry==null?rx:ry,rz==null?rx:rz); if(ws==null){ ws=m<0.05?7:m<0.12?10:m<0.3?14:16; hs=m<0.05?5:m<0.12?7:m<0.3?10:12; } const g=new T.SphereGeometry(1,ws,hs);   /* fewer segments for small parts */ g.scale(rx,ry==null?rx:ry,rz==null?rx:rz); return ni(g); },
   part:(rx,ry,rz,ps,pl,ts,tl,ws=18,hs=12)=>{ const g=new T.SphereGeometry(1,ws,hs,ps,pl,ts,tl); g.scale(rx,ry,rz); return ni(g); },
   hemi:(rx,ry,rz,ws=16)=>{ const g=new T.SphereGeometry(1,ws,8,0,TAU,0,Math.PI/2); g.scale(rx,ry,rz); return ni(g); },
   cap:(r,len,rs=10)=>ni(new T.CapsuleGeometry(r,Math.max(0.001,len),4,rs)),
@@ -24,16 +24,16 @@ const G_={
   cone:(r,h,rs=10)=>ni(new T.ConeGeometry(r,h,rs)),
   box:(w,h,d)=>ni(new T.BoxGeometry(w,h,d)),
   tor:(R,r,rs=8,ts=24,arc=TAU)=>ni(new T.TorusGeometry(R,r,rs,ts,arc)),
-  lathe:(pts,seg=16)=>{ const q=pts[0][1]>pts[pts.length-1][1]?pts.slice().reverse():pts;   /* profile must run bottom-up so faces point outward */
-    return ni(new T.LatheGeometry(q.map(p=>new T.Vector2(Math.max(0.0005,p[0]),p[1])),seg)); },
+  lathe:(pts,seg=16,phi0=0,phiL=TAU)=>{ const q=pts[0][1]>pts[pts.length-1][1]?pts.slice().reverse():pts;   /* profile must run bottom-up so faces point outward */
+    return ni(new T.LatheGeometry(q.map(p=>new T.Vector2(Math.max(0.0005,p[0]),p[1])),seg,phi0,phiL)); },
   /* tapered tube along a smooth curve: radius goes r0 -> r1 */
   tube:(pts,r0,r1,rs=7,seg=14)=>{ const curve=new T.CatmullRomCurve3(pts.map(p=>new T.Vector3(p[0],p[1],p[2])));
     const g=new T.TubeGeometry(curve,seg,1,rs,false), pos=g.attributes.position, nrm=g.attributes.normal, P=new T.Vector3();
     for(let i=0;i<=seg;i++){ const t=i/seg, r=lerp(r0,r1,t), c=curve.getPointAt(t);
       for(let j=0;j<=rs;j++){ const k=i*(rs+1)+j; P.fromBufferAttribute(pos,k).sub(c).multiplyScalar(r).add(c); pos.setXYZ(k,P.x,P.y,P.z); } }
     g.computeVertexNormals(); const out=ni(g);
-    const tip=G_.sph(Math.max(r1,0.004),Math.max(r1,0.004),Math.max(r1,0.004),6,4); tip.translate(pts[pts.length-1][0],pts[pts.length-1][1],pts[pts.length-1][2]);
-    const cap0=G_.sph(r0,r0,r0,8,6); cap0.translate(pts[0][0],pts[0][1],pts[0][2]);
+    const tip=G_.sph(Math.max(r1,0.004),Math.max(r1,0.004),Math.max(r1,0.004),5,3); tip.translate(pts[pts.length-1][0],pts[pts.length-1][1],pts[pts.length-1][2]);
+    const cap0=G_.sph(r0,r0,r0,rs,4); cap0.translate(pts[0][0],pts[0][1],pts[0][2]);
     return mergeRaw([out,cap0,tip]); },
   /* flat extruded outline (crests, feathers, fans, blades) drawn in the XY plane, depth along Z */
   shape:(pts,depth=0.03,bevel=0.008)=>{ const s=new T.Shape(); s.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) s.lineTo(pts[i][0],pts[i][1]);
@@ -60,7 +60,7 @@ class Rig{
     if(parent){ const p=this.byName[parent]; p.add(b); b.userData.world.add(p.userData.world); }
     this.bones.push(b); this.byName[name]=b; return b; }
   /* add a shaped part to a bone: o.p offset, o.r rotation (radians), o.s scale, o.glow unlit, o.ol outline (default on) */
-  add(bone,geo,col,o){ o=o||{}; this.parts.push({bone:typeof bone==='string'?this.byName[bone]:bone,geo,col,p:o.p||[0,0,0],r:o.r||[0,0,0],s:o.s||[1,1,1],glow:!!o.glow,ol:o.ol!==false&&!o.glow}); return this; }
+  add(bone,geo,col,o){ o=o||{}; this.parts.push({bone:typeof bone==='string'?this.byName[bone]:bone,geo,col,p:o.p||[0,0,0],r:o.r||[0,0,0],s:o.s||[1,1,1],glow:!!o.glow,ol:o.ol!==false&&!o.glow,grad:o.grad!=null?o.grad:null,gax:o.gax||1}); return this; }
   build(){
     const groups={toon:[],ol:[],glow:[]};
     for(const pt of this.parts){
@@ -68,8 +68,10 @@ class Rig{
       _q.setFromEuler(_e.set(pt.r[0],pt.r[1],pt.r[2])); _s.set(pt.s[0],pt.s[1],pt.s[2]); _v.set(pt.p[0]+w.x,pt.p[1]+w.y,pt.p[2]+w.z);
       _m.compose(_v,_q,_s); _nm.getNormalMatrix(_m);
       const src=pt.geo, n=src.attributes.position.count, P=new Float32Array(n*3), N=new Float32Array(n*3), C=new Float32Array(n*3), SI=new Uint16Array(n*4), SW=new Float32Array(n*4);
-      _c.set(pt.col);
-      for(let i=0;i<n;i++){ _v.fromBufferAttribute(src.attributes.position,i).applyMatrix4(_m); P[i*3]=_v.x; P[i*3+1]=_v.y; P[i*3+2]=_v.z;
+      _c.set(pt.col); let gy0=0,gy1=1; const gc=pt.grad!=null?new T.Color(pt.grad):null, c0=_c.clone();
+      if(gc){ gy0=1e9; gy1=-1e9; for(let i=0;i<n;i++){ const y=src.attributes.position.getY(i); if(y<gy0) gy0=y; if(y>gy1) gy1=y; } }
+      for(let i=0;i<n;i++){ if(gc){ const y=src.attributes.position.getY(i), u=gy1>gy0?(gy1-y)/(gy1-gy0):0; _c.copy(c0).lerp(gc,Math.pow(u,pt.gax)); }
+        _v.fromBufferAttribute(src.attributes.position,i).applyMatrix4(_m); P[i*3]=_v.x; P[i*3+1]=_v.y; P[i*3+2]=_v.z;
         _v.fromBufferAttribute(src.attributes.normal,i).applyMatrix3(_nm).normalize(); N[i*3]=_v.x; N[i*3+1]=_v.y; N[i*3+2]=_v.z;
         C[i*3]=_c.r; C[i*3+1]=_c.g; C[i*3+2]=_c.b; SI[i*4]=b.userData.idx; SW[i*4]=1; }
       const rec={P,N,C,SI,SW,n};
@@ -92,11 +94,12 @@ OL_MAT.customProgramCacheKey=()=>'gk3d-outline';
 const GLOW_MAT=new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,fog:false});
 /* heroes and bosses must read as clearly as the painted troops: no fog, and half of their colour is unlit so night
    and dusk lighting never wash them out; a touch of extra saturation keeps them vivid next to the sprites */
-function toonMat(o){ o=Object.assign({flat:0.32,sat:1.2,fog:false,wcap:0.84},o||{}); const m=new T.MeshToonMaterial({vertexColors:true,gradientMap:gradTex,color:0xFFFFFF,emissive:0x000000,fog:o.fog});
+const softGrad=(()=>{ const t=new T.DataTexture(new Uint8Array([168,168,168,255,222,222,222,255,255,255,255,255]),3,1,T.RGBAFormat); t.minFilter=t.magFilter=T.NearestFilter; t.generateMipmaps=false; t.needsUpdate=true; return t; })();
+function toonMat(o){ o=Object.assign({flat:0.32,sat:1.2,fog:false,wcap:0.84,soft:true,neutral:0.8},o||{}); const m=new T.MeshToonMaterial({vertexColors:true,gradientMap:o.soft?softGrad:gradTex,color:0xFFFFFF,emissive:0x000000,fog:o.fog});
   m.onBeforeCompile=sh=>{ if(o.wcap<1) sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  { float L0=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)); if(L0>'+o.wcap.toFixed(2)+') diffuseColor.rgb*='+o.wcap.toFixed(2)+'/L0; }');
     sh.fragmentShader=sh.fragmentShader.replace('#include <opaque_fragment>',
-    '{ vec3 lit=outgoingLight; outgoingLight=mix(lit,diffuseColor.rgb*vec3(1.04),'+o.flat.toFixed(2)+'); float lum=dot(outgoingLight,vec3(0.299,0.587,0.114)); outgoingLight=clamp(mix(vec3(lum),outgoingLight,'+o.sat.toFixed(2)+'),0.0,1.0); float rim=1.0-max(dot(normalize(normal),normalize(vViewPosition)),0.0); outgoingLight+=diffuseColor.rgb*smoothstep(0.55,1.0,rim)*0.32+vec3(0.06)*smoothstep(0.75,1.0,rim); }\n#include <opaque_fragment>'); };
-  m.customProgramCacheKey=()=>'gk3d-toon-rim3-'+o.flat+'-'+o.sat+'-'+o.fog+'-'+o.wcap; return m; }
+    '{ vec3 lit=outgoingLight; float Ld=max(dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)),0.02); lit=mix(lit,diffuseColor.rgb*(dot(lit,vec3(0.299,0.587,0.114))/Ld),'+(o.neutral!=null?o.neutral:0.8).toFixed(2)+'); outgoingLight=mix(lit,diffuseColor.rgb*vec3(1.04),'+o.flat.toFixed(2)+'); float lum=dot(outgoingLight,vec3(0.299,0.587,0.114)); outgoingLight=clamp(mix(vec3(lum),outgoingLight,'+o.sat.toFixed(2)+'),0.0,1.0); float rim=1.0-max(dot(normalize(normal),normalize(vViewPosition)),0.0); outgoingLight+=diffuseColor.rgb*smoothstep(0.55,1.0,rim)*0.32+vec3(0.06)*smoothstep(0.75,1.0,rim); }\n#include <opaque_fragment>'); };
+  m.customProgramCacheKey=()=>'gk3d-toon-rim4-'+o.neutral+o.soft+o.flat+'-'+o.sat+'-'+o.fog+'-'+o.wcap; return m; }
 
 /* ================================================================ palette helpers */
 const shade=(c,f)=>{ _c.set(c); const r=Math.min(255,Math.round(_c.r*255*f)), g=Math.min(255,Math.round(_c.g*255*f)), b=Math.min(255,Math.round(_c.b*255*f)); return (r<<16)|(g<<8)|b; };
@@ -106,12 +109,141 @@ const INK=0x1A1422;
    Model units: feet at y=0, about 2 units tall. Faces +Z. */
 const BUILDS={
   chibi:  {head:0.36,leg:0.62,torso:0.5, w:0.28,limb:0.088,arm:0.5},
-  hero:   {head:0.29,leg:0.82,torso:0.6, w:0.27,limb:0.072,arm:0.62},
-  slim:   {head:0.26,leg:0.9, torso:0.62,w:0.25,limb:0.065,arm:0.64},
-  normal: {head:0.25,leg:0.88,torso:0.64,w:0.3, limb:0.08, arm:0.66},
-  broad:  {head:0.24,leg:0.82,torso:0.68,w:0.4, limb:0.11, arm:0.7},
-  giant:  {head:0.26,leg:0.78,torso:0.72,w:0.48,limb:0.14, arm:0.78},
+  hero:   {head:0.33,leg:0.72,torso:0.56,w:0.27,limb:0.075,arm:0.58},
+  slim:   {head:0.32,leg:0.76,torso:0.56,w:0.25,limb:0.068,arm:0.58},
+  normal: {head:0.31,leg:0.74,torso:0.58,w:0.3, limb:0.082,arm:0.6},
+  broad:  {head:0.29,leg:0.7, torso:0.64,w:0.4, limb:0.11, arm:0.66},
+  giant:  {head:0.29,leg:0.7, torso:0.7, w:0.48,limb:0.14, arm:0.74},
   round:  {head:0.3, leg:0.5, torso:0.6, w:0.48,limb:0.1,  arm:0.55}};
+
+/* ================================================================ v71 detail kit
+   Shared building blocks that bring a code-built character closer to its painted art:
+   layered anime eyes, strand-by-strand flowing hair, an open layered furisode with hanging sleeves,
+   a flaming sun halo and an ornate bow. Every part can carry a colour gradient (o.grad). */
+function faceAnime(R,hr,hy,eyes,hairCol,skin,sp){
+  sp=sp||{}; const ec=eyes.col||0x6A4A2A, fierce=!!eyes.fierce, glow=!!eyes.glow, old=sp.head==='old'||!!eyes.old, closed=eyes.style==='closed';
+  const big=(sp.build==='chibi'||sp.build==='slim'||sp.build==='hero')&&!fierce?1:0.86;
+  const ew=hr*0.2*big, eh=hr*(fierce?0.2:old?0.13:0.27)*big, sx=hr*0.36, ey=hy-hr*(fierce?0.08:0.14);
+  for(const sd of [1,-1]){
+    const x=sd*sx, z=hr*0.98*Math.sqrt(Math.max(0,1-(x/hr)**2-((ey-hy)/(1.05*hr))**2)), ry=sd*Math.asin(Math.min(0.9,Math.abs(x)/hr))*0.85;
+    const P=(dx,dy,dz)=>[x+dx*Math.cos(ry)+dz*Math.sin(ry), ey+dy, z-dx*Math.sin(ry)+dz*Math.cos(ry)];
+    const at=(dx,dy,dz)=>({p:P(dx,dy,dz),r:[0,ry,0],ol:false});
+    const tube=(pts,r0,r1,col,o)=>R.add('head',G_.tube(pts.map(q=>P(q[0],q[1],q[2])),r0,r1,6,12),col,Object.assign({ol:false},o||{}));
+    if(closed){ tube([[-sd*ew*0.9,0,0],[0,-eh*0.35,ew*0.05],[sd*ew*0.95,0,0]],ew*0.1,ew*0.05,0x1A1018);
+      tube([[-sd*ew*0.75,eh*1.25,-ew*0.02],[sd*ew*0.15,eh*1.5,0],[sd*ew*1.0,eh*1.3,-ew*0.08]],ew*0.07,ew*0.03,shade(hairCol,0.62)); continue; }
+    R.add('head',G_.sph(ew*1.06,eh*1.02,ew*0.3,18,12),glow?shade(ec,0.5):0xFFFFFF,Object.assign(at(0,0,-ew*0.1),glow?{glow:true}:{}));
+    if(glow){ R.add('head',G_.sph(ew*0.85,eh*0.85,ew*0.3,16,10),ec,Object.assign(at(0,-eh*0.05,-ew*0.05),{glow:true,grad:0xFFFFFF}));
+      R.add('head',G_.sph(ew*0.3,eh*0.35,ew*0.22,10,6),0xFFFFFF,Object.assign(at(0,-eh*0.05,ew*0.05),{glow:true})); }
+    else {
+      R.add('head',G_.sph(ew*0.8,eh*0.92,ew*0.28,18,12),shade(ec,0.45),Object.assign(at(-sd*ew*0.04,-eh*0.04,-ew*0.04),{grad:shade(ec,1.4),gax:1.3}));
+      R.add('head',G_.sph(ew*0.62,eh*0.7,ew*0.27,16,10),shade(ec,0.75),Object.assign(at(-sd*ew*0.04,-eh*0.1,-ew*0.02),{grad:shade(ec,1.6)}));
+      R.add('head',G_.sph(ew*(fierce?0.28:0.36),eh*0.46,ew*0.25,12,8),0x1A0E10,at(-sd*ew*0.04,-eh*0.02,0));
+      R.add('head',G_.sph(ew*0.3,eh*0.26,ew*0.2,10,6),0xFFFFFF,Object.assign(at(-ew*0.26,eh*0.34,ew*0.07),{glow:true}));
+      R.add('head',G_.sph(ew*0.14,eh*0.12,ew*0.15,8,6),0xFFFFFF,Object.assign(at(ew*0.24,-eh*0.36,ew*0.06),{glow:true})); }
+    if(fierce){ tube([[-sd*ew*1.05,eh*0.2,0],[-sd*ew*0.2,eh*0.85,ew*0.05],[sd*ew*0.7,eh*0.95,ew*0.03],[sd*ew*1.25,eh*0.75,0]],ew*0.15,ew*0.07,0x1A1018);
+      tube([[-sd*ew*1.0,eh*1.0,0],[-sd*ew*0.1,eh*1.45,0],[sd*ew*1.1,eh*2.0,-ew*0.06]],ew*0.16,ew*0.06,shade(eyes.browCol||hairCol,0.55)); }   /* heavy angry brow sloping down to the nose */
+    else { tube([[-sd*ew*1.05,eh*0.5,0],[-sd*ew*0.3,eh*0.98,ew*0.05],[sd*ew*0.6,eh*0.92,ew*0.03],[sd*ew*1.12,eh*0.62,0],[sd*ew*1.5,eh*0.92,-ew*0.08]],ew*0.13,ew*0.05,0x1A1018);
+      tube([[sd*ew*0.15,-eh*0.98,0],[sd*ew*0.7,-eh*0.82,0],[sd*ew*1.0,-eh*0.55,0]],ew*0.045,ew*0.02,0x3A2228);
+      tube([[-sd*ew*0.75,eh*1.55+(old?eh*0.6:0),-ew*0.02],[sd*ew*0.15,eh*1.82+(old?eh*0.6:0),0],[sd*ew*1.0,eh*1.62+(old?eh*0.5:0),-ew*0.08]],ew*(old?0.12:0.07),ew*0.03,shade(eyes.browCol||hairCol,0.62)); }
+    if(!fierce&&!old&&eyes.blush!==false) R.add('head',G_.sph(ew*0.55,eh*0.22,ew*0.12,10,6),0xF6A2AE,at(sd*ew*0.35,-eh*1.45,-ew*0.05)); }
+  const zm=hr*0.84;
+  if(eyes.grin){ R.add('head',G_.tube([[-hr*0.3,hy-hr*0.42,zm-0.01],[0,hy-hr*0.6,zm+hr*0.02],[hr*0.3,hy-hr*0.42,zm-0.01]],hr*0.06,hr*0.05,6,10),0x3A1414,{ol:false});
+    R.add('head',G_.box(hr*0.48,hr*0.06,hr*0.05),0xFFFFFF,{p:[0,hy-hr*0.46,zm+hr*0.06],ol:false});
+    for(const sd of [1,-1]) R.add('head',G_.cone(hr*0.06,hr*0.2,5),0xFFFFFF,{p:[sd*hr*0.22,hy-hr*0.4,zm+hr*0.05],ol:false}); }
+  else if(fierce) R.add('head',G_.tube([[-hr*0.13,hy-hr*0.53,zm],[0,hy-hr*0.49,zm+hr*0.01],[hr*0.13,hy-hr*0.53,zm]],hr*0.022,hr*0.018,5,8),0x5A2020,{ol:false});
+  else if(eyes.mouth!==false) R.add('head',G_.tube([[-hr*0.075,hy-hr*0.5,zm],[0,hy-hr*0.535,zm+hr*0.01],[hr*0.075,hy-hr*0.5,zm]],hr*0.018,hr*0.014,5,8),0x9A3A3A,{ol:false});
+  R.add('head',G_.sph(hr*0.035,hr*0.025,hr*0.02),shade(skin,0.85),{p:[0,hy-hr*0.3,hr*0.97],ol:false});
+  if(old) for(let i=0;i<2;i++) R.add('head',G_.box(hr*0.55,0.01,0.01),shade(skin,0.72),{p:[0,hy+hr*(0.45+i*0.12),hr*0.92],ol:false}); }
+
+function hairFlow(R,H,hr,hy,cap){
+  const c=H.col||0x2A2433, tip=H.col2||shade(c,1.3), root=shade(c,0.82), L=hr*(H.len||4), fl=H.flare||1.4;
+  cap();
+  const nb=H.bangs||9;
+  for(let i=0;i<nb;i++){ const u=i/(nb-1)-0.5, a=u*2.1, side=Math.abs(u)*2, len=hr*(0.62+0.45*side*side+((i%3)-1)*0.05);
+    const pts=[[Math.sin(a)*hr*0.3,hy+hr*1.02,Math.cos(a)*hr*0.35],[Math.sin(a)*hr*0.72,hy+hr*0.72,Math.cos(a)*hr*1.0],[Math.sin(a)*hr*(0.8+side*0.18),hy+hr*0.98-len,Math.cos(a)*hr*(0.98-side*0.12)]];
+    R.add('head',G_.tube(pts,hr*0.16,hr*0.015,6,10),c,{grad:tip,gax:1.5}); }
+  for(const sd of [1,-1]) for(let k=0;k<2;k++){ const o=k*hr*0.12;
+    R.add('head',G_.tube([[sd*hr*0.82,hy+hr*0.45,hr*0.3+o],[sd*(hr*0.98+o),hy-hr*0.35,hr*0.45],[sd*(hr*0.9+o*1.5),hy-hr*(1.2+k*0.3),hr*0.55],[sd*(hr*0.98+o*2),hy-hr*(2.0+k*0.4),hr*0.5]],hr*(0.26-k*0.05),hr*0.03,7,14),k?root:c,{grad:tip}); }
+  const hb=p=>[p[0],p[1]-hr*0.9,p[2]+hr*0.4], n=H.strands||16;   /* back hair hangs from the swaying hair bone */
+  R.add('hair',G_.lathe([[hr*0.9,hy+hr*0.55],[hr*1.12,hy-hr*0.4],[hr*(1.25+fl*0.35),hy-L*0.5],[hr*(1.3+fl*0.75),hy-L*0.9],[hr*(1.1+fl*0.7),hy-L*0.97]],20),root,{p:hb([0,0,-hr*0.78]),s:[1,1,0.38],grad:tip,gax:1.2});
+  for(let i=0;i<n;i++){ const u=i/(n-1)-0.5, a=u*2.3, au=Math.abs(u), w=Math.sin(i*1.7)*hr*0.18;
+    const pts=[[Math.sin(a)*hr*0.85,hy+hr*0.5*Math.cos(u*1.3),-Math.cos(a)*hr*0.62-hr*0.08],
+      [Math.sin(a)*hr*(1.2+au*0.6),hy-hr*0.45,-hr*0.78-Math.cos(a)*hr*0.18],
+      [Math.sin(a)*hr*(1.3+fl*au*0.9)+w,hy-L*0.55,-hr*0.62+Math.cos(i)*hr*0.1],
+      [Math.sin(a)*hr*(1.35+fl*au*1.5)-w,hy-L*(0.9+0.08*Math.sin(i*2.3)),-hr*0.4]].map(hb);
+    R.add('hair',G_.tube(pts,hr*(0.36-au*0.08),hr*0.04,6,14),i%3===1?root:c,{grad:tip,gax:0.8}); }
+  if(H.ornament==='sun') for(const sd of [1,-1]){
+    R.add('head',G_.cyl(hr*0.24,hr*0.24,hr*0.06,16),0xF5C542,{p:[sd*hr*0.95,hy+hr*0.42,hr*0.12],r:[0,0,sd*Math.PI/2]});
+    R.add('head',G_.star(hr*0.36,hr*0.2,10,hr*0.04),0xFFB020,{p:[sd*hr*0.99,hy+hr*0.42,hr*0.12],r:[0,sd*Math.PI/2,0],glow:true});
+    R.add('head',G_.sph(hr*0.12,hr*0.12,hr*0.05),0xFFF1B0,{p:[sd*hr*1.03,hy+hr*0.42,hr*0.12],r:[0,sd*Math.PI/2,0],glow:true});
+    for(let k=0;k<3;k++) R.add('head',G_.sph(hr*0.11),0xFFFFFF,{p:[sd*hr*(0.82+k*0.08),hy+hr*(0.7+k*0.06),hr*(0.35-k*0.12)]});      /* white blossoms */
+    R.add('head',G_.tube([[0,0,0],[sd*hr*0.05,-hr*0.5,hr*0.02],[sd*hr*0.02,-hr*1.1,0]],hr*0.05,hr*0.035,5,8),0xD8241A,{p:[sd*hr*1.0,hy+hr*0.3,hr*0.12]});   /* tassels */
+    R.add('head',G_.sph(hr*0.07),0xF5C542,{p:[sd*hr*1.02,hy-hr*0.82,hr*0.12]}); } }
+
+function outfitFurisode(R,o,B,legL,spineH,chestH,armSeg,skin){
+  const oc=o.col||0xFFF6E6, red=o.col2||0xD8341E, trim=o.trim||0xF5C542, len=legL*0.98, gap=0.42;
+  const prof=[[B.w*1.0,0.06],[B.w*1.12,-len*0.25],[B.w*1.42,-len*0.7],[B.w*1.72,-len],[B.w*1.68,-len*1.01]];
+  const rAt=y=>{ for(let i=0;i<prof.length-1;i++){ const a=prof[i],b=prof[i+1]; if(y<=a[1]&&y>=b[1]) return lerp(a[0],b[0],(a[1]-y)/(a[1]-b[1])); } return prof[prof.length-1][0]; };
+  /* inner red layers, then the open white outer robe */
+  R.add('skirt',G_.lathe([[B.w*0.95,0.05],[B.w*1.02,-len*0.3],[B.w*1.25,-len*0.75],[B.w*1.45,-len*1.02],[B.w*1.4,-len*1.03]],22),red,{grad:shade(red,0.78)});
+  R.add('skirt',G_.lathe([[B.w*0.9,0.0],[B.w*0.98,-len*0.35],[B.w*1.08,-len*0.8],[B.w*1.16,-len*1.04]],18),0xFFFFFF,{p:[0,-0.01,0]});
+  R.add('skirt',G_.lathe(prof,26,gap,TAU-gap*2),oc,{grad:shade(oc,0.86),gax:1.4});
+  const edge=phi=>prof.map(q=>[Math.sin(phi)*(q[0]+0.006),q[1],Math.cos(phi)*(q[0]+0.006)]);
+  for(const phi of [gap,TAU-gap]) R.add('skirt',G_.tube(edge(phi),0.028,0.028,6,16),trim,{});
+  const hem=[]; for(let k=0;k<=24;k++){ const phi=gap+(TAU-gap*2)*k/24; hem.push([Math.sin(phi)*prof[3][0]*1.01,-len+0.01,Math.cos(phi)*prof[3][0]*1.01]); }
+  R.add('skirt',G_.tube(hem,0.03,0.03,6,48),trim,{});
+  for(let k=0;k<12;k++){ const phi=gap+0.25+(TAU-gap*2-0.5)*k/11, y=-len*(0.42+0.36*((k*7)%3)/2), rr=rAt(y)+0.012;   /* sun motifs */
+    R.add('skirt',G_.star(0.075,0.03,8,0.012),o.motif||trim,{p:[Math.sin(phi)*rr,y,Math.cos(phi)*rr],r:[0,phi,0],ol:false});
+    R.add('skirt',G_.sph(0.028,0.028,0.012),0xE8341E,{p:[Math.sin(phi)*(rr+0.01),y,Math.cos(phi)*(rr+0.01)],r:[0,phi,0],ol:false}); }
+  /* collar: red under-collar, white, gold edge */
+  for(const sd of [1,-1]){ R.add('chest',G_.box(0.085,chestH*1.1,0.03),red,{p:[sd*B.w*0.2,chestH*0.42,B.w*0.7],r:[0.12,0,sd*0.48]});
+    R.add('chest',G_.box(0.03,chestH*1.1,0.035),trim,{p:[sd*B.w*0.27,chestH*0.42,B.w*0.71],r:[0.12,0,sd*0.48],ol:false}); }
+  R.add('chest',G_.sph(B.w*0.32,chestH*0.22,0.04),trim,{p:[0,chestH*0.62,B.w*0.72]});                            /* chest ornament */
+  R.add('chest',G_.star(B.w*0.28,B.w*0.14,12,0.02),0xFFC531,{p:[0,chestH*0.62,B.w*0.76],glow:true});
+  /* obi, cords, front brooch, big bow behind, tassels */
+  R.add('spine',G_.cyl(B.w*1.0,B.w*1.02,spineH*0.62,22),o.belt||0xC8241A,{p:[0,spineH*0.2,0],s:[1,1,0.78]});
+  for(const dy of [-0.22,0.22]) R.add('spine',G_.tor(B.w*1.02,0.014,5,28),trim,{p:[0,spineH*(0.2+dy),0],r:[Math.PI/2,0,0],s:[1,0.78,1],ol:false});
+  R.add('spine',G_.sph(0.07,0.07,0.03),0xFFE27A,{p:[0,spineH*0.2,B.w*0.8],glow:true}); R.add('spine',G_.tor(0.075,0.014,5,16),trim,{p:[0,spineH*0.2,B.w*0.8]});
+  for(const sd of [1,-1]){ R.add('spine',G_.tor(0.13,0.045,6,14),o.belt||0xC8241A,{p:[sd*0.13,spineH*0.3,-B.w*0.85],r:[0,sd*0.5,0],s:[1,0.75,0.6]});
+    R.add('spine',G_.box(0.1,0.42,0.03),o.belt||0xC8241A,{p:[sd*0.07,-spineH*0.6,-B.w*0.86],r:[0.1,0,sd*0.12],grad:shade(o.belt||0xC8241A,0.7)});
+    R.add('spine',G_.tube([[0,0,0],[sd*0.02,-0.25,0.02],[sd*0.03,-0.5,0]],0.018,0.016,5,8),0xD8241A,{p:[sd*0.12,spineH*0.05,B.w*0.8]});
+    R.add('spine',G_.sph(0.035),trim,{p:[sd*0.15,spineH*0.05-0.5,B.w*0.8]}); }
+  /* furisode sleeves: long hanging panels with red lining and a gold hem */
+  for(const sd of [1,-1]){ const L=sd>0?'L':'R';
+    R.add('elbow'+L,G_.lathe([[B.limb*1.6,armSeg*0.45],[0.18,armSeg*0.1],[0.26,-0.2],[0.28,-0.45],[0.21,-0.6],[0.001,-0.63]],18),oc,{p:[sd*0.07,0,-0.02],r:[0,0,sd*0.12],s:[1,1,0.42],grad:shade(oc,0.86)});
+    R.add('elbow'+L,G_.lathe([[0.2,-0.5],[0.23,-0.56],[0.001,-0.64]],14),red,{p:[sd*0.07,0,-0.02],r:[0,0,sd*0.12],s:[1,1,0.44]});
+    const hm=[]; for(let k=0;k<=12;k++){ const a=k/12*TAU; hm.push([Math.sin(a)*0.235,-0.55-Math.cos(a)*0.02,Math.cos(a)*0.235*0.43]); }
+    R.add('elbow'+L,G_.tube(hm,0.018,0.018,5,24),trim,{p:[sd*0.07,0,-0.02],r:[0,0,sd*0.12]});
+    for(const dy of [-0.18,-0.4]) R.add('elbow'+L,G_.star(0.075,0.03,8,0.012),trim,{p:[sd*(0.07+0.04),dy,0.125],ol:false});
+    R.add('elbow'+L,G_.tor(B.limb*1.5,B.limb*0.35,6,14),red,{p:[0,-armSeg*0.82,0.0],r:[Math.PI/2,0,0]});
+    /* sandals and anklets */
+    R.add('foot'+L,G_.box(B.limb*1.7,0.035,B.limb*3.3),0xC8A060,{p:[0,-0.035,B.limb*0.9]}); R.add('foot'+L,G_.box(B.limb*1.2,0.03,0.025),0xD8241A,{p:[0,0.04,B.limb*1.6],ol:false});
+    R.add('knee'+L,G_.tor(B.limb*1.1,0.018,5,14),trim,{p:[0,-0.0,0],r:[Math.PI/2,0,0],ol:false}); } }
+
+function backSunflame(R,K,B,sp){
+  const hr=B.head, hy=hr*0.95, c=[0,hy+hr*0.1,-hr*1.25];
+  const at=(dz,rz)=>({p:[c[0],c[1],c[2]+dz],r:[0,0,rz||0],glow:true});
+  R.add('head',G_.star(hr*2.35,hr*1.75,22,0.03),0xFF8A14,at(-0.03));
+  R.add('head',G_.star(hr*2.05,hr*1.62,22,0.03),0xFFB424,at(-0.015,Math.PI/22));
+  R.add('head',G_.cyl(hr*1.6,hr*1.6,0.02,40),0xFFE36E,Object.assign(at(0),{r:[Math.PI/2,0,0],grad:0xFFF6C8}));
+  R.add('head',G_.tor(hr*1.62,hr*0.07,6,48),0xF5B820,{p:c});
+  R.add('head',G_.tor(hr*1.2,hr*0.035,5,40),0xFFF1B0,{p:[c[0],c[1],c[2]+0.012],glow:true});
+  for(let i=0;i<12;i++){ const a=i/12*TAU+0.13, r0=hr*1.85, sx=Math.sin(a), cy=Math.cos(a), tx=Math.cos(a), ty=-Math.sin(a), cr=(i%2?1:-1);
+    const pts=[[sx*r0,cy*r0,0],[sx*hr*2.35+tx*hr*0.2*cr,cy*hr*2.35+ty*hr*0.2*cr,0],[sx*hr*2.65-tx*hr*0.08*cr,cy*hr*2.65-ty*hr*0.08*cr,0],[sx*hr*2.8+tx*hr*0.2*cr,cy*hr*2.8+ty*hr*0.2*cr,0]];
+    R.add('head',G_.tube(pts,hr*0.17,hr*0.01,5,10),0xFF9A1E,{p:[c[0],c[1],c[2]-0.02],glow:true,grad:0xFFE27A}); } }
+
+function weaponSunbow(R,W,B){
+  const g=W.col||0xF5C542, p={p:[0.05,-B.limb*0.7,0.07]};
+  const arc=[[0,-0.92,0],[0.14,-0.6,0],[0.22,-0.2,0],[0.24,0,0],[0.22,0.2,0],[0.14,0.6,0],[0,0.92,0]];
+  R.add('handL',G_.tube(arc,0.04,0.03,7,28),g,Object.assign({grad:0xFFB020},p));
+  for(const sd of [1,-1]){ const curl=[];   /* flame curls at each tip */
+    for(let k=0;k<=10;k++){ const a=k/10*Math.PI*1.6, r=0.13*(1-k/14); curl.push([-0.02-Math.sin(a)*r, sd*(0.92+0.12-Math.cos(a)*r*0.9+0.0), 0]); }
+    R.add('handL',G_.tube(curl,0.03,0.008,6,20),0xFFC531,{p:p.p,grad:0xFF8A14});
+    R.add('handL',G_.cone(0.05,0.28,5),0xFF9A1E,{p:[p.p[0]+0.14,p.p[1]+sd*0.62,p.p[2]],r:[0,0,sd>0?-0.6:Math.PI+0.6],glow:true}); }
+  R.add('handL',G_.cyl(0.05,0.05,0.2,10),0xC8241A,{p:p.p});
+  R.add('handL',G_.sph(0.09),0xFFE27A,{p:[p.p[0]+0.26,p.p[1],p.p[2]],glow:true}); R.add('handL',G_.star(0.17,0.09,10,0.02),0xFFB020,{p:[p.p[0]+0.26,p.p[1],p.p[2]-0.01],glow:true});
+  R.add('handL',G_.cyl(0.006,0.006,1.84,3),0xFFF1B0,{p:[p.p[0]-0.005,p.p[1],p.p[2]],glow:true}); }
+
 function buildHuman(sp){
   const B=Object.assign({},BUILDS[sp.build||'normal'],sp.prop||{}), R=new Rig();
   const legL=B.leg, thigh=legL*0.5, shin=legL*0.5-0.05, hipW=B.w*0.42, spineH=B.torso*0.36, chestH=B.torso*0.42, neckH=B.torso*0.12;
@@ -123,69 +255,144 @@ function buildHuman(sp){
     R.bone('thigh'+L,'hips',[sd*hipW,-0.02,0]); R.bone('knee'+L,'thigh'+L,[0,-thigh,0]); R.bone('foot'+L,'knee'+L,[0,-shin,0]); }
   R.bone('skirt','hips',[0,0,0]); R.bone('back','chest',[0,chestH*0.5,-B.w*0.55]); R.bone('tail','hips',[0,0,-B.w*0.6]);
   R.bone('hair','head',[0,B.head*0.9,-B.head*0.4]);
-  const skin=sp.skin||0xF6D2B0, o=sp.outfit||{}, oc=o.col||0x2F5DB8, oc2=o.col2||shade(oc,0.75), trim=o.trim||0xF5C542;
-  const bulk=sp.build==='broad'||sp.build==='giant';
-  /* --- body under clothes */
-  const bodyCol=o.kind==='bare'?skin:oc;
-  R.add('hips',G_.sph(B.w*0.95,B.torso*0.22,B.w*0.7),o.kind==='bare'?(o.col2||0x6B4A2A):oc2,{p:[0,0.02,0]});
-  R.add('spine',G_.sph(B.w*0.9,spineH*0.75,B.w*0.66),bodyCol,{p:[0,spineH*0.45,0]});
-  R.add('chest',G_.sph(B.w*(bulk?1.12:1.0),chestH*0.72,B.w*0.72),bodyCol,{p:[0,chestH*0.42,0.01]});
-  if(o.kind==='bare'){ /* muscle definition */
-    for(const sd of [1,-1]) R.add('chest',G_.sph(B.w*0.42,chestH*0.3,B.w*0.25),shade(skin,0.92),{p:[sd*B.w*0.42,chestH*0.5,B.w*0.55]});
-    for(let i=0;i<3;i++) for(const sd of [1,-1]) R.add('spine',G_.sph(B.w*0.18,spineH*0.14,0.05),shade(skin,0.9),{p:[sd*B.w*0.2,spineH*(0.75-i*0.28),B.w*0.6]}); }
+  const skin=sp.skin||0xF6D2B0, o=sp.outfit||{}, kind=o.kind||'none', oc=o.col||0x2F5DB8, oc2=o.col2||shade(oc,0.75), trim=o.trim||0xF5C542;
+  const inner=o.inner||oc2, bulk=sp.build==='broad'||sp.build==='giant'||sp.build==='round';
+  const robeLike=kind==='robe'||kind==='kimono'||kind==='monk'||kind==='furisode', armor=kind==='armor', bare=kind==='bare', hakama=kind==='hakama', ninja=kind==='ninja';
+  const topCol=hakama?(o.top||0xF4F1EA):bare?skin:armor?(o.plate||oc2):oc;
+  const G=(c,f)=>({grad:shade(c,f||0.84)});
+  /* --- torso */
+  R.add('hips',G_.sph(B.w*0.95,B.torso*0.22,B.w*0.7),bare?(o.col2||0x6B4A2A):hakama?oc:oc2,{p:[0,0.02,0]});
+  R.add('spine',G_.sph(B.w*0.9,spineH*0.75,B.w*0.66),topCol,Object.assign({p:[0,spineH*0.45,0]},G(topCol,0.9)));
+  R.add('chest',G_.sph(B.w*(bulk?1.12:1.0),chestH*0.72,B.w*0.72),topCol,Object.assign({p:[0,chestH*0.42,0.01]},G(topCol,0.9)));
+  if(bare){ const ms=shade(skin,0.9);   /* muscle definition: pecs, abs, collarbones */
+    for(const sd of [1,-1]) R.add('chest',G_.sph(B.w*0.46,chestH*0.33,B.w*0.28),skin,{p:[sd*B.w*0.42,chestH*0.5,B.w*0.5],grad:ms});
+    for(let i=0;i<3;i++) for(const sd of [1,-1]) R.add('spine',G_.sph(B.w*0.2,spineH*0.16,0.06),skin,{p:[sd*B.w*0.21,spineH*(0.85-i*0.3),B.w*0.6],grad:ms});
+    R.add('spine',G_.box(0.012,spineH*0.9,0.01),shade(skin,0.75),{p:[0,spineH*0.5,B.w*0.66],ol:false});
+    for(const sd of [1,-1]) R.add('chest',G_.cap(B.limb*0.3,B.w*0.45),shade(skin,0.95),{p:[sd*B.w*0.35,chestH*0.85,B.w*0.45],r:[0,0,sd*1.35]}); }
   R.add('neck',G_.cyl(B.limb*1.1,B.limb*1.3,neckH*1.6,10),skin,{p:[0,neckH*0.4,0]});
-  /* arms */
+  /* --- arms */
   for(const sd of [1,-1]){ const L=sd>0?'L':'R';
-    const upper=o.kind==='bare'||o.kind==='armor'||o.kind==='ninja'?skin:oc;
-    R.add('arm'+L,G_.sph(B.limb*1.35,B.limb*1.3,B.limb*1.3),o.kind==='bare'?skin:oc,{p:[0,-B.limb*0.35,0]});
-    R.add('arm'+L,G_.cap(B.limb*(bulk?1.25:1.05),armSeg*0.75),o.kind==='ninja'?oc:upper,{p:[0,-armSeg*0.5,0]});
-    R.add('elbow'+L,G_.cap(B.limb*(bulk?1.12:0.95),armSeg*0.7),o.kind==='ninja'?oc:(o.kind==='armor'?(o.gaunt||oc2):upper),{p:[0,-armSeg*0.46,0]});
-    R.add('hand'+L,G_.sph(B.limb*1.25,B.limb*1.15,B.limb*1.1),o.glove||skin,{p:[0,-B.limb*0.6,0.01]});
-    if(o.kind==='robe'||o.kind==='kimono'||o.kind==='monk'||o.kind==='hakama'){ /* wide sleeves */
-      const slv=o.kind==='hakama'?(o.top||0xF4F1EA):oc, sk=bulk?0.75:1; R.add('arm'+L,G_.cyl(B.limb*1.45*sk+0.02,B.limb*1.85*sk+0.03,armSeg*1.05,12,false),slv,{p:[0,-armSeg*0.52,0]});
-      R.add('elbow'+L,G_.cyl(B.limb*1.85*sk+0.03,B.limb*2.2*sk+0.04,armSeg*0.82,12,false),slv,{p:[0,-armSeg*0.38,0]});
-      R.add('elbow'+L,G_.tor(B.limb*2.15*sk+0.04,B.limb*0.3,6,18),trim,{p:[0,-armSeg*0.78,0],r:[Math.PI/2,0,0]}); }
-    if(o.kind==='armor'||sp.pauldron){ /* layered shoulder plates */
-      const pc=o.plate||oc2;
-      for(let i=0;i<3;i++) R.add('arm'+L,G_.hemi(B.limb*(2.6-i*0.2),B.limb*1.3,B.limb*2.2),i%2?trim:pc,{p:[sd*B.limb*0.5,B.limb*(0.6-i*0.9),0],r:[0,0,sd*-0.35]}); }
+    const sleeve=armor?(o.sleeve||shade(o.lace||oc,0.7)):ninja?oc:hakama?topCol:bare?skin:oc;
+    R.add('arm'+L,G_.sph(B.limb*1.35,B.limb*1.3,B.limb*1.3),bare?skin:sleeve,{p:[0,-B.limb*0.35,0]});
+    R.add('arm'+L,G_.cap(B.limb*(bulk?1.25:1.05),armSeg*0.75),sleeve,{p:[0,-armSeg*0.5,0]});
+    R.add('elbow'+L,G_.cap(B.limb*(bulk?1.12:0.95),armSeg*0.7),armor?(o.gaunt||shade(o.plate||oc2,0.9)):sleeve,{p:[0,-armSeg*0.46,0]});
+    R.add('hand'+L,G_.sph(B.limb*1.3,B.limb*1.2,B.limb*1.15),o.glove||skin,{p:[0,-B.limb*0.62,0.01]});
+    for(const k of [-1,0,1]) R.add('hand'+L,G_.cap(B.limb*0.28,B.limb*0.5),o.glove||skin,{p:[k*B.limb*0.42,-B.limb*1.35,B.limb*0.25],r:[0.25,0,0]});   /* fingers */
+    if(bare){ R.add('arm'+L,G_.sph(B.limb*1.35,armSeg*0.38,B.limb*1.25),skin,{p:[0,-armSeg*0.45,B.limb*0.15],grad:shade(skin,0.88)});
+      R.add('elbow'+L,G_.sph(B.limb*1.2,armSeg*0.32,B.limb*1.1),skin,{p:[0,-armSeg*0.3,0],grad:shade(skin,0.9)});
+      if(o.bands!==false) R.add('elbow'+L,G_.tor(B.limb*1.15,B.limb*0.22,6,14),o.bandCol||trim,{p:[0,-armSeg*0.72,0],r:[Math.PI/2,0,0]}); }
+    if(ninja) for(let k=0;k<3;k++) R.add('elbow'+L,G_.tor(B.limb*1.0,B.limb*0.12,4,12),shade(oc,0.7),{p:[0,-armSeg*(0.25+k*0.2),0],r:[Math.PI/2,0.15*k,0],ol:false});
+    if((robeLike&&kind!=='furisode')||hakama){ /* wide hanging sleeves with a coloured lining and a trimmed hem */
+      const sk=bulk?0.82:1, sw=(B.limb*2.3+0.07)*sk, sl=armSeg*(hakama?0.95:1.15), sc=hakama?topCol:oc;
+      R.add('arm'+L,G_.cyl(B.limb*1.5*sk+0.02,sw*0.85,armSeg*1.0,14,false),sc,{p:[0,-armSeg*0.5,0],grad:shade(sc,0.9)});
+      R.add('elbow'+L,G_.lathe([[sw*0.85,armSeg*0.1],[sw,-sl*0.35],[sw*1.02,-sl*0.75],[sw*0.75,-sl],[0.001,-sl*1.02]],16),sc,{p:[sd*0.02,0,-0.01],s:[1,1,0.62],grad:shade(sc,0.82)});
+      R.add('elbow'+L,G_.lathe([[sw*0.72,-sl*0.82],[sw*0.82,-sl*0.9],[0.001,-sl*1.035]],12),hakama?(o.lining||oc):inner,{p:[sd*0.02,0,-0.01],s:[1,1,0.64]});
+      const hm=[]; for(let k=0;k<=14;k++){ const a=k/14*TAU; hm.push([Math.sin(a)*sw*0.98,-sl*0.82,Math.cos(a)*sw*0.98*0.62]); }
+      R.add('elbow'+L,G_.tube(hm,0.016,0.016,5,28),trim,{p:[sd*0.02,0,-0.01],ol:false});
+      if(o.pattern) R.add('elbow'+L,o.motif==='star'?G_.star(0.06,0.024,8,0.01):G_.cyl(0.05,0.05,0.01,14),o.pattern,{p:[sd*0.02,-sl*0.45,sw*0.62+0.005],r:o.motif==='star'?[0,0,0]:[Math.PI/2,0,0],ol:false}); }
+    if(armor||sp.pauldron) armorSode(R,'arm'+L,sd,B,o,trim);
     /* legs */
-    const lc=o.legs||(o.kind==='bare'?skin:oc2);
+    const lc=o.legs||(bare?skin:hakama?oc:ninja?oc:oc2);
     R.add('thigh'+L,G_.cap(B.limb*(bulk?1.45:1.25),thigh*0.7),lc,{p:[0,-thigh*0.5,0]});
     R.add('knee'+L,G_.cap(B.limb*(bulk?1.25:1.05),shin*0.72),o.shin||lc,{p:[0,-shin*0.5,0]});
-    const bareFoot=o.kind==='bare'&&!o.shoe; R.add('foot'+L,G_.sph(B.limb*1.3,B.limb*0.9,B.limb*2.1),bareFoot?skin:(o.shoe||0x3A2A22),{p:[0,0.02,B.limb*0.9]});
+    if(hakama){ /* real hakama: wide pleated trouser legs */
+      const top=B.w*0.55, bot=B.w*(bulk?0.95:0.82)+0.04;
+      R.add('thigh'+L,G_.lathe([[top,0.06],[top*1.08,-thigh*0.5],[bot*0.92,-legL*0.75],[bot,-legL+0.02],[bot*0.96,-legL+0.01]],16),oc,{p:[sd*0.02,0,0],grad:shade(oc,0.78)});
+      for(let k=0;k<4;k++){ const a=(k-1.5)*0.45; R.add('thigh'+L,G_.box(0.014,legL*0.82,0.014),shade(oc,0.62),{p:[sd*0.02+Math.sin(a)*bot*0.82,-legL*0.5,Math.cos(a)*bot*0.82],r:[-0.08,a,0],ol:false}); } }
+    if(armor){ R.add('thigh'+L,G_.box(B.limb*2.5,thigh*0.72,B.limb*0.9),o.plate||oc2,{p:[0,-thigh*0.42,B.limb*0.95],r:[0.12,0,0],grad:shade(o.plate||oc2,0.75)});   /* haidate */
+      for(let k=0;k<3;k++) R.add('thigh'+L,G_.box(B.limb*2.55,0.012,0.02),o.lace||oc,{p:[0,-thigh*(0.2+k*0.22),B.limb*1.42],r:[0.12,0,0],ol:false});
+      R.add('knee'+L,G_.box(B.limb*2.1,shin*0.75,B.limb*0.7),o.shinCol||shade(o.plate||oc2,0.9),{p:[0,-shin*0.45,B.limb*0.75],grad:shade(o.plate||oc2,0.7)});   /* suneate */
+      R.add('knee'+L,G_.box(B.limb*2.15,0.03,B.limb*0.75),trim,{p:[0,-shin*0.08,B.limb*0.78],ol:false}); }
+    if(ninja) for(let k=0;k<3;k++) R.add('knee'+L,G_.tor(B.limb*1.08,B.limb*0.12,4,12),shade(oc,0.7),{p:[0,-shin*(0.25+k*0.22),0],r:[Math.PI/2,0,0],ol:false});
+    const bareFoot=bare&&!o.shoe;
+    R.add('foot'+L,G_.sph(B.limb*1.3,B.limb*0.9,B.limb*2.1),bareFoot?skin:(o.shoe||(robeLike||hakama?0xF4F1EA:0x3A2A22)),{p:[0,0.02,B.limb*0.9]});
     if(bareFoot) for(let k=0;k<3;k++) R.add('foot'+L,G_.cone(B.limb*0.28,B.limb*0.6,5),0xF2EAD8,{p:[(k-1)*B.limb*0.6,0.0,B.limb*2.8],r:[Math.PI/2,0,0]});
-    if(o.kind==='hakama'||o.kind==='robe'||o.kind==='kimono') R.add('foot'+L,G_.box(B.limb*1.6,0.03,B.limb*3.2),0xF4F1EA,{p:[0,-0.04,B.limb*0.9]}); }
+    if(robeLike||hakama){ R.add('foot'+L,G_.box(B.limb*1.75,0.04,B.limb*3.3),o.sandal||0xC8A060,{p:[0,-0.04,B.limb*0.9]});   /* zori sandals */
+      R.add('foot'+L,G_.tube([[-B.limb*0.7,0,B.limb*0.3],[0,B.limb*0.5,B.limb*1.6],[B.limb*0.7,0,B.limb*0.3]],0.012,0.012,4,8),o.strap||0xC8241A,{p:[0,0,0],ol:false}); }
+    if(bare&&o.anklets!==false) R.add('knee'+L,G_.tor(B.limb*1.15,B.limb*0.2,6,14),o.bandCol||trim,{p:[0,-shin*0.85,0],r:[Math.PI/2,0,0]}); }
   /* --- outfits */
-  const skirt=(top,bot,len,rs,col,flare=1)=>R.add('skirt',G_.lathe([[top,0.05],[top*1.05,-len*0.25],[lerp(top,bot,0.7)*flare,-len*0.7],[bot*flare,-len],[bot*flare*0.96,-len*1.01]],rs),col,{p:[0,0,0]});
-  if(o.kind==='robe'||o.kind==='kimono'||o.kind==='monk'){
-    skirt(B.w*0.98,B.w*(o.kind==='kimono'?1.15:1.45),legL*(o.short?0.7:0.97),18,oc);
-    /* crossed collar */
-    for(const sd of [1,-1]) R.add('chest',G_.box(0.06,chestH*1.05,0.03),trim,{p:[sd*B.w*0.16,chestH*0.42,B.w*0.7],r:[0.12,0,sd*0.5]});
-    R.add('spine',G_.cyl(B.w*0.95,B.w*0.97,spineH*0.5,18),o.belt||trim,{p:[0,spineH*0.15,0],s:[1,1,0.75]});
-    if(o.kind==='monk') for(let i=0;i<9;i++){ const a=-0.6+i*0.15; R.add('chest',G_.sph(0.05),0x2A1E18,{p:[Math.sin(a)*B.w*0.75,chestH*(0.82-Math.cos(a*1.3)*0.55),B.w*0.62+Math.cos(a)*0.05]}); }
-    if(o.pattern) for(let i=0;i<6;i++){ const a=i/6*TAU; R.add('skirt',G_.sph(0.07,0.07,0.02),o.pattern,{p:[Math.sin(a)*B.w*1.25,-legL*0.6,Math.cos(a)*B.w*1.25],r:[0,a,0]}); } }
-  else if(o.kind==='armor'){
-    R.add('chest',G_.sph(B.w*1.1,chestH*0.66,B.w*0.8,12,8),o.plate||oc2,{p:[0,chestH*0.45,0.03]});
-    for(let i=0;i<3;i++) R.add('chest',G_.tor(B.w*1.02,0.022,5,20),trim,{p:[0,chestH*(0.25+i*0.18),0.02],r:[Math.PI/2,0,0],s:[1,0.78,1]});
-    if(o.emblem) R.add('chest',G_.sph(0.08,0.08,0.03),o.emblem,{p:[0,chestH*0.55,B.w*0.8]});
-    R.add('spine',G_.cyl(B.w*0.95,B.w*0.97,spineH*0.4,18),o.belt||trim,{p:[0,spineH*0.1,0],s:[1,1,0.78]});
-    /* kusazuri: plated skirt in segments */
-    for(let i=0;i<7;i++){ const a=(i/7)*TAU+0.2; R.add('skirt',G_.box(B.w*0.62,legL*0.42,0.05),i%2?oc:oc2,{p:[Math.sin(a)*B.w*0.9,-legL*0.2,Math.cos(a)*B.w*0.8],r:[0.18*Math.cos(a),a,-0.18*Math.sin(a)]}); }
-    if(o.robe) skirt(B.w*0.95,B.w*1.35,legL*0.95,16,o.robe); }
-  else if(o.kind==='hakama'){ skirt(B.w*0.95,B.w*1.45,legL*0.95,14,oc2);
-    for(let i=0;i<5;i++){ const a=(i-2)*0.35; R.add('skirt',G_.box(0.018,legL*0.75,0.02),shade(oc2,0.6),{p:[Math.sin(a)*B.w*1.18,-legL*0.5,Math.cos(a)*B.w*1.18],r:[-0.12,a,0],ol:false}); }
-    for(const sd of [1,-1]) R.add('chest',G_.box(0.055,chestH,0.03),trim,{p:[sd*B.w*0.16,chestH*0.42,B.w*0.7],r:[0.12,0,sd*0.5]});
-    R.add('spine',G_.cyl(B.w*0.95,B.w*0.97,spineH*0.4,18),o.belt||0xD8342C,{p:[0,spineH*0.15,0],s:[1,1,0.75]}); }
-  else if(o.kind==='ninja'){ R.add('spine',G_.cyl(B.w*0.92,B.w*0.95,spineH*0.35,16),o.belt||0x6E4FA0,{p:[0,spineH*0.15,0],s:[1,1,0.75]}); }
-  else if(o.kind==='bare'){ R.add('hips',G_.cyl(B.w*0.98,B.w*1.15,B.torso*0.32,14),o.col2||0xD9A441,{p:[0,-0.02,0],s:[1,1,0.8]});
-    if(o.stripes) for(let i=0;i<12;i++){ const a=i/12*TAU; R.add('hips',G_.box(B.w*0.07,B.torso*0.22,0.02),INK,{p:[Math.sin(a)*B.w*1.08,-0.02-(i%2)*0.04,Math.cos(a)*B.w*0.88],r:[0,a,0.25],ol:false}); }
-    R.add('hips',G_.tor(B.w*1.0,0.03,5,24),0xF2EAD8,{p:[0,B.torso*0.14,0],r:[Math.PI/2,0,0],s:[1,0.82,1]}); }
-  if(sp.scarf) { R.add('neck',G_.tor(B.limb*1.9,B.limb*0.9,8,16),sp.scarf,{p:[0,-neckH*0.1,0],r:[Math.PI/2,0,0]}); R.add('back',G_.box(0.12,0.4,0.03),sp.scarf,{p:[0.08,-0.05,0.02],r:[0.2,0,0.2]}); }
-  if(sp.beads) for(let i=0;i<14;i++){ const a=i/14*TAU; R.add('chest',G_.sph(0.055),sp.beads,{p:[Math.sin(a)*B.w*0.85,chestH*0.85-Math.cos(a)*0.06-(Math.cos(a)>0?0.18:0),Math.cos(a)*B.w*0.75]}); }
+  if(kind==='furisode') outfitFurisode(R,o,B,legL,spineH,chestH,armSeg,skin);
+  else if(robeLike) outfitLayered(R,o,B,legL,spineH,chestH,kind);
+  else if(armor) outfitArmor(R,o,B,legL,spineH,chestH);
+  else if(hakama){ for(const sd of [1,-1]){ R.add('chest',G_.box(0.075,chestH*1.05,0.03),o.collar||inner,{p:[sd*B.w*0.18,chestH*0.42,B.w*0.7],r:[0.12,0,sd*0.48]});
+      R.add('chest',G_.box(0.025,chestH*1.05,0.035),trim,{p:[sd*B.w*0.25,chestH*0.42,B.w*0.71],r:[0.12,0,sd*0.48],ol:false}); }
+    R.add('spine',G_.cyl(B.w*0.97,B.w*0.99,spineH*0.5,18),o.belt||0xD8342C,{p:[0,spineH*0.12,0],s:[1,1,0.76]});
+    R.add('hips',G_.lathe([[B.w*0.98,0.1],[B.w*1.05,-0.05],[B.w*1.1,-0.16]],18),oc,{p:[0,0,0],s:[1,1,0.8]});
+    if(o.mon) R.add('chest',G_.cyl(0.05,0.05,0.012,14),o.mon,{p:[B.w*0.42,chestH*0.7,B.w*0.6],r:[Math.PI/2-0.3,0.5,0],ol:false}); }
+  else if(ninja){ R.add('spine',G_.cyl(B.w*0.93,B.w*0.96,spineH*0.38,16),o.belt||0x6E4FA0,{p:[0,spineH*0.15,0],s:[1,1,0.75]});
+    for(const sd of [1,-1]) R.add('chest',G_.box(0.05,chestH*1.0,0.025),shade(oc,0.75),{p:[sd*B.w*0.16,chestH*0.42,B.w*0.7],r:[0.12,0,sd*0.5],ol:false});
+    R.add('spine',G_.box(0.1,0.06,0.04),0x8E8A84,{p:[B.w*0.5,spineH*0.15,B.w*0.62],r:[0,0.6,0]}); }
+  else if(bare) outfitLoincloth(R,o,B,spineH);
+  if(sp.scarf){ R.add('neck',G_.tor(B.limb*1.9,B.limb*0.9,8,16),sp.scarf,{p:[0,-neckH*0.1,0],r:[Math.PI/2,0,0]});
+    for(const k of [0,1]) R.add('back',G_.tube([[0,0,0],[0.15+k*0.08,-0.05,-0.3],[0.35+k*0.12,-0.25,-0.6],[0.55+k*0.1,-0.2,-0.85]],0.06,0.03,6,12),sp.scarf,{p:[0.06,0.08,0.06],grad:shade(sp.scarf,0.75)}); }
+  if(sp.beads) for(let i=0;i<16;i++){ const a=i/16*TAU; R.add('chest',G_.sph(0.05),sp.beads,{p:[Math.sin(a)*B.w*0.85,chestH*0.85-Math.cos(a)*0.06-(Math.cos(a)>0?0.18:0),Math.cos(a)*B.w*0.75]}); }
   buildHead(R,sp,B); buildWeapon(R,sp,B); buildBack(R,sp,B);
   if(sp.extra) sp.extra(R,B,G_);
   return {rig:R,kind:'human',B};
 }
+
+/* o-yoroi shoulder guards: stacked lamellar plates with lacing and a gilded top edge */
+function armorSode(R,bone,sd,B,o,trim){
+  const pc=o.plate||o.col2||0x2A2A30, lc=o.lace||o.col||0x2F5DB8, w=B.limb*4.3, n=o.sode||4;
+  for(let i=0;i<n;i++){ const y=B.limb*(1.2-i*1.35), out=sd*(B.limb*1.6+i*B.limb*0.12);
+    R.add(bone,G_.box(w*0.62,B.limb*1.25,w*0.95),i===0?trim:pc,{p:[out,y,0],r:[0,0,sd*-(0.28+i*0.04)],grad:i===0?shade(trim,0.8):shade(pc,0.78)});
+    if(i>0) for(let k=0;k<3;k++) R.add(bone,G_.box(w*0.63,0.012,0.022),lc,{p:[out+sd*0.003,y+B.limb*(k-1)*0.35,w*0.48],r:[0,0,sd*-(0.28+i*0.04)],ol:false}); } }
+
+/* lamellar cuirass, kusazuri skirt panels, emblem; o.robe adds a robe under the armour */
+function outfitArmor(R,o,B,legL,spineH,chestH){
+  const pc=o.plate||o.col2||0x2A2A30, lc=o.lace||o.col||0x2F5DB8, trim=o.trim||0xF5C542;
+  if(o.robe) R.add('skirt',G_.lathe([[B.w*0.95,0.05],[B.w*1.1,-legL*0.4],[B.w*1.4,-legL*0.95],[B.w*1.36,-legL*0.96]],16),o.robe,{grad:shade(o.robe,0.75)});
+  for(let i=0;i<4;i++){ const y=chestH*(0.12+i*0.2), r=B.w*(1.03-Math.abs(i-1.5)*0.03);
+    R.add('chest',G_.cyl(r,r*1.02,chestH*0.17,22,true),i%2?lc:pc,{p:[0,y,0.01],s:[1,1,0.78],grad:shade(i%2?lc:pc,0.8)});
+    for(let k=-3;k<=3;k++) R.add('chest',G_.sph(0.014),trim,{p:[k*B.w*0.22,y,B.w*0.8-Math.abs(k)*0.02],ol:false}); }
+  R.add('chest',G_.tor(B.w*1.0,0.022,5,24),trim,{p:[0,chestH*0.95,0.0],r:[Math.PI/2,0,0],s:[1,0.78,1]});
+  R.add('chest',G_.box(B.w*1.15,chestH*0.42,0.03),pc,{p:[0,chestH*0.62,B.w*0.76],r:[-0.1,0,0],grad:shade(pc,0.8)});
+  if(o.emblem){ R.add('chest',G_.cyl(0.075,0.075,0.02,16),o.emblem,{p:[0,chestH*0.62,B.w*0.8],r:[Math.PI/2-0.1,0,0]}); R.add('chest',G_.tor(0.08,0.012,4,16),trim,{p:[0,chestH*0.62,B.w*0.81],r:[-0.1,0,0],ol:false}); }
+  for(let i=0;i<2;i++) R.add('spine',G_.cyl(B.w*0.97,B.w*0.99,spineH*0.3,20,true),i?pc:lc,{p:[0,spineH*(0.2+i*0.35),0],s:[1,1,0.76]});
+  R.add('spine',G_.cyl(B.w*0.98,B.w*1.0,spineH*0.22,20),o.belt||trim,{p:[0,spineH*0.02,0],s:[1,1,0.77]});
+  const np=o.panels||6;   /* kusazuri */
+  for(let i=0;i<np;i++){ const a=(i/np)*TAU+TAU/np/2; if(Math.cos(a)<-0.9&&np>5) continue;
+    for(let k=0;k<3;k++){ const y=-legL*(0.06+k*0.14), rr=B.w*(0.95+k*0.1);
+      R.add('skirt',G_.box(B.w*0.78,legL*0.15,0.04),k%2?lc:pc,{p:[Math.sin(a)*rr,y,Math.cos(a)*rr*0.85],r:[0.2*Math.cos(a)*(1+k*0.3),a,-0.2*Math.sin(a)*(1+k*0.3)],grad:shade(k%2?lc:pc,0.78)}); }
+    R.add('skirt',G_.box(B.w*0.8,0.025,0.05),trim,{p:[Math.sin(a)*B.w*1.17,-legL*0.42,Math.cos(a)*B.w*1.0],r:[0.28*Math.cos(a),a,-0.28*Math.sin(a)],ol:false}); } }
+
+/* robes and kimono: an outer layer (open-fronted for robes, wrapped for kimono) over a contrasting inner layer,
+   layered collars, a hem trim, motifs, an obi with a front knot; monks add a kesa sash */
+function outfitLayered(R,o,B,legL,spineH,chestH,kind){
+  const oc=o.col||0x2F5DB8, inner=o.inner||o.col2||shade(oc,0.75), trim=o.trim||0xF5C542, len=legL*(o.short?0.68:0.98), fl=kind==='kimono'?1.22:1.5;
+  const prof=[[B.w*1.0,0.06],[B.w*1.08,-len*0.25],[B.w*(0.95+fl*0.25),-len*0.7],[B.w*fl,-len],[B.w*fl*0.97,-len*1.01]];
+  const rAt=y=>{ for(let i=0;i<prof.length-1;i++){ const a=prof[i],b=prof[i+1]; if(y<=a[1]&&y>=b[1]) return lerp(a[0],b[0],(a[1]-y)/(a[1]-b[1])); } return prof[prof.length-1][0]; };
+  R.add('skirt',G_.lathe([[B.w*0.95,0.05],[B.w*1.0,-len*0.3],[B.w*(0.9+fl*0.22),-len*0.75],[B.w*fl*0.92,-len*1.03],[B.w*fl*0.88,-len*1.04]],20),inner,{grad:shade(inner,0.8)});
+  const gap=kind==='kimono'?0:0.36;
+  if(gap) R.add('skirt',G_.lathe(prof,24,gap,TAU-gap*2),oc,{grad:shade(oc,0.8),gax:1.3});
+  else R.add('skirt',G_.lathe(prof,24),oc,{grad:shade(oc,0.8),gax:1.3});
+  const edge=phi=>prof.slice(0,4).map(q=>[Math.sin(phi)*(q[0]+0.008),q[1],Math.cos(phi)*(q[0]+0.008)]);
+  if(gap) for(const phi of [gap,TAU-gap]) R.add('skirt',G_.tube(edge(phi),0.026,0.026,5,14),trim,{});
+  else R.add('skirt',G_.tube([[-B.w*0.25,0.02,B.w*0.98],[-B.w*0.05,-len*0.5,rAt(-len*0.5)+0.01],[B.w*0.35,-len*0.98,rAt(-len*0.98)*0.95]],0.022,0.022,5,14),trim,{});
+  const hem=[]; for(let k=0;k<=28;k++){ const phi=gap+(TAU-gap*2)*k/28; hem.push([Math.sin(phi)*prof[3][0]*1.01,-len+0.012,Math.cos(phi)*prof[3][0]*1.01]); }
+  R.add('skirt',G_.tube(hem,0.026,0.026,5,56),trim,{ol:false});
+  if(o.pattern){ const n=o.motifN||10; for(let k=0;k<n;k++){ const phi=gap+0.3+(TAU-gap*2-0.6)*k/(n-1), y=-len*(0.4+0.4*((k*7)%3)/2), rr=rAt(y)+0.01;
+      const g=o.motif==='star'?G_.star(0.065,0.026,8,0.012):o.motif==='wave'?G_.crescent(0.07,0.02,0.012):G_.cyl(0.05,0.05,0.012,14);
+      R.add('skirt',g,o.pattern,{p:[Math.sin(phi)*rr,y,Math.cos(phi)*rr],r:o.motif==='star'||o.motif==='wave'?[0,phi,0]:[Math.PI/2,0,-phi],ol:false});
+      if(!o.motif) R.add('skirt',G_.tor(0.05,0.008,4,14),shade(o.pattern,0.7),{p:[Math.sin(phi)*(rr+0.004),y,Math.cos(phi)*(rr+0.004)],r:[0,phi,0],ol:false}); } }
+  for(const sd of [1,-1]){ R.add('chest',G_.box(0.085,chestH*1.1,0.03),inner,{p:[sd*B.w*0.19,chestH*0.42,B.w*0.7],r:[0.12,0,sd*0.48]});
+    R.add('chest',G_.box(0.03,chestH*1.1,0.035),trim,{p:[sd*B.w*0.26,chestH*0.42,B.w*0.71],r:[0.12,0,sd*0.48],ol:false});
+    R.add('chest',G_.box(0.03,chestH*1.05,0.033),0xF4F1EA,{p:[sd*B.w*0.13,chestH*0.42,B.w*0.715],r:[0.12,0,sd*0.48],ol:false}); }
+  R.add('spine',G_.cyl(B.w*0.98,B.w*1.0,spineH*0.55,20),o.belt||trim,{p:[0,spineH*0.17,0],s:[1,1,0.77],grad:shade(o.belt||trim,0.8)});
+  R.add('spine',G_.tor(B.w*1.0,0.012,4,24),o.cord||trim,{p:[0,spineH*0.17,0],r:[Math.PI/2,0,0],s:[1,0.77,1],ol:false});
+  R.add('spine',G_.sph(0.07,0.05,0.04),o.cord||trim,{p:[0,spineH*0.17,B.w*0.79]});
+  if(kind==='monk'){ R.add('chest',G_.box(B.w*0.5,chestH*1.4,0.035),o.kesa||trim,{p:[B.w*0.15,chestH*0.35,B.w*0.62],r:[0.1,0,-0.7],grad:shade(o.kesa||trim,0.8)});
+    R.add('chest',G_.box(B.w*0.5,chestH*1.2,0.035),o.kesa||trim,{p:[B.w*0.05,chestH*0.3,-B.w*0.62],r:[-0.1,0,0.7]}); } }
+
+/* oni loincloth: tiger-skin wrap with stripes and a twisted shimenawa rope belt */
+function outfitLoincloth(R,o,B,spineH){
+  const c=o.col2||0xD9A441;
+  R.add('hips',G_.cyl(B.w*0.98,B.w*1.18,B.torso*0.34,16),c,{p:[0,-0.03,0],s:[1,1,0.8],grad:shade(c,0.8)});
+  for(const z of [1,-1]) R.add('hips',G_.box(B.w*0.75,B.torso*0.5,0.04),c,{p:[0,-B.torso*0.3,z*B.w*0.86],r:[z*0.08,0,0],grad:shade(c,0.7)});
+  if(o.stripes) for(let i=0;i<14;i++){ const a=i/14*TAU; R.add('hips',G_.tube([[0,0,0],[0.02,-B.torso*0.1,0],[-0.01,-B.torso*0.2,0]],0.022,0.006,4,6),0x1A1418,{p:[Math.sin(a)*B.w*1.1,B.torso*0.08-(i%2)*0.04,Math.cos(a)*B.w*0.9],r:[0,a,0.3],ol:false}); }
+  R.add('hips',G_.tor(B.w*1.02,0.04,6,26),o.rope||0xF2EAD8,{p:[0,B.torso*0.15,0],r:[Math.PI/2,0,0],s:[1,0.8,1]});
+  for(let i=0;i<10;i++){ const a=i/10*TAU; R.add('hips',G_.sph(0.03,0.03,0.045),shade(o.rope||0xF2EAD8,0.82),{p:[Math.sin(a)*B.w*1.02,B.torso*0.15+0.01,Math.cos(a)*B.w*0.82],r:[0,a,0.6],ol:false}); }
+  R.add('hips',G_.sph(0.07,0.07,0.05),o.rope||0xF2EAD8,{p:[0,B.torso*0.13,B.w*0.85]}); }
 
 function buildHead(R,sp,B){
   const hd=sp.head||'human', hr=B.head, skin=sp.headCol||sp.skin||0xF6D2B0, hy=hr*0.95;
@@ -208,8 +415,9 @@ function buildHead(R,sp,B){
     R.add('head',G_.sph(hr,hr*1.05,hr*0.98,20,14),skin,{p:[0,hy,0]});
     R.add('head',G_.sph(hr*0.62,hr*0.55,hr*0.7),skin,{p:[0,hy-hr*0.38,hr*0.12]}); /* jaw */
     for(const sd of [1,-1]) R.add('head',G_.sph(hr*0.14,hr*0.22,hr*0.12),skin,{p:[sd*hr*0.97,hy-hr*0.05,0]}); /* ears */
-    face(hr*0.9,hy-hr*0.08,hr*0.36,hr*(sp.build==='chibi'?0.2:0.15),hr*(sp.build==='chibi'?0.25:0.18));
-    R.add('head',G_.sph(hr*0.07,hr*0.05,hr*0.05),shade(skin,0.88),{p:[0,hy-hr*0.32,hr*0.98],ol:false});
+    if(!(eyes.n>2)) faceAnime(R,hr,hy,eyes,(sp.hair&&sp.hair.col)||(sp.beard&&sp.beard.col)||0x3A2418,skin,sp);
+    else { face(hr*0.9,hy-hr*0.08,hr*0.36,hr*(sp.build==='chibi'?0.2:0.15),hr*(sp.build==='chibi'?0.25:0.18));
+    R.add('head',G_.sph(hr*0.07,hr*0.05,hr*0.05),shade(skin,0.88),{p:[0,hy-hr*0.32,hr*0.98],ol:false}); }
     if(hd==='oni'){ R.add('head',G_.sph(hr*0.18,hr*0.12,hr*0.12),shade(skin,0.85),{p:[0,hy-hr*0.2,hr*0.98]});
       for(const sd of [1,-1]) R.add('head',G_.cone(hr*0.09,hr*0.32,6),0xFFF4E0,{p:[sd*hr*0.32,hy-hr*0.62,hr*0.82],r:[0.15,0,0]}); }
     if(hd==='old'||sp.wrinkles) for(let i=0;i<2;i++) R.add('head',G_.box(hr*0.6,0.012,0.01),shade(skin,0.75),{p:[0,hy+hr*(0.42+i*0.12),hr*0.92],ol:false}); }
@@ -271,50 +479,77 @@ function buildHead(R,sp,B){
 }
 
 function buildHair(R,sp,B,hr,hy){
-  const H=sp.hair; if(!H||H.style==='bald') return; const c=H.col||0x2A2433, c2=H.col2||shade(c,0.8);
-  const cap=()=>{ R.add('head',G_.part(hr*1.07,hr*1.1,hr*1.07,0,TAU,0,Math.PI*0.42),c,{p:[0,hy+hr*0.06,-hr*0.03]});
-    R.add('head',G_.part(hr*1.08,hr*1.1,hr*1.08,Math.PI*0.92,Math.PI*1.16,0,Math.PI*0.82),c,{p:[0,hy+hr*0.04,-hr*0.04]}); };
-  const bangs=(n,len)=>{ for(let i=0;i<n;i++){ const a=(i/(n-1)-0.5)*1.8; R.add('head',G_.cone(hr*0.26,hr*len*1.15,5),i%2?c:c2,{p:[Math.sin(a)*hr*0.7,hy+hr*0.58,Math.cos(a)*hr*0.76],r:[2.4,0,-a*0.4]}); } };
+  const H=sp.hair; if(!H||H.style==='bald') return; const c=H.col||0x2A2433, c2=H.col2||shade(c,0.8), tip=H.tip||shade(c,1.25), root=shade(c,0.8);
+  const cap=()=>{ R.add('head',G_.part(hr*1.07,hr*1.1,hr*1.07,0,TAU,0,Math.PI*0.42),c,{p:[0,hy+hr*0.06,-hr*0.03],grad:root});
+    R.add('head',G_.part(hr*1.08,hr*1.1,hr*1.08,Math.PI*0.92,Math.PI*1.16,0,Math.PI*0.82),c,{p:[0,hy+hr*0.04,-hr*0.04],grad:root}); };
+  /* a tapered strand of hair; points are head-space; onHair hangs it from the swaying hair bone */
+  const strand=(pts,r0,col,o)=>{ o=o||{}; const P=o.onHair?pts.map(q=>[q[0],q[1]-hr*0.9,q[2]+hr*0.4]):pts;
+    R.add(o.onHair?'hair':'head',G_.tube(P,r0,o.r1||hr*0.02,6,o.seg||10),col,{grad:o.tip||tip,gax:o.gax||1.4,glow:!!o.glow}); };
+  const bangs=(n,len,spread)=>{ for(let i=0;i<n;i++){ const u=n>1?i/(n-1)-0.5:0, a=u*(spread||2.0)+(u>0?0.12:-0.12), side=Math.abs(u)*2, L=hr*len*(1+0.22*side*side+((i%3)-1)*0.08);
+      strand([[Math.sin(a)*hr*0.3,hy+hr*1.02,Math.cos(a)*hr*0.35],[Math.sin(a)*hr*0.78,hy+hr*0.74,Math.cos(a)*hr*1.0],[Math.sin(a)*hr*(0.88+side*0.2)+u*hr*0.25,hy+hr*0.98-L,Math.cos(a)*hr*(0.98-side*0.12)]],hr*0.21,i%2?c:c2); } };
+  const locks=(len,k)=>{ for(const sd of [1,-1]) for(let j=0;j<(k||1);j++){ const o=j*hr*0.12;
+      strand([[sd*hr*0.82,hy+hr*0.45,hr*0.3+o],[sd*(hr*0.98+o),hy-hr*0.35,hr*0.45],[sd*(hr*0.92+o*1.5),hy-hr*len*0.6,hr*0.5],[sd*(hr*0.98+o*2),hy-hr*len,hr*0.45]],hr*(0.24-j*0.05),j?root:c,{seg:12}); } };
+  const back=(n,L,fl,spread)=>{ for(let i=0;i<n;i++){ const u=n>1?i/(n-1)-0.5:0, a=u*(spread||2.3), au=Math.abs(u), w=Math.sin(i*1.7)*hr*0.18;
+      strand([[Math.sin(a)*hr*0.85,hy+hr*0.5*Math.cos(u*1.3),-Math.cos(a)*hr*0.62-hr*0.08],[Math.sin(a)*hr*(1.2+au*0.6),hy-hr*0.45,-hr*0.78-Math.cos(a)*hr*0.18],
+        [Math.sin(a)*hr*(1.3+fl*au*0.9)+w,hy-L*0.55,-hr*0.62+Math.cos(i)*hr*0.1],[Math.sin(a)*hr*(1.35+fl*au*1.5)-w,hy-L*(0.9+0.08*Math.sin(i*2.3)),-hr*0.4]],hr*(0.36-au*0.08),i%3===1?root:c,{onHair:true,seg:14,gax:0.8,r1:hr*0.04}); } };
   switch(H.style){
-    case 'spiky': cap();
-      for(let i=0;i<7;i++){ const a=(i/6-0.5)*1.9; R.add('head',G_.cone(hr*0.27,hr*(0.75+(i%2)*0.2),5),i%2?c:c2,{p:[Math.sin(a)*hr*0.72,hy+hr*0.58,Math.cos(a)*hr*0.74],r:[2.35,0,-a*0.45]}); }   /* bangs */
-      for(let i=0;i<14;i++){ const a=(i/13-0.5)*Math.PI*1.8, tier=i%2, len=hr*(1.0+tier*0.35+((i*7)%3)*0.12);   /* crown spikes sweeping up and back */
-        R.add('head',G_.cone(hr*0.32,len,5),tier?c:c2,{p:[Math.sin(a)*hr*0.82,hy+hr*(0.72+0.2*Math.cos(a)),-hr*0.15-Math.abs(Math.sin(a))*hr*0.1],r:[-0.75-tier*0.45,0,-a*0.75]}); }
-      for(const sd of [1,-1]) R.add('head',G_.cone(hr*0.22,hr*0.9,5),c2,{p:[sd*hr*0.9,hy+hr*0.05,hr*0.25],r:[Math.PI-0.15,0,sd*-0.2]}); break;
-    case 'wild': cap(); bangs(5,0.55);
-      for(let i=0;i<26;i++){ const a=(i/25-0.5)*Math.PI*1.85, ring=i%3, len=hr*(1.35+ring*0.45+(i%2)*0.25);   /* a big mane fanning out from the crown and sides */
-        R.add('head',G_.cone(hr*(0.42-ring*0.05),len,6),i%2?c:c2,{p:[Math.sin(a)*hr*0.9,hy+hr*(0.5+0.35*Math.cos(a))-ring*hr*0.12,-hr*(0.15+ring*0.15)],r:[-0.45-ring*0.4,0,-a*0.9]}); }
-      for(const sd of [1,-1]) for(let i=0;i<3;i++) R.add('head',G_.cone(hr*0.3,hr*(1.1+i*0.2),6),i%2?c:c2,{p:[sd*hr*1.0,hy-hr*(0.1+i*0.25),-hr*0.1],r:[0,0,sd*(1.9+i*0.25)]});
-      for(let i=0;i<4;i++) R.add('head',G_.cone(hr*0.3,hr*1.2,5),c,{p:[(i-1.5)*hr*0.4,hy+hr*0.6,-hr*0.7],r:[-1.7,0,(i-1.5)*0.3]}); break;
-    case 'flame': cap(); for(let i=0;i<12;i++){ const a=(i/11-0.5)*2.6; R.add('hair',G_.cone(hr*0.3,hr*(1.0+(i%3)*0.35),5),i%3?c:c2,{p:[Math.sin(a)*hr*0.6,hr*0.1,-hr*0.1-Math.cos(a)*0.05],r:[-0.4,0,-a*0.45]}); }
-      for(let i=0;i<5;i++){ const a=(i/4-0.5)*2; R.add('hair',G_.cone(hr*0.12,hr*0.5,5),0xFFE27A,{p:[Math.sin(a)*hr*0.6,hr*1.0,-hr*0.2],r:[-0.4,0,-a*0.45],glow:true}); } break;
-    case 'long': case 'longflow': cap(); bangs(H.bangs||6,0.55);
-      R.add('hair',G_.lathe([[hr*0.85,0],[hr*1.0,-hr*0.6],[hr*0.95,-hr*(H.len||3.2)*0.6],[hr*0.7,-hr*(H.len||3.2)]],12),c,{p:[0,0,-hr*0.05],s:[1,1,0.55]});
-      for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*hr*0.1,-hr*0.6,hr*0.1],[sd*hr*0.15,-hr*1.4,hr*0.05]],hr*0.16,hr*0.06,6,10),c2,{p:[sd*hr*0.86,hy,hr*0.3]});
-      if(H.ornament) for(const sd of [1,-1]) R.add('head',G_.star(hr*0.22,hr*0.09,5,0.02),H.ornament,{p:[sd*hr*0.7,hy+hr*0.55,hr*0.3],r:[0,sd*0.6,0]}); break;
-    case 'bun': cap(); bangs(5,0.45); R.add('head',G_.sph(hr*0.42),c,{p:[0,hy+hr*1.0,-hr*0.35]}); R.add('head',G_.cyl(0.015,0.015,hr*1.4,5),H.pin||0xF5C542,{p:[0,hy+hr*1.05,-hr*0.35],r:[0,0,Math.PI/2]}); break;
-    case 'pony': cap(); bangs(5,0.5); R.add('hair',G_.tube([[0,0,0],[0,-hr*0.4,-hr*0.5],[0,-hr*1.4,-hr*0.6]],hr*0.3,hr*0.08,7,10),c,{p:[0,0,0]}); break;
-    case 'short': cap(); bangs(7,0.5); for(let i=0;i<7;i++){ const a=(i/6-0.5)*2.4; R.add('head',G_.cone(hr*0.28,hr*0.6,5),i%2?c:c2,{p:[Math.sin(a)*hr*0.85,hy+hr*0.45,-Math.cos(a)*hr*0.55],r:[-1.3,0,-a*0.6]}); } break;
-    case 'topknot': R.add('head',G_.part(hr*1.06,hr*1.0,hr*1.06,0,TAU,0,Math.PI*0.42),c,{p:[0,hy+hr*0.04,-hr*0.04]}); R.add('head',G_.cyl(hr*0.14,hr*0.18,hr*0.5,8),c,{p:[0,hy+hr*1.05,-hr*0.25],r:[-0.6,0,0]}); break;
-    case 'hood': R.add('head',G_.part(hr*1.2,hr*1.22,hr*1.18,Math.PI*0.78,Math.PI*1.44,0,Math.PI),c,{p:[0,hy+hr*0.06,-hr*0.05]}); R.add('head',G_.tor(hr*0.86,hr*0.16,6,18),c2,{p:[0,hy,hr*0.62],s:[1,1.12,1]});
-      if(H.mask) R.add('head',G_.sph(hr*0.82,hr*0.42,hr*0.5),H.mask,{p:[0,hy-hr*0.45,hr*0.55]}); break;
+    case 'flow': hairFlow(R,H,hr,hy,cap); break;
+    case 'long': case 'longflow': { const L=hr*Math.max(2.2,(H.len||3)*1.15);
+      cap(); bangs(H.bangs||6,0.6,2.3); for(const sd of [1,-1]) strand([[sd*hr*0.8,hy+hr*0.5,hr*0.3],[sd*hr*1.02,hy-hr*0.2,hr*0.32],[sd*hr*1.2,hy-hr*0.95,hr*0.1],[sd*hr*1.35,hy-L*0.55,-hr*0.15]],hr*0.22,c,{seg:12});
+      R.add('hair',G_.lathe([[hr*0.9,hy+hr*0.55],[hr*1.12,hy-hr*0.4],[hr*1.35,hy-L*0.5],[hr*1.5,hy-L*0.9],[hr*1.3,hy-L*0.97]],20),root,{p:[0,-hr*0.9,hr*0.4-hr*0.78],s:[1,1,0.38],grad:tip,gax:1.2});
+      back(H.strands||14,L,H.flare||0.9);
+      if(H.ornament) for(const sd of [1,-1]) R.add('head',G_.star(hr*0.22,hr*0.09,5,0.02),H.ornament,{p:[sd*hr*0.78,hy+hr*0.6,hr*0.35],r:[0,sd*0.6,0]}); break; }
+    case 'spiky': cap(); bangs(7,0.62,1.9);
+      for(let i=0;i<13;i++){ const a=(i/12-0.5)*Math.PI*1.7, tier=i%2, len=hr*(1.0+tier*0.35+((i*7)%3)*0.12), sx=Math.sin(a), cz=Math.cos(a);
+        strand([[sx*hr*0.6,hy+hr*(0.8+0.15*cz),-hr*0.1],[sx*hr*(0.95+0.2*tier),hy+hr*(0.95+0.25*cz),-hr*0.45],[sx*(hr*0.9+len*0.5),hy+hr*(0.75+0.3*cz)+len*0.35*(tier?1:0.4),-hr*0.55-len*0.45]],hr*0.3,tier?c:c2,{seg:8}); }
+      for(const sd of [1,-1]) strand([[sd*hr*0.85,hy+hr*0.5,hr*0.3],[sd*hr*0.98,hy-hr*0.1,hr*0.35],[sd*hr*0.9,hy-hr*0.55,hr*0.4]],hr*0.2,c2); break;
+    case 'wild': cap(); bangs(6,0.58,2.2);
+      for(let i=0;i<24;i++){ const a=(i/23-0.5)*Math.PI*1.85, ring=i%3, len=hr*(1.25+ring*0.45+(i%2)*0.25), sx=Math.sin(a), cz=Math.cos(a);   /* a big mane */
+        strand([[sx*hr*0.8,hy+hr*(0.45+0.35*cz),-hr*(0.15+ring*0.12)],[sx*(hr*1.1+len*0.25),hy+hr*(0.4+0.45*cz)-ring*hr*0.1,-hr*(0.45+ring*0.2)],[sx*(hr*1.0+len*0.75),hy+hr*(0.2+0.6*cz)-ring*hr*0.3,-hr*(0.55+ring*0.25)-len*0.2]],hr*(0.36-ring*0.05),i%2?c:c2,{seg:8,r1:hr*0.03}); }
+      for(let i=0;i<5;i++) strand([[(i-2)*hr*0.35,hy+hr*0.55,-hr*0.7],[(i-2)*hr*0.45,hy-hr*0.2,-hr*1.05],[(i-2)*hr*0.55,hy-hr*0.9,-hr*1.05]],hr*0.3,c,{onHair:false,seg:8}); break;
+    case 'flame': cap(); bangs(5,0.5,1.8);
+      for(let i=0;i<14;i++){ const a=(i/13-0.5)*2.6, h2=hr*(1.0+(i%3)*0.4), sx=Math.sin(a);
+        strand([[sx*hr*0.55,hy+hr*0.85,-hr*0.15],[sx*hr*0.75+Math.sin(i)*hr*0.15,hy+hr*0.95+h2*0.45,-hr*0.3],[sx*hr*0.6-Math.sin(i)*hr*0.2,hy+hr*0.95+h2,-hr*0.45]],hr*0.3,i%3?c:c2,{tip:0xFFE27A,glow:i%3===0,seg:8}); } break;
+    case 'bun': cap(); bangs(7,0.5,1.9); locks(1.6,1);
+      R.add('head',G_.sph(hr*0.45,hr*0.4,hr*0.42),c,{p:[0,hy+hr*1.05,-hr*0.35],grad:root}); R.add('head',G_.tor(hr*0.3,hr*0.08,6,16),c2,{p:[0,hy+hr*1.0,-hr*0.35],r:[Math.PI/2,0,0]});
+      for(const sd of [1,-1]){ R.add('head',G_.cyl(0.014,0.014,hr*1.6,5),H.pin||0xF5C542,{p:[sd*hr*0.2,hy+hr*1.1,-hr*0.3],r:[0,0,Math.PI/2+sd*0.35]});
+        R.add('head',G_.sph(hr*0.09),H.pinGem||0xD8342C,{p:[sd*hr*0.95,hy+hr*1.38,-hr*0.3]});
+        for(let k=0;k<3;k++) R.add('head',G_.cyl(0.006,0.006,hr*0.5,3),H.pin||0xF5C542,{p:[sd*hr*(0.95+k*0.05),hy+hr*1.1,-hr*0.3],ol:false}); } break;
+    case 'pony': cap(); bangs(7,0.55); locks(1.4,1);
+      for(let k=0;k<5;k++){ const dx=(k-2)*hr*0.12; strand([[dx,hy+hr*0.65,-hr*0.75],[dx*1.5,hy+hr*0.2,-hr*1.25],[dx*2,hy-hr*0.9,-hr*1.25],[dx*2.4,hy-hr*(1.9+0.2*(k%2)),-hr*1.0]],hr*0.22,k%2?c:c2,{onHair:true,seg:12}); }
+      R.add('head',G_.tor(hr*0.14,hr*0.05,6,12),H.tie||0xD8342C,{p:[0,hy+hr*0.62,-hr*0.82],r:[0.4,0,0]}); break;
+    case 'short': cap(); bangs(7,0.55);
+      for(let i=0;i<9;i++){ const a=(i/8-0.5)*2.6; strand([[Math.sin(a)*hr*0.75,hy+hr*0.6,-Math.cos(a)*hr*0.5],[Math.sin(a)*hr*1.05,hy+hr*0.15,-Math.cos(a)*hr*0.85],[Math.sin(a)*hr*1.0,hy-hr*0.35,-Math.cos(a)*hr*0.9]],hr*0.25,i%2?c:c2,{seg:8}); } break;
+    case 'topknot': cap(); R.add('head',G_.cyl(hr*0.14,hr*0.18,hr*0.5,8),c,{p:[0,hy+hr*1.05,-hr*0.25],r:[-0.6,0,0],grad:root});
+      R.add('head',G_.tor(hr*0.15,hr*0.05,5,12),H.tie||0xF4F1EA,{p:[0,hy+hr*0.95,-hr*0.2],r:[0.95,0,0]}); for(const sd of [1,-1]) strand([[sd*hr*0.85,hy+hr*0.4,hr*0.2],[sd*hr*0.97,hy,hr*0.3],[sd*hr*0.92,hy-hr*0.4,hr*0.35]],hr*0.16,c); break;
+    case 'hood': R.add('head',G_.part(hr*1.2,hr*1.22,hr*1.18,Math.PI*0.78,Math.PI*1.44,0,Math.PI),c,{p:[0,hy+hr*0.06,-hr*0.05],grad:root}); R.add('head',G_.tor(hr*0.86,hr*0.16,6,18),c2,{p:[0,hy,hr*0.62],s:[1,1.12,1]});
+      for(let k=0;k<4;k++) R.add('head',G_.tor(hr*(1.0+k*0.04),hr*0.035,4,18,Math.PI),shade(c,0.75),{p:[0,hy+hr*(0.6-k*0.3),-hr*0.2],r:[0,0,0],ol:false});
+      if(H.mask){ R.add('head',G_.sph(hr*0.84,hr*0.44,hr*0.52),H.mask,{p:[0,hy-hr*0.45,hr*0.55],grad:shade(H.mask,0.8)}); R.add('head',G_.box(hr*1.4,0.01,0.01),shade(H.mask,0.6),{p:[0,hy-hr*0.3,hr*1.04],ol:false}); }
+      for(const sd of [1,-1]) R.add('hair',G_.tube([[0,0,0],[sd*hr*0.25,-hr*0.3,-hr*0.5],[sd*hr*0.45,-hr*0.5,-hr*1.2]],hr*0.14,hr*0.05,5,10),c2,{p:[sd*hr*0.1,-hr*0.6,-hr*0.2]}); break;
   }
 }
 
 function buildHat(R,sp,B,hr,hy){
   const H=sp.hat; if(!H) return; const c=H.col||0x24324A, c2=H.col2||0xF5C542;
   switch(H.kind){
-    case 'kabuto':
-      R.add('head',G_.hemi(hr*1.12,hr*1.0,hr*1.12,18),c,{p:[0,hy+hr*0.18,-hr*0.02]});
-      R.add('head',G_.lathe([[hr*1.05,0],[hr*1.25,-hr*0.25],[hr*1.42,-hr*0.55]],16),c,{p:[0,hy+hr*0.2,-hr*0.05],s:[1,1,0.95]});
-      R.add('head',G_.tor(hr*1.1,hr*0.05,5,20),c2,{p:[0,hy+hr*0.2,0],r:[Math.PI/2,0,0]});
-      for(const sd of [1,-1]) R.add('head',G_.box(hr*0.4,hr*0.32,0.04),c,{p:[sd*hr*1.1,hy+hr*0.05,hr*0.35],r:[0,sd*0.8,sd*0.2]});
-      if(H.crest==='crescent') R.add('head',G_.crescent(hr*1.1,hr*0.28,0.05),c2,{p:[0,hy+hr*0.95,hr*0.72],s:[1,1,1]});
-      else if(H.crest==='horns') for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*hr*0.4,hr*0.3,hr*0.1],[sd*hr*0.8,hr*0.9,0],[sd*hr*0.7,hr*1.4,-hr*0.2]],hr*0.12,hr*0.03,6,10),c2,{p:[sd*hr*0.4,hy+hr*0.9,hr*0.4]});
-      else if(H.crest==='sun'){ R.add('head',G_.sph(hr*0.28,hr*0.28,hr*0.07),c2,{p:[0,hy+hr*1.0,hr*0.75],glow:!!H.glow}); for(let i=0;i<10;i++){ const a=i/10*TAU; R.add('head',G_.cone(hr*0.07,hr*0.35,4),c2,{p:[Math.sin(a)*hr*0.42,hy+hr*1.0+Math.cos(a)*hr*0.42,hr*0.74],r:[0,0,-a]}); } }
-      else if(H.crest==='snow') R.add('head',G_.star(hr*0.45,hr*0.18,6,0.04),c2,{p:[0,hy+hr*1.0,hr*0.72],glow:true});
-      else if(H.crest==='flame') for(let i=0;i<5;i++){ const a=(i/4-0.5)*1.6; R.add('head',G_.cone(hr*0.16,hr*(0.8+(i%2)*0.4),5),i%2?0xFFB04A:0xFF5A1F,{p:[Math.sin(a)*hr*0.5,hy+hr*1.15,hr*0.3],r:[-0.2,0,-a*0.5],glow:true}); }
-      break;
+    case 'kabuto': {   /* ribbed bowl, gilded rim, flared three-tier neck guard, turned-back side flaps, peak, crest */
+      R.add('head',G_.hemi(hr*1.14,hr*1.02,hr*1.14,20),c,{p:[0,hy+hr*0.18,-hr*0.02],grad:shade(c,0.72)});
+      for(let i=0;i<12;i++) R.add('head',G_.tor(hr*1.13,hr*0.018,4,10,Math.PI/2),shade(c,1.3),{p:[0,hy+hr*0.18,-hr*0.02],r:[0,i/12*TAU,0],s:[1,0.9,1],ol:false});
+      R.add('head',G_.tor(hr*1.14,hr*0.055,5,26),c2,{p:[0,hy+hr*0.2,-hr*0.02],r:[Math.PI/2,0,0]});
+      R.add('head',G_.sph(hr*0.14,hr*0.08,hr*0.14),c2,{p:[0,hy+hr*1.2,-hr*0.02]});
+      for(let i=0;i<3;i++){ const y=hy+hr*(0.18-i*0.22), r0=hr*(1.13+i*0.13), r1=hr*(1.28+i*0.15);
+        R.add('head',G_.lathe([[r0,0.001],[r1,-hr*0.24]],20,1.05,TAU-2.1),i%2?shade(c,0.82):c,{p:[0,y,-hr*0.02],grad:shade(c,0.68)});
+        R.add('head',G_.lathe([[r1-0.004,-hr*0.2],[r1+0.004,-hr*0.24]],20,1.05,TAU-2.1),H.lace||c2,{p:[0,y,-hr*0.02],ol:false}); }
+      for(const sd of [1,-1]){ R.add('head',G_.box(hr*0.5,hr*0.42,0.045),c,{p:[sd*hr*1.15,hy+hr*0.05,hr*0.45],r:[0,sd*0.95,sd*0.12],grad:shade(c,0.75)});
+        R.add('head',G_.box(hr*0.12,hr*0.12,0.05),c2,{p:[sd*hr*1.22,hy+hr*0.08,hr*0.5],r:[0,sd*0.95,0],ol:false}); }
+      R.add('head',G_.lathe([[hr*1.12,0.001],[hr*1.3,-hr*0.1]],14,-0.85,1.7),c,{p:[0,hy+hr*0.22,0]});
+      if(H.crest==='crescent'){ R.add('head',G_.crescent(hr*1.25,hr*0.3,0.05),c2,{p:[0,hy+hr*0.55,hr*0.92],r:[-0.25,0,0],glow:!!H.glow,grad:shade(c2,0.8)}); R.add('head',G_.sph(hr*0.12,hr*0.12,hr*0.06),c2,{p:[0,hy+hr*0.5,hr*1.08]}); }
+      else if(H.crest==='horns') for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*hr*0.45,hr*0.35,hr*0.1],[sd*hr*0.85,hr*1.0,0],[sd*hr*0.8,hr*1.6,-hr*0.2]],hr*0.14,hr*0.03,6,12),c2,{p:[sd*hr*0.35,hy+hr*0.9,hr*0.45],grad:shade(c2,0.8)});
+      else if(H.crest==='sun'){ R.add('head',G_.sph(hr*0.3,hr*0.3,hr*0.07),c2,{p:[0,hy+hr*1.05,hr*0.78],glow:!!H.glow}); R.add('head',G_.star(hr*0.6,hr*0.32,12,0.03),c2,{p:[0,hy+hr*1.05,hr*0.74],glow:!!H.glow}); }
+      else if(H.crest==='snow') R.add('head',G_.star(hr*0.55,hr*0.2,6,0.04),c2,{p:[0,hy+hr*1.05,hr*0.72],glow:true});
+      else if(H.crest==='flame') for(let i=0;i<5;i++){ const a=(i/4-0.5)*1.6; R.add('head',G_.tube([[0,0,0],[Math.sin(a)*hr*0.2,hr*0.4,0],[Math.sin(a)*hr*0.5,hr*(0.9+(i%2)*0.4),-hr*0.1]],hr*0.16,hr*0.02,5,8),0xFF5A1F,{p:[Math.sin(a)*hr*0.3,hy+hr*1.0,hr*0.35],glow:true,grad:0xFFE27A}); }
+      else if(H.crest==='antler') for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*hr*0.3,hr*0.5,0],[sd*hr*0.7,hr*0.9,-hr*0.1],[sd*hr*0.6,hr*1.4,-hr*0.3]],hr*0.1,hr*0.03,6,10),c2,{p:[sd*hr*0.3,hy+hr*1.0,hr*0.4]});
+      break; }
     case 'eboshi': R.add('head',G_.lathe([[hr*0.82,0],[hr*0.86,hr*0.7],[hr*0.6,hr*1.8],[hr*0.2,hr*2.1],[0.01,hr*2.12]],14),c,{p:[0,hy+hr*0.45,-hr*0.12],r:[-0.18,0,0],s:[1,1,0.8]});
       R.add('head',G_.cyl(0.012,0.012,hr*2.2,4),0xC8C0D8,{p:[0,hy-hr*0.2,hr*0.6],r:[0,0,Math.PI/2],ol:false}); break;
     case 'tokin': R.add('head',G_.cyl(hr*0.3,hr*0.38,hr*0.4,6),c,{p:[0,hy+hr*1.05,hr*0.25]}); break;
@@ -359,6 +594,7 @@ function buildWeapon(R,sp,B){
       else { R.add(hand,G_.sph(0.1),W.orb||0xC58CFF,{p:[0,-B.limb*0.7+tipY+0.08,tipZ+0.02],glow:true}); R.add(hand,G_.tor(0.12,0.018,5,14),c,{p:[0,-B.limb*0.7+tipY+0.08,tipZ+0.02]}); } break; }
     case 'bow': { R.add('handL',G_.tube([[-0.02,-0.66,0],[0.12,-0.36,0],[0.18,0,0],[0.12,0.36,0],[-0.02,0.66,0]],0.026,0.02,6,18),c2,{p:[0.06,-B.limb*0.7,0.04]});
       R.add('handL',G_.cyl(0.005,0.005,1.32,3),0xF4F1EA,{p:[0.04,-B.limb*0.7,0.04],ol:false}); break; }
+    case 'sunbow': weaponSunbow(R,W,B); break;
     case 'fan': R.add(hand,G_.shape((()=>{ const p=[[0,0]]; for(let i=0;i<=10;i++){ const a=Math.PI*(0.2+0.6*i/10); p.push([Math.cos(a)*0.38*s,Math.sin(a)*0.38*s]); } return p; })(),0.015,0.003),c,{p:[0,-B.limb*0.5,0.12],r:[Math.PI/2-0.3,0,0]}); break;
     case 'sickle': R.add(hand,G_.cyl(0.026,0.026,0.6*s,6),c2,{p:[0,-B.limb*0.7,0.2],r:[Math.PI/2,0,0]}); R.add(hand,G_.crescent(0.38*s,0.08,0.02),c,{p:[0,-B.limb*0.7+0.05,0.5*s],r:[0,Math.PI/2,0]}); break;
     case 'orb': R.add(hand,G_.sph(0.14*s),W.col||0x9FE6FF,{p:[0,-B.limb*0.5,0.1],glow:true}); R.add(hand,G_.tor(0.18*s,0.015,5,16),0xFFFFFF,{p:[0,-B.limb*0.5,0.1],glow:true}); break;
@@ -382,13 +618,14 @@ function buildBack(R,sp,B){
     case 'wings': for(const sd of [1,-1]){ const w=R.bone('wing'+(sd>0?'L':'R'),'back',[sd*0.12,0.05,0]);
       const n=K.n||7, span=(K.span||1.3);
       for(let i=0;i<n;i++){ const t=i/(n-1), len=span*(0.55+0.45*Math.sin(t*Math.PI*0.9)), a=lerp(0.25,1.35,t);
-        R.add(w,G_.leaf(0.12+0.05*(1-t),len,0.02),i%2?c:c2,{p:[sd*0.15*t,0.1*t,-0.05],r:[0,sd*0.25,sd*-a]}); }
+        R.add(w,G_.leaf(0.13+0.06*(1-t),len,0.022),i%2?c:c2,{p:[sd*0.15*t,0.1*t,-0.05],r:[0,sd*0.25,sd*-a],grad:K.tip||shade(c2,1.2),gax:1.6});
+        if(i<n-1) R.add(w,G_.leaf(0.1,len*0.6,0.022),shade(c,0.85),{p:[sd*0.12*t,0.1*t+0.05,-0.02],r:[0,sd*0.25,sd*-(a+0.12)],grad:c2}); }
       R.add(w,G_.cap(0.06,span*0.6),c,{p:[sd*span*0.28,span*0.12,-0.02],r:[0,0,sd*-1.2]}); } break;
     case 'tails': { const t=R.byName.tail, n=K.n||9;
       for(let i=0;i<n;i++){ const a=n>1?(i/(n-1)-0.5)*2.6:0, L=K.len||1.1;
         const crv=new T.CatmullRomCurve3([[0,0,0],[Math.sin(a)*L*0.25,0.15,-L*0.3],[Math.sin(a)*L*0.6,0.45+Math.cos(a)*0.2,-L*0.6],[Math.sin(a)*L*0.8,0.85+Math.cos(a)*0.3,-L*0.55]].map(p=>new T.Vector3(...p)));
         for(let k=0;k<11;k++){ const u=k/10, P=crv.getPointAt(u), rr=(0.08+0.15*Math.sin(Math.PI*Math.min(1,u*0.85+0.1)))*(K.fat||1);
-          R.add(t,G_.sph(rr,rr,rr*1.2,12,8),k>=8?(K.tip||0xFFFFFF):(i%2?c:c2),{p:[P.x,P.y,P.z]}); } } break; }
+          R.add(t,G_.sph(rr,rr,rr*1.2,10,6),k>=10?(K.tip||0xFFFFFF):(i%2?c:c2),{p:[P.x,P.y,P.z],grad:k===9?(K.tip||0xFFFFFF):null}); } } break; }
     case 'drums': R.add('back',G_.tor(0.75,0.04,6,32),c,{p:[0,0.25,-0.15]});
       for(let i=0;i<8;i++){ const a=i/8*TAU; R.add('back',G_.cyl(0.13,0.13,0.12,12),c2,{p:[Math.sin(a)*0.75,0.25+Math.cos(a)*0.75,-0.15],r:[Math.PI/2,0,0]}); R.add('back',G_.cyl(0.1,0.1,0.13,12),0xF5C542,{p:[Math.sin(a)*0.75,0.25+Math.cos(a)*0.75,-0.13],r:[Math.PI/2,0,0],ol:false}); } break;
     case 'shell': R.add('back',G_.sph(B.w*1.1,B.torso*0.6,B.w*0.6),c,{p:[0,-0.05,-0.05]}); for(let i=0;i<5;i++) R.add('back',G_.sph(0.08,0.08,0.03),c2,{p:[(i-2)*0.12,-0.05+(i%2)*0.1,B.w*0.15],ol:false}); break;
@@ -396,83 +633,135 @@ function buildBack(R,sp,B){
       R.add('back',G_.tube([[0,0,0],[sd*0.45,up+0.35,-0.25],[sd*0.95,up+0.25,-0.35],[sd*1.15,up-0.55,-0.25]],0.045,0.015,6,12),c,{p:[sd*0.08,0.0-k*0.08,0]}); } break;
     case 'quiver': R.add('back',G_.cyl(0.08,0.07,0.55,10),c,{p:[0.12,-0.05,-0.02],r:[0,0,-0.4]}); for(let i=0;i<4;i++) R.add('back',G_.cyl(0.008,0.008,0.25,3),0xF4F1EA,{p:[0.22+i*0.02,0.25,-0.02],r:[0,0,-0.4],ol:false}); break;
     case 'cape': R.add('back',G_.lathe([[0.25,0.1],[0.35,-0.3],[0.45,-1.0],[0.5,-1.35]],10).rotateY(0),c,{p:[0,0,-0.05],s:[1,1,0.35]}); break;
-    case 'flames': for(let i=0;i<9;i++){ const a=(i/8-0.5)*2.4; R.add('back',G_.cone(0.15,0.7+(i%3)*0.25,5),i%2?0xFF7A2A:0xFFC14A,{p:[Math.sin(a)*0.6,0.1+Math.cos(a)*0.5,-0.1],r:[0,0,-a],glow:true}); } break;
-    case 'halo': R.add('back',G_.tor(0.75,0.035,6,40),c2,{p:[0,0.55,-0.08],glow:true}); for(let i=0;i<16;i++){ const a=i/16*TAU; R.add('back',G_.cone(0.04,0.22,4),c2,{p:[Math.sin(a)*0.92,0.55+Math.cos(a)*0.92,-0.08],r:[0,0,-a],glow:true}); } break;
+    case 'flames': { const fc=K.col||0xFF6A1F, ft=K.col2||0xFFE27A;
+      for(let i=0;i<11;i++){ const u=i/10-0.5, x=u*1.2, L=0.55+0.4*Math.cos(u*2.6)+0.12*((i*7)%3)/2, w=Math.sin(i*2.3)*0.1;
+        R.add('back',G_.tube([[x*0.75,-0.05,-0.12],[x*0.9+w,L*0.35,-0.16],[x*0.95-w*1.4,L*0.7,-0.18],[x*1.0+w*0.6-u*0.1,L,-0.2]],0.2,0.01,6,12),fc,{glow:true,grad:ft,gax:0.7}); }
+      for(let i=0;i<7;i++){ const u=i/6-0.5, x=u*0.9, L=0.35+0.3*Math.cos(u*2.6), w=Math.cos(i*1.9)*0.07;
+        R.add('back',G_.tube([[x*0.7,0,-0.08],[x*0.8-w,L*0.45,-0.1],[x*0.85+w,L,-0.12]],0.12,0.008,5,10),ft,{glow:true,grad:0xFFFFFF,gax:0.8}); } break; }
+    case 'talismans': for(let i=0;i<5;i++){ const a=(i/4-0.5)*2.4, r=0.75+0.1*(i%2);
+      R.add('back',G_.box(0.16,0.34,0.012),0xF4ECFF,{p:[Math.sin(a)*r,0.35+Math.cos(a)*0.45,-0.1+0.1*Math.cos(a)],r:[0,0,-a*0.3],glow:true,grad:K.col||0xB98CFF});
+      R.add('back',G_.box(0.03,0.24,0.014),K.col||0x8E4FD6,{p:[Math.sin(a)*r,0.35+Math.cos(a)*0.45,-0.093+0.1*Math.cos(a)],r:[0,0,-a*0.3],glow:true}); } break;
+    case 'sunflame': backSunflame(R,K,B,sp); break;
+    case 'halo': { const hc=K.col2||0xFFE27A; R.add('back',G_.tor(0.8,0.04,6,48),hc,{p:[0,0.6,-0.1],glow:true}); R.add('back',G_.tor(0.62,0.018,5,40),0xFFFFFF,{p:[0,0.6,-0.1],glow:true});
+      R.add('back',G_.cyl(0.79,0.79,0.012,40),shade(hc,0.9),{p:[0,0.6,-0.13],r:[Math.PI/2,0,0],glow:true,grad:0xFFFFFF});
+      for(let i=0;i<24;i++){ const a=i/24*TAU; R.add('back',G_.cone(i%2?0.035:0.05,i%2?0.2:0.34,4),hc,{p:[Math.sin(a)*(0.95+(i%2?0:0.06)),0.6+Math.cos(a)*(0.95+(i%2?0:0.06)),-0.1],r:[0,0,-a],glow:true}); }
+      for(let i=0;i<8;i++){ const a=i/8*TAU+0.2; R.add('back',G_.sph(0.045),0xFFFFFF,{p:[Math.sin(a)*0.8,0.6+Math.cos(a)*0.8,-0.07],glow:true}); } break; }
     case 'planets': { const o=R.bone('orbit','chest',[0,0.4,0]); for(let i=0;i<5;i++){ const a=i/5*TAU; R.add(o,G_.sph(0.08+0.03*(i%3)),[0xF5C542,0x9FE6FF,0xFF8A4A,0xC58CFF,0xFFFFFF][i],{p:[Math.sin(a)*0.9,Math.cos(a*2)*0.15,Math.cos(a)*0.9],glow:true}); } R.add(o,G_.tor(0.9,0.008,3,48),0xFFFFFF,{r:[Math.PI/2,0,0],glow:true}); break; }
     case 'trees': for(let i=0;i<5;i++){ const a=(i/4-0.5)*1.6; R.add('back',G_.cyl(0.02,0.03,0.4,5),0x6B4A2A,{p:[Math.sin(a)*0.35,0.2,-0.1]}); R.add('back',G_.cone(0.16,0.45,6),0x3F7A3A,{p:[Math.sin(a)*0.35,0.55,-0.1]}); } break;
-    case 'clouds': for(let i=0;i<6;i++){ const a=(i/5-0.5)*2.6; R.add('back',G_.sph(0.25,0.2,0.15),c,{p:[Math.sin(a)*0.75,0.2+Math.cos(a)*0.4,-0.15]}); } break;
+    case 'clouds': for(let i=0;i<9;i++){ const a=(i/8-0.5)*2.8, r=0.2+0.08*(i%2); R.add('back',G_.sph(r,r*0.8,r*0.7),c,{p:[Math.sin(a)*0.8,0.25+Math.cos(a)*0.45,-0.15-0.05*(i%2)],grad:c2});
+      R.add('back',G_.tor(r*0.6,0.018,4,14,Math.PI*1.4),c2,{p:[Math.sin(a)*0.8,0.27+Math.cos(a)*0.45,-0.15+r*0.6],ol:false}); } break;
     case 'bag': R.add('back',G_.sph(0.45,0.35,0.3),c,{p:[0,0.35,-0.1]}); R.add('back',G_.tor(0.4,0.06,6,20),c2,{p:[0,0.35,-0.1],r:[0,0,Math.PI/2]}); break;
     case 'mirror': R.add('back',G_.cyl(0.6,0.6,0.05,32),0xC8D8E6,{p:[0,0.45,-0.12],r:[Math.PI/2,0,0],glow:true}); R.add('back',G_.tor(0.62,0.05,6,32),0xF5C542,{p:[0,0.45,-0.12]}); break;
     case 'serpents': for(let i=0;i<6;i++){ const a=(i/5-0.5)*2.4; R.add('back',G_.tube([[0,0,0],[Math.sin(a)*0.25,0.35,-0.1],[Math.sin(a)*0.45,0.7,0.05]],0.06,0.04,6,8),c,{p:[0,0.1,-0.05]}); R.add('back',G_.sph(0.09,0.07,0.12),c,{p:[Math.sin(a)*0.45,0.82,0.1]}); R.add('back',G_.sph(0.02),0xF5C542,{p:[Math.sin(a)*0.45+0.03,0.85,0.2],glow:true}); } break;
   }
 }
 
+/* creature eyes: white, coloured iris (glowing for spirits), slit pupil, highlight, heavy brow */
+function creatureEye(R,bone,x,y,z,r,col,glow,ry,brow){
+  const P=(dx,dy,dz)=>[x+dx*Math.cos(ry)+dz*Math.sin(ry),y+dy,z-dx*Math.sin(ry)+dz*Math.cos(ry)];
+  R.add(bone,G_.sph(r*1.15,r*0.9,r*0.4,14,10),glow?shade(col,0.6):0xFFF8E8,{p:P(0,0,-r*0.1),r:[0,ry,0],ol:false,glow:!!glow});
+  R.add(bone,G_.sph(r*0.85,r*0.82,r*0.38,14,10),col,{p:P(0,-r*0.03,-r*0.02),r:[0,ry,0],ol:false,glow:!!glow,grad:shade(col,glow?1.6:1.4)});
+  R.add(bone,G_.sph(r*0.16,r*0.7,r*0.3,8,8),glow?0xFFFFFF:0x140C0C,{p:P(0,-r*0.03,r*0.06),r:[0,ry,0],ol:false,glow:!!glow});
+  R.add(bone,G_.sph(r*0.22,r*0.18,r*0.15,8,6),0xFFFFFF,{p:P(-r*0.35,r*0.35,r*0.16),r:[0,ry,0],ol:false,glow:true});
+  if(brow!==false) R.add(bone,G_.tube([P(-r*1.2,r*0.85,-r*0.1),P(0,r*1.25,0),P(r*1.3,r*1.0,-r*0.15)],r*0.22,r*0.08,5,8),brow||0x1A1418,{ol:false}); }
+function furTufts(R,bone,n,pts,len,r,col,tip,dir){ for(let i=0;i<n;i++){ const p=pts(i), d=dir(i), L=len*(0.8+0.4*((i*7)%5)/4);
+  R.add(bone,G_.tube([p,[p[0]+d[0]*L*0.5,p[1]+d[1]*L*0.5,p[2]+d[2]*L*0.5],[p[0]+d[0]*L,p[1]+d[1]*L-L*0.15,p[2]+d[2]*L]],r,r*0.12,5,6),col,{grad:tip}); } }
+
 /* ================================================================ QUADRUPED (nue, kirin, raiju, baku, shachi) */
 function buildQuad(sp){
-  const R=new Rig(), L=sp.len||1.6, H=sp.height||0.85, W=sp.w||0.45, c=sp.col||0x8C6A3A, c2=sp.col2||shade(c,0.7), leg=sp.leg||0.11;
+  const R=new Rig(), L=sp.len||1.6, H=sp.height||0.85, W=sp.w||0.45, c=sp.col||0x8C6A3A, c2=sp.col2||shade(c,0.7), leg=sp.leg||0.11, belly=sp.belly||shade(c,1.25);
   R.bone('body','root',[0,H,0]); R.bone('front','body',[0,0.02,L*0.32]); R.bone('neck','front',[0,0.1,L*0.18]); R.bone('head','neck',[0,0.22,0.14]);
   R.bone('rear','body',[0,0,-L*0.3]);
   for(const [nm,par,z] of [['FL','front',0],['FR','front',0],['BL','rear',0],['BR','rear',0]]){ const sd=nm[1]==='L'?1:-1;
     R.bone('t'+nm,par,[sd*W*0.75,-0.05,z]); R.bone('k'+nm,'t'+nm,[0,-H*0.5,0]); R.bone('f'+nm,'k'+nm,[0,-H*0.45,0]); }
   R.bone('tail0','rear',[0,0.1,-L*0.2]); for(let i=1;i<5;i++) R.bone('tail'+i,'tail'+(i-1),[0,0.02,-0.22*(sp.tailLen||1)]);
-  R.add('body',G_.sph(W,W*0.85,L*0.42,18,12),c,{p:[0,0,0]});
-  R.add('front',G_.sph(W*1.02,W*0.95,L*0.22),c,{p:[0,0.02,0]}); R.add('rear',G_.sph(W*0.98,W*0.9,L*0.22),c,{p:[0,0.02,0]});
-  R.add('neck',G_.cap(W*0.45,0.25),c,{p:[0,0.08,0.02],r:[0.6,0,0]});
-  if(sp.stripes) for(let i=0;i<7;i++) R.add('body',G_.tor(W*0.93,0.03,5,18,Math.PI),c2,{p:[0,0,(i-3)*L*0.11],r:[0,Math.PI/2,Math.PI/2],ol:false});
-  if(sp.belly) R.add('body',G_.sph(W*0.75,W*0.5,L*0.36),sp.belly,{p:[0,-W*0.4,0]});
-  if(sp.scales) for(let i=0;i<10;i++) R.add('body',G_.cone(0.06,0.18,4),sp.scales,{p:[0,W*0.85,(i-4.5)*L*0.08],r:[-0.4,0,0]});
-  if(sp.mane){ for(let i=0;i<12;i++){ const a=(i/11-0.5)*2.6; R.add('neck',G_.cone(W*0.2,W*(0.7+(i%3)*0.2),5),i%2?sp.mane:shade(sp.mane,0.85),{p:[Math.sin(a)*W*0.4,0.2,-0.05],r:[-0.9,0,-a*0.5]}); } }
-  for(const nm of ['FL','FR','BL','BR']){ R.add('t'+nm,G_.cap(leg*1.3,H*0.42),c,{p:[0,-H*0.25,0]}); R.add('k'+nm,G_.cap(leg,H*0.4),c,{p:[0,-H*0.22,0]}); R.add('f'+nm,G_.sph(leg*1.25,leg*0.8,leg*1.6),sp.hoof||c2,{p:[0,0.02,0.05]});
-    if(sp.legFire) R.add('k'+nm,G_.cone(leg*1.4,0.3,5),sp.legFire,{p:[0,-H*0.3,-0.05],r:[0.6,0,0],glow:true}); }
-  /* head by kind */
-  const hc=sp.headCol||c, hk=sp.headKind||'beast', hr=sp.headR||W*0.62;
-  R.add('head',G_.sph(hr,hr*0.95,hr*1.05,16,12),hc,{p:[0,0,0]});
-  const snoutLen=hk==='elephant'?0:hk==='monkey'?0.3:hk==='deer'?1.2:hk==='tiger'?0.65:1.0;
-  if(snoutLen) R.add('head',G_.sph(hr*0.55,hr*0.48,hr*0.6*snoutLen),sp.muzzle||shade(hc,hk==='monkey'?1.3:0.95),{p:[0,-hr*0.25,hr*0.75]});
-  R.add('head',G_.sph(hr*0.14,hr*0.1,hr*0.08),INK,{p:[0,-hr*0.12,hr*(0.75+0.55*snoutLen)],ol:false});
-  for(const sd of [1,-1]){ R.add('head',G_.sph(hr*0.16,hr*0.16,hr*0.09),sp.eyeCol||0xF5C542,{p:[sd*hr*0.45,hr*0.2,hr*0.8],glow:!!sp.eyeGlow,ol:false});
-    if(!sp.eyeGlow) R.add('head',G_.sph(hr*0.07,hr*0.11,hr*0.05),INK,{p:[sd*hr*0.45,hr*0.2,hr*0.88],ol:false});
-    R.add('head',G_.box(hr*0.45,0.03,0.02),INK,{p:[sd*hr*0.42,hr*0.42,hr*0.82],r:[0,0,sd*0.35],ol:false});
-    if(hk!=='elephant') R.add('head',G_.cone(hr*0.28,hr*0.7,5),hc,{p:[sd*hr*0.55,hr*0.85,-hr*0.1],r:[0,0,sd*-0.35]}); }
-  if(hk==='elephant'){ R.add('head',G_.tube([[0,0,0],[0,-hr*0.6,hr*0.4],[0,-hr*1.3,hr*0.5],[0,-hr*1.6,hr*0.9]],hr*0.32,hr*0.16,8,14),hc,{p:[0,-hr*0.1,hr*0.8]});
-    for(const sd of [1,-1]){ R.add('head',G_.sph(hr*0.7,hr*0.8,hr*0.12),shade(hc,0.9),{p:[sd*hr*0.95,0,-hr*0.1],r:[0,sd*0.4,0]}); R.add('head',G_.cone(hr*0.1,hr*0.6,6),0xFFF4E0,{p:[sd*hr*0.35,-hr*0.6,hr*0.9],r:[2.4,0,sd*0.2]}); } }
-  if(hk==='monkey'){ R.add('head',G_.sph(hr*0.7,hr*0.6,hr*0.3),sp.muzzle||0xD98A6A,{p:[0,-hr*0.05,hr*0.8]}); for(let i=0;i<10;i++){ const a=i/10*TAU; R.add('head',G_.cone(hr*0.25,hr*0.7,5),sp.mane||c,{p:[Math.sin(a)*hr*0.95,Math.cos(a)*hr*0.9,-hr*0.2],r:[-0.4,0,-a]}); } }
-  if(sp.antlers) for(const sd of [1,-1]){ R.add('head',G_.tube([[0,0,0],[sd*hr*0.3,hr*0.6,-hr*0.2],[sd*hr*0.8,hr*1.2,-hr*0.5],[sd*hr*0.7,hr*1.8,-hr*0.8]],hr*0.1,hr*0.04,6,12),sp.antlers,{p:[sd*hr*0.3,hr*0.75,0],glow:!!sp.antlerGlow});
+  R.add('body',G_.sph(W,W*0.85,L*0.42,20,14),c,{grad:belly,gax:2});
+  R.add('front',G_.sph(W*1.04,W*0.97,L*0.23,16,12),c,{p:[0,0.03,0],grad:belly,gax:2}); R.add('rear',G_.sph(W*1.0,W*0.92,L*0.23,16,12),c,{p:[0,0.03,0],grad:belly,gax:2});
+  R.add('neck',G_.cap(W*0.48,0.25),c,{p:[0,0.08,0.02],r:[0.6,0,0],grad:belly});
+  if(sp.stripes) for(let i=0;i<9;i++){ const z=(i-4)*L*0.085, sw=0.6+0.4*Math.sin(i*1.3);   /* curved tiger stripes over the back and down the flanks */
+    for(const sd of [1,-1]) R.add('body',G_.tube([[0,W*0.86,z],[sd*W*0.55,W*0.68,z+0.04],[sd*W*0.9*sw,W*0.15,z-0.02],[sd*W*0.85*sw,-W*0.2,z+0.03]],0.035,0.008,4,10),c2,{ol:false}); }
+  if(sp.scales) for(let i=0;i<12;i++) for(const sd of [1,-1]) R.add('body',G_.sph(0.07,0.055,0.03),sp.scales,{p:[sd*W*(0.55+0.15*(i%2)),W*0.55-((i%3)*0.08),(i-5.5)*L*0.065],r:[0,sd*0.9,0],ol:false});
+  if(sp.scales) for(let i=0;i<10;i++) R.add('body',G_.cone(0.06,0.18,4),sp.scales,{p:[0,W*0.86,(i-4.5)*L*0.08],r:[-0.4,0,0]});
+  /* fur: ruff on the chest, tufts on the shoulders, a ridge down the back */
+  const fc=sp.mane||c;
+  furTufts(R,'front',7,i=>[(i-3)*W*0.18,-W*0.35+(i%2)*0.06,W*0.7],W*0.32,W*0.12,fc,shade(fc,1.2),i=>[(i-3)*0.08,-0.9,0.35]);
+  for(const sd of [1,-1]) furTufts(R,'front',4,i=>[sd*W*0.85,W*0.35-i*0.1,-i*0.05],W*0.45,W*0.12,fc,shade(fc,1.2),i=>[sd*0.7,-0.3,-0.5]);
+  if(sp.mane) furTufts(R,'neck',10,i=>[(i%2?1:-1)*W*0.15,0.25-i*0.02,-0.05-i*0.05],W*0.85,W*0.18,sp.mane,sp.maneTip||shade(sp.mane,1.3),i=>[(i%2?1:-1)*0.35,0.35,-0.9]);
+  /* legs, paws, claws */
+  for(const nm of ['FL','FR','BL','BR']){ R.add('t'+nm,G_.cap(leg*1.35,H*0.42),c,{p:[0,-H*0.25,0],grad:belly}); R.add('k'+nm,G_.cap(leg*1.02,H*0.4),c,{p:[0,-H*0.22,0]});
+    R.add('f'+nm,G_.sph(leg*1.35,leg*0.85,leg*1.6),sp.hoof||c,{p:[0,0.02,0.05],grad:shade(sp.hoof||c,0.8)});
+    if(!sp.hoof) for(let k=-1;k<=1;k++) R.add('f'+nm,G_.cone(leg*0.18,leg*0.6,4),0xF2EAD8,{p:[k*leg*0.55,-0.02,leg*1.55],r:[Math.PI/2,0,0]});
+    if(sp.legFire) for(let k=0;k<3;k++) R.add('k'+nm,G_.tube([[0,0,0],[(k-1)*0.05,-0.12,-0.12],[(k-1)*0.08,0.05,-0.3]],leg*0.9,leg*0.08,5,8),sp.legFire,{p:[0,-H*0.32,-0.02],glow:true,grad:0xFFFFFF}); }
+  /* head */
+  const hc=sp.headCol||c, hk=sp.headKind||'beast', hr=sp.headR||W*0.66;
+  R.add('head',G_.sph(hr,hr*0.95,hr*1.05,18,14),hc,{grad:shade(hc,0.85)});
+  const snoutLen=hk==='elephant'?0:hk==='monkey'?0.3:hk==='deer'?1.2:hk==='tiger'?0.7:1.0;
+  if(snoutLen){ R.add('head',G_.sph(hr*0.56,hr*0.46,hr*0.62*snoutLen),sp.muzzle||shade(hc,hk==='monkey'?1.3:1.05),{p:[0,-hr*0.25,hr*0.75],grad:sp.muzzle?shade(sp.muzzle,0.9):null});
+    R.add('head',G_.sph(hr*0.42,hr*0.2,hr*0.5*snoutLen),shade(sp.muzzle||hc,0.9),{p:[0,-hr*0.52,hr*0.62]}); }
+  R.add('head',G_.sph(hr*0.15,hr*0.1,hr*0.09),INK,{p:[0,-hr*0.12,hr*(0.75+0.58*snoutLen)],ol:false});
+  for(const sd of [1,-1]){ creatureEye(R,'head',sd*hr*0.44,hr*0.18,hr*0.8,hr*0.19,sp.eyeCol||0xF5C542,!!sp.eyeGlow,sd*0.45,shade(hc,0.55));
+    if(hk!=='elephant'){ R.add('head',G_.cone(hr*0.3,hr*0.75,6),hc,{p:[sd*hr*0.56,hr*0.88,-hr*0.1],r:[0,0,sd*-0.35],grad:shade(hc,0.8)});
+      R.add('head',G_.cone(hr*0.17,hr*0.5,6),sp.earIn||0xF2B8B0,{p:[sd*hr*0.54,hr*0.84,-hr*0.02],r:[0,0,sd*-0.35],ol:false}); }
+    furTufts(R,'head',3,i=>[sd*hr*0.85,-hr*0.05-i*hr*0.18,hr*0.15],hr*0.45,hr*0.12,sp.cheek||hc,shade(sp.cheek||hc,1.25),i=>[sd*0.9,-0.2,-0.3]); }
+  if(hk==='elephant'){ R.add('head',G_.tube([[0,0,0],[0,-hr*0.6,hr*0.4],[0,-hr*1.3,hr*0.5],[0,-hr*1.6,hr*0.9]],hr*0.34,hr*0.16,9,16),hc,{p:[0,-hr*0.1,hr*0.8],grad:shade(hc,0.8)});
+    for(let k=0;k<6;k++) R.add('head',G_.tor(hr*(0.3-k*0.025),hr*0.02,4,14),shade(hc,0.75),{p:[0,-hr*(0.25+k*0.22),hr*(1.15+k*0.05)],r:[1.2-k*0.1,0,0],ol:false});
+    for(const sd of [1,-1]){ R.add('head',G_.sph(hr*0.75,hr*0.85,hr*0.12),shade(hc,0.9),{p:[sd*hr*0.98,0,-hr*0.1],r:[0,sd*0.4,0],grad:sp.earIn||0xB98CFF}); R.add('head',G_.cone(hr*0.11,hr*0.7,8),0xFFF4E0,{p:[sd*hr*0.35,-hr*0.62,hr*0.95],r:[2.3,0,sd*0.25]}); } }
+  if(hk==='monkey'){ R.add('head',G_.sph(hr*0.72,hr*0.62,hr*0.3),sp.muzzle||0xD98A6A,{p:[0,-hr*0.05,hr*0.82],grad:shade(sp.muzzle||0xD98A6A,0.85)});
+    furTufts(R,'head',14,i=>{ const a=i/14*TAU; return [Math.sin(a)*hr*0.95,Math.cos(a)*hr*0.9,-hr*0.15]; },hr*0.8,hr*0.2,sp.mane||c,shade(sp.mane||c,1.3),i=>{ const a=i/14*TAU; return [Math.sin(a)*0.8,Math.cos(a)*0.8,-0.4]; }); }
+  if(hk==='tiger') for(let i=0;i<4;i++) R.add('head',G_.tube([[-hr*0.3,hr*(0.75-i*0.12),hr*0.75],[0,hr*(0.6-i*0.12),hr*0.95],[hr*0.3,hr*(0.75-i*0.12),hr*0.75]],0.025,0.01,4,8),c2,{ol:false});
+  if(sp.antlers) for(const sd of [1,-1]){ R.add('head',G_.tube([[0,0,0],[sd*hr*0.3,hr*0.6,-hr*0.2],[sd*hr*0.8,hr*1.2,-hr*0.5],[sd*hr*0.7,hr*1.8,-hr*0.8]],hr*0.11,hr*0.04,6,12),sp.antlers,{p:[sd*hr*0.3,hr*0.75,0],glow:!!sp.antlerGlow,grad:shade(sp.antlers,0.8)});
     R.add('head',G_.tube([[0,0,0],[sd*hr*0.3,hr*0.25,hr*0.15],[sd*hr*0.6,hr*0.4,hr*0.25]],hr*0.07,hr*0.03,5,8),sp.antlers,{p:[sd*hr*0.65,hr*1.45,-hr*0.35],glow:!!sp.antlerGlow}); }
-  if(sp.whiskers) for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*hr*0.6,-hr*0.1,hr*0.2],[sd*hr*1.3,-hr*0.5,hr*0.1],[sd*hr*1.7,-hr*0.3,-hr*0.3]],0.025,0.01,5,12),sp.whiskers,{p:[sd*hr*0.3,-hr*0.3,hr*1.3],glow:true});
-  if(sp.fangs) for(const sd of [1,-1]) R.add('head',G_.cone(hr*0.07,hr*0.3,5),0xFFFFFF,{p:[sd*hr*0.18,-hr*0.55,hr*1.2],r:[Math.PI,0,0],ol:false});
+  if(sp.whiskers) for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*hr*0.6,-hr*0.1,hr*0.2],[sd*hr*1.3,-hr*0.5,hr*0.1],[sd*hr*1.8,-hr*0.25,-hr*0.35]],0.03,0.008,5,14),sp.whiskers,{p:[sd*hr*0.3,-hr*0.3,hr*1.3],glow:true});
+  if(sp.fangs) for(const sd of [1,-1]) R.add('head',G_.cone(hr*0.08,hr*0.32,5),0xFFFFFF,{p:[sd*hr*0.2,-hr*0.6,hr*1.2],r:[Math.PI,0,0],ol:false});
   /* tail */
   const tk=sp.tail||'fluffy', tc=sp.tailCol||c;
-  for(let i=0;i<5;i++){ const r=tk==='snake'?0.09*(1-i*0.12):tk==='fluffy'?0.12+0.03*i:tk==='fish'?0.12-0.015*i:0.07*(1-i*0.12);
-    R.add('tail'+i,G_.sph(r,r,0.15*(sp.tailLen||1)),tc,{p:[0,0,-0.11*(sp.tailLen||1)]});
-    if(tk==='lightning'&&i%2) R.add('tail'+i,G_.cone(0.05,0.25,4),0xFFF27A,{p:[0,0.12,-0.1],glow:true}); }
-  if(tk==='snake'){ R.add('tail4',G_.sph(0.12,0.09,0.17),tc,{p:[0,0.02,-0.25]}); R.add('tail4',G_.sph(0.02),0xF5C542,{p:[0.05,0.06,-0.37],glow:true}); R.add('tail4',G_.sph(0.02),0xF5C542,{p:[-0.05,0.06,-0.37],glow:true}); }
-  if(tk==='fish') R.add('tail4',G_.shape([[0,0],[0.35,0.3],[0.15,0],[0.35,-0.3]],0.03,0.005),sp.finCol||0xF5C542,{p:[0,0,-0.25],r:[0,Math.PI/2,0]});
+  for(let i=0;i<5;i++){ const r=tk==='snake'?0.1*(1-i*0.12):tk==='fluffy'?0.13+0.035*i:tk==='fish'?0.13-0.015*i:0.08*(1-i*0.12);
+    R.add('tail'+i,G_.sph(r,r,0.16*(sp.tailLen||1)),tc,{p:[0,0,-0.11*(sp.tailLen||1)],grad:tk==='fluffy'&&i>2?(sp.tailTip||shade(tc,1.35)):null});
+    if(tk==='fluffy') furTufts(R,'tail'+i,3,k=>[(k-1)*r*0.6,r*0.5,-0.05],r*1.4,r*0.35,tc,sp.tailTip||shade(tc,1.35),k=>[(k-1)*0.5,0.4,-0.6]);
+    if(tk==='lightning'&&i%2) R.add('tail'+i,G_.shape([[0,0],[0.08,0.14],[0.02,0.14],[0.1,0.3],[-0.04,0.1],[0.02,0.1]],0.03,0.004),0xFFF27A,{p:[0,0.12,-0.1],glow:true});
+    if(tk==='fish') for(const sd of [1,-1]) R.add('tail'+i,G_.sph(0.05,0.04,0.02),sp.scales||shade(tc,0.8),{p:[sd*r*0.8,0,-0.08],r:[0,sd*1.2,0],ol:false}); }
+  if(tk==='snake'){ R.add('tail4',G_.sph(0.13,0.1,0.2),tc,{p:[0,0.02,-0.27]}); for(const sd of [1,-1]) creatureEye(R,'tail4',sd*0.06,0.08,-0.38,0.035,0xF5C542,true,Math.PI+sd*0.4,false);
+    R.add('tail4',G_.cone(0.02,0.08,4),0xFFFFFF,{p:[0.04,-0.04,-0.42],r:[Math.PI,0,0],ol:false}); R.add('tail4',G_.cone(0.02,0.08,4),0xFFFFFF,{p:[-0.04,-0.04,-0.42],r:[Math.PI,0,0],ol:false}); }
+  if(tk==='fish') R.add('tail4',G_.shape([[0,0],[0.42,0.38],[0.18,0],[0.42,-0.38]],0.03,0.005),sp.finCol||0xF5C542,{p:[0,0,-0.25],r:[0,Math.PI/2,0],grad:shade(sp.finCol||0xF5C542,0.7)});
+  if(sp.fins) for(const sd of [1,-1]) R.add('body',G_.shape([[0,0],[0.35,0.15],[0.5,-0.1],[0.2,-0.08]],0.025,0.005),sp.finCol||0xF5C542,{p:[sd*W*0.8,W*0.3,-L*0.05],r:[0,sd*-Math.PI/2,0.3],grad:shade(sp.finCol||0xF5C542,0.7)});
   if(sp.extra) sp.extra(R,{L,H,W,hr},G_);
   return {rig:R,kind:'quad'};
 }
 
-/* ================================================================ SERPENT (orochi, kuzuryu, ryujin) — coiled body with N necks */
+/* ================================================================ SERPENT (orochi, kuzuryu, ryujin) — coiled body with N dragon necks */
 function buildSerpent(sp){
-  const R=new Rig(), n=sp.heads||1, c=sp.col||0x3F7A3A, c2=sp.col2||shade(c,1.3), seg=sp.seg||6, r0=sp.r||0.2;
+  const R=new Rig(), n=sp.heads||1, c=sp.col||0x3F7A3A, c2=sp.col2||shade(c,1.3), seg=sp.seg||6, r0=sp.r||0.2, bel=sp.belly||0xE8D8A8;
   R.bone('coil','root',[0,0.3,0]);
-  R.add('coil',G_.tor(0.7,0.28,10,28),c,{p:[0,0,0],r:[Math.PI/2,0,0]}); R.add('coil',G_.tor(0.45,0.24,10,24),shade(c,0.92),{p:[0,0.32,0],r:[Math.PI/2,0,0.3]});
-  R.add('coil',G_.sph(0.5,0.4,0.5),c,{p:[0,0.45,0]});
+  R.add('coil',G_.tor(0.72,0.3,12,32),c,{r:[Math.PI/2,0,0],grad:shade(c,0.75)}); R.add('coil',G_.tor(0.46,0.25,12,28),shade(c,0.95),{p:[0,0.34,0],r:[Math.PI/2,0,0.3],grad:shade(c,0.75)});
+  R.add('coil',G_.sph(0.5,0.42,0.5),c,{p:[0,0.47,0]});
+  for(let i=0;i<20;i++){ const a=i/20*TAU; R.add('coil',G_.sph(0.16,0.07,0.04),bel,{p:[Math.sin(a)*1.0,0.02,Math.cos(a)*1.0],r:[0,a,0],ol:false});   /* belly plates and dorsal spines on the coil */
+    if(sp.spines) R.add('coil',G_.cone(0.05,0.17,4),sp.spines,{p:[Math.sin(a)*0.72,0.3,Math.cos(a)*0.72],r:[0,0,0]}); }
   for(let h=0;h<n;h++){ const a=n===1?0:(h/(n-1)-0.5)*Math.min(2.6,0.45*n), base='n'+h+'_';
     R.bone(base+0,'coil',[Math.sin(a)*0.35,0.6,Math.cos(a)*0.2]);
     for(let i=1;i<seg;i++){ const lift=0.28*(sp.neck||1); R.bone(base+i,base+(i-1),[Math.sin(a)*0.12*(i<3?1:0.3),lift,0.03+0.04*i]); }
-    for(let i=0;i<seg;i++){ const r=r0*(1-i/seg*0.35); R.add(base+i,G_.sph(r,0.2,r*1.05,12,8),c,{p:[0,0.12,0]}); R.add(base+i,G_.sph(r*0.7,0.16,r*0.4),sp.belly||0xE8D8A8,{p:[0,0.12,r*0.7],ol:false});
-      if(sp.spines) R.add(base+i,G_.cone(r*0.35,r*1.1,4),sp.spines,{p:[0,0.15,-r*0.85],r:[-0.6,0,0]}); }
-    const hb=R.bone(base+'H',base+(seg-1),[0,0.24,0.05]), hr=r0*1.25;
-    R.add(hb,G_.sph(hr,hr*0.75,hr*1.3,14,10),c,{p:[0,0,hr*0.3]}); R.add(hb,G_.sph(hr*0.75,hr*0.45,hr*1.1),c2,{p:[0,-hr*0.3,hr*0.75]});
-    for(const sd of [1,-1]){ R.add(hb,G_.sph(hr*0.18,hr*0.14,hr*0.1),sp.eyeCol||0xFF3A2A,{p:[sd*hr*0.5,hr*0.25,hr*0.95],glow:true});
-      if(sp.horns) R.add(hb,G_.tube([[0,0,0],[sd*hr*0.3,hr*0.5,-hr*0.4],[sd*hr*0.4,hr*1.0,-hr*1.0]],hr*0.15,hr*0.04,6,10),sp.horns,{p:[sd*hr*0.4,hr*0.4,0]});
-      if(sp.whiskers) R.add(hb,G_.tube([[0,0,0],[sd*hr*0.5,0,hr*0.4],[sd*hr*1.2,-hr*0.3,hr*0.2],[sd*hr*1.6,-hr*0.6,-hr*0.4]],0.03,0.01,5,10),sp.whiskers,{p:[sd*hr*0.3,-hr*0.2,hr*1.5],glow:true});
-      R.add(hb,G_.cone(hr*0.08,hr*0.35,5),0xFFFFFF,{p:[sd*hr*0.35,-hr*0.5,hr*1.3],r:[Math.PI,0,0],ol:false}); }
-    if(sp.mane) for(let i=0;i<6;i++) R.add(hb,G_.cone(hr*0.25,hr*(0.9+(i%2)*0.3),5),sp.mane,{p:[(i-2.5)*hr*0.25,hr*0.5,-hr*0.4],r:[-1.0,0,(i-2.5)*0.25]});
+    for(let i=0;i<seg;i++){ const r=r0*(1-i/seg*0.35);
+      R.add(base+i,G_.sph(r,0.21,r*1.05,14,8),c,{p:[0,0.12,0],grad:shade(c,0.8)});
+      R.add(base+i,G_.sph(r*0.72,0.17,r*0.42),bel,{p:[0,0.12,r*0.7],ol:false,grad:shade(bel,0.85)});
+      R.add(base+i,G_.tor(r*0.98,0.012,4,16),shade(c,0.65),{p:[0,0.03,0],r:[Math.PI/2,0,0],ol:false});
+      if(sp.spines) R.add(base+i,G_.cone(r*0.35,r*1.1,4),sp.spines,{p:[0,0.15,-r*0.85],r:[-0.6,0,0]});
+      if(sp.mane&&i>seg-3&&n<=3) furTufts(R,base+i,3,k=>[(k-1)*r*0.5,0.15,-r*0.8],r*2.2,r*0.35,sp.mane,shade(sp.mane,1.25),k=>[(k-1)*0.4,0.1,-0.9]); }
+    const hb=R.bone(base+'H',base+(seg-1),[0,0.24,0.05]), hr=r0*1.3;
+    /* dragon head: skull, long upper snout, open lower jaw with teeth, nostrils, brow ridges, horns, whiskers, mane */
+    R.add(hb,G_.sph(hr,hr*0.78,hr*1.1,16,12),c,{p:[0,0,hr*0.1],grad:shade(c,0.8)});
+    R.add(hb,G_.sph(hr*0.66,hr*0.42,hr*1.05,14,10),c2,{p:[0,-hr*0.05,hr*0.95],grad:c});
+    R.add(hb,G_.sph(hr*0.58,hr*0.22,hr*0.95,12,8),bel,{p:[0,-hr*0.48,hr*0.75],r:[0.22,0,0],grad:shade(bel,0.85)});
+    R.add(hb,G_.sph(hr*0.5,hr*0.08,hr*0.8,10,6),0x8C2A2A,{p:[0,-hr*0.32,hr*0.85],r:[0.12,0,0],ol:false});
+    for(let k=0;k<(n>3?3:5);k++) for(const sd of [1,-1]){ R.add(hb,G_.cone(hr*0.06,hr*0.2,4),0xFFFFFF,{p:[sd*hr*(0.42-k*0.03),-hr*0.2,hr*(0.6+k*0.2)],r:[Math.PI,0,0],ol:false}); }
+    for(const sd of [1,-1]){ R.add(hb,G_.sph(hr*0.07,hr*0.05,hr*0.04),INK,{p:[sd*hr*0.2,hr*0.12,hr*1.9],ol:false});
+      creatureEye(R,hb,sd*hr*0.52,hr*0.32,hr*0.72,hr*0.2,sp.eyeCol||0xFF3A2A,true,sd*0.6,shade(c,0.55));
+      if(sp.horns) R.add(hb,G_.tube([[0,0,0],[sd*hr*0.3,hr*0.5,-hr*0.4],[sd*hr*0.45,hr*1.05,-hr*1.05],[sd*hr*0.35,hr*1.5,-hr*1.5]],hr*0.16,hr*0.035,6,12),sp.horns,{p:[sd*hr*0.4,hr*0.45,0],grad:shade(sp.horns,0.75)});
+      if(sp.whiskers) R.add(hb,G_.tube([[0,0,0],[sd*hr*0.5,0,hr*0.4],[sd*hr*1.2,-hr*0.3,hr*0.2],[sd*hr*1.8,-hr*0.65,-hr*0.5]],0.032,0.008,5,14),sp.whiskers,{p:[sd*hr*0.3,-hr*0.1,hr*1.7],glow:true});
+      R.add(hb,G_.cone(hr*0.18,hr*0.6,5),c2,{p:[sd*hr*0.85,-hr*0.2,-hr*0.2],r:[0,0,sd*-1.6],grad:shade(c2,0.7)}); }
+    if(sp.mane) furTufts(R,hb,n>3?5:8,k=>[(k-3.5)*hr*0.22,hr*0.5,-hr*0.45],hr*1.1,hr*0.18,sp.mane,shade(sp.mane,1.3),k=>[(k-3.5)*0.15,0.2,-1]);
     if(sp.crown) R.add(hb,G_.cone(hr*0.3,hr*0.9,6),sp.crown,{p:[0,hr*0.8,0],r:[-0.3,0,0]}); }
-  if(sp.orb) { R.bone('orbB','coil',[0,1.3,0.9]); R.add('orbB',G_.sph(0.28),sp.orb,{glow:true}); R.add('orbB',G_.tor(0.34,0.02,5,24),0xFFFFFF,{glow:true}); }
-  if(sp.legs) for(const sd of [1,-1]) for(const z of [0.35,-0.35]){ R.add('coil',G_.cap(0.07,0.3),c,{p:[sd*0.75,0.1,z],r:[0,0,sd*0.8]}); for(let k=0;k<3;k++) R.add('coil',G_.cone(0.03,0.12,4),0xF5C542,{p:[sd*0.95,-0.05,z+(k-1)*0.06],r:[Math.PI,0,0]}); }
+  if(sp.orb){ R.bone('orbB','coil',[0,1.3,0.9]); R.add('orbB',G_.sph(0.28),sp.orb,{glow:true,grad:0xFFFFFF}); R.add('orbB',G_.tor(0.34,0.02,5,24),0xFFFFFF,{glow:true}); }
+  if(sp.legs) for(const sd of [1,-1]) for(const z of [0.35,-0.35]){ R.add('coil',G_.cap(0.08,0.3),c,{p:[sd*0.78,0.1,z],r:[0,0,sd*0.8]}); for(let k=0;k<3;k++) R.add('coil',G_.cone(0.03,0.13,4),0xF5C542,{p:[sd*0.98,-0.05,z+(k-1)*0.06],r:[Math.PI,0,0]}); }
+  if(sp.waves) for(let i=0;i<10;i++){ const a=i/10*TAU; R.add('coil',G_.tube([[0,0,0],[Math.sin(a)*0.2,0.2,Math.cos(a)*0.2],[Math.sin(a)*0.35,0.05,Math.cos(a)*0.35]],0.09,0.02,5,8),sp.waves,{p:[Math.sin(a)*0.95,-0.22,Math.cos(a)*0.95],glow:true,grad:0xFFFFFF}); }
   return {rig:R,kind:'serpent',heads:n,seg};
 }
 
@@ -480,42 +769,56 @@ function buildSerpent(sp){
 function buildSpider(sp){
   const R=new Rig(), c=sp.col||0x3A2A55, c2=sp.col2||0x6A4E8C, H=0.85;
   R.bone('body','root',[0,H,0]); R.bone('abd','body',[0,0.15,-0.55]); R.bone('head','body',[0,0.05,0.55]);
-  R.add('body',G_.sph(0.55,0.42,0.6,16,12),c,{}); R.add('abd',G_.sph(0.85,0.72,0.95,18,12),c,{p:[0,0.15,-0.35]});
-  for(let i=0;i<5;i++) R.add('abd',G_.tor(0.35-i*0.05,0.02,4,20),c2,{p:[0,0.75,-0.35-i*0.1],r:[Math.PI/2+0.3,0,0],ol:false});
-  R.add('head',G_.sph(0.42,0.36,0.42),c,{p:[0,0.05,0.15]});
-  for(let i=0;i<8;i++){ const row=Math.floor(i/4), col=i%4; R.add('head',G_.sph(0.07),sp.eyeCol||0xFF2A2A,{p:[(col-1.5)*0.15,0.18+row*0.13-((col===0||col===3)?0.05:0),0.5],glow:true}); }
-  for(const sd of [1,-1]) R.add('head',G_.cone(0.06,0.3,5),0xEDE6D6,{p:[sd*0.12,-0.22,0.5],r:[Math.PI-0.3,0,0]});
+  R.add('body',G_.sph(0.55,0.42,0.6,18,12),c,{grad:shade(c,0.7)}); R.add('abd',G_.sph(0.88,0.74,0.98,20,14),c,{p:[0,0.15,-0.35],grad:shade(c,0.65)});
+  for(let i=0;i<8;i++){ const a=i/8*TAU;   /* a web pattern spread over the abdomen */
+    R.add('abd',G_.tube([[0,0.88,-0.35],[Math.sin(a)*0.45,0.75,-0.35+Math.cos(a)*0.5],[Math.sin(a)*0.75,0.35,-0.35+Math.cos(a)*0.82]],0.014,0.008,4,10),c2,{ol:false}); }
+  for(let k=1;k<4;k++){ const pts=[]; for(let i=0;i<=24;i++){ const a=i/24*TAU, rr=k*0.22; pts.push([Math.sin(a)*rr*(k<3?1:0.95),0.88-k*k*0.06,-0.35+Math.cos(a)*rr*1.1]); } R.add('abd',G_.tube(pts,0.012,0.012,4,48),c2,{ol:false}); }
+  R.add('abd',G_.sph(0.2,0.1,0.25),sp.mark||0xD8342C,{p:[0,0.82,-0.85],r:[-0.8,0,0],glow:true});
+  R.add('head',G_.sph(0.44,0.37,0.44),c,{p:[0,0.05,0.15],grad:shade(c,0.7)});
+  for(let i=0;i<8;i++){ const row=Math.floor(i/4), col=i%4, r=row?0.06:0.085; R.add('head',G_.sph(r),sp.eyeCol||0xFF2A2A,{p:[(col-1.5)*0.15,0.2+row*0.13-((col===0||col===3)?0.05:0),0.5],glow:true,grad:0xFFFFFF}); }
+  for(const sd of [1,-1]){ R.add('head',G_.tube([[0,0,0],[sd*0.04,-0.15,0.1],[-sd*0.02,-0.32,0.05]],0.06,0.015,6,8),0xEDE6D6,{p:[sd*0.13,-0.15,0.5],grad:0xB8A890}); }
   for(let i=0;i<8;i++){ const sd=i%2?-1:1, k=Math.floor(i/2), z=0.35-k*0.25, nm='L'+i;
     R.bone(nm+'a','body',[sd*0.45,0.05,z]); R.bone(nm+'b',nm+'a',[sd*0.6,0.45,0]); R.bone(nm+'c',nm+'b',[sd*0.45,-0.25,0]);
-    R.add(nm+'a',G_.tube([[0,0,0],[sd*0.6,0.45,0]],0.075,0.06,6,4),c,{}); R.add(nm+'b',G_.tube([[0,0,0],[sd*0.45,-0.25,0]],0.06,0.05,6,4),c,{});
-    R.add(nm+'c',G_.tube([[0,0,0],[sd*0.2,-0.6,0],[sd*0.25,-1.0,0]],0.05,0.015,6,8),c2,{}); }
+    R.add(nm+'a',G_.tube([[0,0,0],[sd*0.6,0.45,0]],0.08,0.065,6,4),c,{grad:shade(c,0.75)}); R.add(nm+'b',G_.tube([[0,0,0],[sd*0.45,-0.25,0]],0.065,0.05,6,4),c,{});
+    R.add(nm+'b',G_.tor(0.065,0.014,4,10),c2,{p:[0,0,0],r:[0,Math.PI/2,0],ol:false});
+    R.add(nm+'c',G_.tube([[0,0,0],[sd*0.2,-0.6,0],[sd*0.25,-1.0,0]],0.055,0.012,6,8),c2,{grad:sp.tip||0x14101A});
+    for(let s=0;s<3;s++) R.add(nm+'b',G_.cone(0.016,0.12,4),c2,{p:[sd*0.15*(s+1),0.25-s*0.08,0.04],r:[0,0,sd*-1.0],ol:false}); }
   return {rig:R,kind:'spider'};
 }
 
 /* ================================================================ BLOB (umibozu) — a towering dark sea spectre */
 function buildBlob(sp){
-  const R=new Rig(), c=sp.col||0x1A2A4A;
+  const R=new Rig(), c=sp.col||0x1A2A4A, c2=sp.col2||0x4E8CC8;
   R.bone('b0','root',[0,0.4,0]); R.bone('b1','b0',[0,0.55,0]); R.bone('b2','b1',[0,0.5,0]); R.bone('b3','b2',[0,0.45,0]);
-  R.add('b0',G_.sph(0.95,0.5,0.95,18,10),c,{}); R.add('b1',G_.sph(0.78,0.55,0.75,18,10),c,{}); R.add('b2',G_.sph(0.62,0.5,0.6,18,10),c,{}); R.add('b3',G_.sph(0.55,0.55,0.52,18,12),c,{});
-  for(const sd of [1,-1]){ R.add('b3',G_.sph(0.16,0.2,0.08),0xEAF6FF,{p:[sd*0.2,0.05,0.48],glow:true}); R.add('b3',G_.sph(0.08,0.1,0.06),0x9FE6FF,{p:[sd*0.2,0.05,0.53],glow:true}); }
-  for(let i=0;i<12;i++){ const a=i/12*TAU; R.add('b1',G_.sph(0.06,0.14,0.06),0x4E8CC8,{p:[Math.sin(a)*0.78,-0.1-(i%3)*0.12,Math.cos(a)*0.75],glow:true}); }
-  for(const sd of [1,-1]){ R.bone('arm'+(sd>0?'L':'R'),'b1',[sd*0.7,0.2,0]); R.add('arm'+(sd>0?'L':'R'),G_.tube([[0,0,0],[sd*0.3,-0.3,0.2],[sd*0.45,-0.8,0.3]],0.2,0.1,8,10),c,{}); }
+  R.add('b0',G_.sph(0.98,0.52,0.98,20,12),c,{grad:shade(c,0.7)}); R.add('b1',G_.sph(0.8,0.57,0.77,20,12),c,{grad:shade(c,0.8)}); R.add('b2',G_.sph(0.64,0.52,0.62,18,10),c,{}); R.add('b3',G_.sph(0.56,0.58,0.53,18,12),c,{grad:shade(c,0.8)});
+  for(const sd of [1,-1]){ R.add('b3',G_.sph(0.19,0.24,0.08),0xEAF6FF,{p:[sd*0.21,0.06,0.48],glow:true,grad:0x9FE6FF}); R.add('b3',G_.sph(0.08,0.11,0.06),0xFFFFFF,{p:[sd*0.21,0.07,0.54],glow:true});
+    R.add('b3',G_.tor(0.24,0.02,4,16),0x9FE6FF,{p:[sd*0.21,0.06,0.46],glow:true}); }
+  for(let i=0;i<14;i++){ const a=i/14*TAU, L=0.4+0.25*(i%3);   /* dripping streams running down the body */
+    R.add('b1',G_.tube([[Math.sin(a)*0.76,0.15,Math.cos(a)*0.73],[Math.sin(a)*0.84,-0.25,Math.cos(a)*0.8],[Math.sin(a)*0.9,-0.35-L,Math.cos(a)*0.86]],0.07,0.02,5,8),c,{grad:c2});
+    R.add('b1',G_.sph(0.035,0.06,0.035),c2,{p:[Math.sin(a)*0.9,-0.4-L,Math.cos(a)*0.86],glow:true}); }
+  for(let i=0;i<16;i++){ const a=i/16*TAU; R.add('b0',G_.tube([[0,0,0],[Math.sin(a)*0.25,0.25,Math.cos(a)*0.25],[Math.sin(a)*0.45,0.1,Math.cos(a)*0.45]],0.09,0.02,5,8),0xDCF4FF,{p:[Math.sin(a)*0.95,-0.4,Math.cos(a)*0.95],glow:true,grad:c2}); }
+  for(const sd of [1,-1]){ R.bone('arm'+(sd>0?'L':'R'),'b1',[sd*0.7,0.2,0]); R.add('arm'+(sd>0?'L':'R'),G_.tube([[0,0,0],[sd*0.3,-0.3,0.2],[sd*0.45,-0.8,0.3]],0.22,0.08,8,12),c,{grad:c2}); }
   return {rig:R,kind:'blob'};
 }
 
-/* ================================================================ FISH (namazu) — giant catfish */
+/* ================================================================ FISH (namazu) — giant catfish with a mossy boulder on its back */
 function buildFish(sp){
   const R=new Rig(), c=sp.col||0x3E4A5A, c2=sp.col2||0xD8C8A8;
   R.bone('f0','root',[0,0.75,0.4]); R.bone('f1','f0',[0,0,-0.6]); R.bone('f2','f1',[0,0,-0.55]); R.bone('f3','f2',[0,0,-0.5]);
-  R.add('f0',G_.sph(0.8,0.62,0.75,18,12),c,{p:[0,0,0.1]}); R.add('f0',G_.sph(0.7,0.35,0.6),c2,{p:[0,-0.35,0.2],ol:false});
-  R.add('f0',G_.box(1.0,0.07,0.1),0x2A1E1E,{p:[0,-0.1,0.82],ol:false}); R.add('f0',G_.box(0.9,0.05,0.04),0xC86A6A,{p:[0,-0.15,0.8],ol:false});
-  for(const sd of [1,-1]){ R.add('f0',G_.sph(0.12,0.12,0.08),0xF5C542,{p:[sd*0.45,0.25,0.68],glow:true}); R.add('f0',G_.sph(0.05,0.08,0.04),INK,{p:[sd*0.45,0.25,0.74],ol:false});
-    R.add('f0',G_.tube([[0,0,0],[sd*0.35,-0.05,0.2],[sd*0.7,-0.3,0.15],[sd*0.95,-0.5,-0.1]],0.05,0.015,6,14),0xEDE6D6,{p:[sd*0.45,-0.05,0.8]});
-    R.add('f1',G_.shape([[0,0],[0.5,-0.25],[0.25,0.05]],0.03,0.005),c,{p:[sd*0.65,-0.2,0.1],r:[0,sd*0.3,sd*-0.4]}); }
-  R.add('f1',G_.sph(0.7,0.55,0.55),c,{}); R.add('f2',G_.sph(0.55,0.45,0.5),c,{}); R.add('f3',G_.sph(0.38,0.32,0.4),c,{});
-  R.add('f3',G_.shape([[0,0],[0.5,0.45],[0.25,0],[0.5,-0.4]],0.04,0.006),c,{p:[0,0,-0.35],r:[0,Math.PI/2,0]});
-  if(sp.moss){ for(let i=0;i<8;i++){ const a=i/8*TAU; R.add('f0',G_.sph(0.2,0.08,0.2),sp.moss,{p:[Math.sin(a)*0.35,0.58,Math.cos(a)*0.3-0.05]}); }
-    R.add('f1',G_.box(0.3,0.5,0.1),0x8E8A84,{p:[0,0.65,0],r:[0,0,0.1]}); R.add('f1',G_.box(0.12,0.2,0.02),0x5A5650,{p:[0,0.68,0.06],ol:false}); }
+  R.add('f0',G_.sph(0.82,0.64,0.77,20,14),c,{p:[0,0,0.1],grad:c2,gax:2.2}); R.add('f0',G_.sph(0.72,0.36,0.62),c2,{p:[0,-0.35,0.2],ol:false,grad:shade(c2,0.85)});
+  R.add('f0',G_.tube([[-0.55,-0.08,0.72],[0,-0.22,0.92],[0.55,-0.08,0.72]],0.06,0.06,6,14),0x2A1E1E,{ol:false}); R.add('f0',G_.tube([[-0.45,-0.12,0.74],[0,-0.24,0.9],[0.45,-0.12,0.74]],0.035,0.035,5,12),0xC86A6A,{ol:false});
+  for(const sd of [1,-1]){ creatureEye(R,'f0',sd*0.46,0.24,0.66,0.13,sp.eyeCol||0xF5C542,false,sd*0.55,shade(c,0.5));
+    R.add('f0',G_.tube([[0,0,0],[sd*0.35,-0.05,0.25],[sd*0.75,-0.35,0.25],[sd*1.05,-0.6,-0.05],[sd*1.15,-0.5,-0.35]],0.05,0.012,6,18),0xEDE6D6,{p:[sd*0.45,-0.05,0.8],grad:0xB8B0A0});
+    R.add('f1',G_.shape([[0,0],[0.55,-0.28],[0.28,0.06]],0.03,0.005),c,{p:[sd*0.66,-0.2,0.1],r:[0,sd*0.3,sd*-0.4],grad:shade(c,0.7)}); }
+  for(let i=0;i<16;i++){ const a=i/16*TAU; R.add('f0',G_.sph(0.06,0.04,0.02),shade(c,0.75),{p:[Math.sin(a)*0.6,0.35+Math.cos(a)*0.1,Math.cos(a)*0.5-0.1],r:[0,a,0],ol:false}); }
+  R.add('f1',G_.sph(0.72,0.56,0.56),c,{grad:c2,gax:2.2}); R.add('f2',G_.sph(0.56,0.46,0.5),c,{grad:c2,gax:2.2}); R.add('f3',G_.sph(0.4,0.33,0.4),c,{});
+  R.add('f3',G_.shape([[0,0],[0.55,0.5],[0.28,0],[0.55,-0.45]],0.04,0.006),c,{p:[0,0,-0.35],r:[0,Math.PI/2,0],grad:shade(c,0.65)});
+  if(sp.moss){ const g=G_.sph(0.55,0.42,0.48,9,7), p=g.attributes.position;
+    for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i), k=1+0.15*Math.sin(x*9.1+z*6.7)+0.1*Math.sin(y*11.3); p.setXYZ(i,x*k,y*k,z*k); } g.computeVertexNormals();
+    R.add('f1',g,0x8E8A84,{p:[0,0.62,0.05],grad:0x5E5A54}); R.add('f1',G_.sph(0.5,0.18,0.44,10,6),sp.moss,{p:[-0.02,0.95,0.02],grad:shade(sp.moss,0.75)});
+    for(let i=0;i<10;i++){ const a=i/10*TAU; R.add('f0',G_.sph(0.2,0.08,0.2),sp.moss,{p:[Math.sin(a)*0.38,0.6,Math.cos(a)*0.3-0.05],grad:shade(sp.moss,0.8)}); }
+    R.add('f1',G_.box(0.14,0.22,0.02),0xF4F1EA,{p:[0.1,0.7,0.5],r:[0,0.2,0.1],ol:false}); R.add('f1',G_.box(0.03,0.16,0.022),0xD8342C,{p:[0.1,0.7,0.51],r:[0,0.2,0.1],ol:false});
+    R.add('f1',G_.tor(0.5,0.03,6,24),0xF2EAD8,{p:[0,0.62,0.05],r:[Math.PI/2,0,0]}); }
   return {rig:R,kind:'fish'};
 }
 
@@ -524,61 +827,61 @@ const DEFS={};
 const def=(k,s)=>{ DEFS[k]=s; };
 /* compact design list for all 70 heroes and bosses, drawn from their painted portraits */
 const HORN=0xF2DEA0, BLK=0x1C1C22, WHT=0xF4F1EA, GLD=0xF5C542, RED=0xC8342C;
-def('hero',    {type:'human',build:'chibi',skin:0xF6D2B0,hair:{style:'spiky',col:0x22305E,col2:0x2E4280},hat:{kind:'none'},extra:(R,B)=>{ R.add('head',G_.tor(B.head*1.02,B.head*0.09,6,24),0xD8342C,{p:[0,B.head*1.25,0],r:[Math.PI/2+0.15,0,0]}); for(const sd of [1,-1]) R.add('head',G_.box(0.06,0.42,0.02),0xD8342C,{p:[sd*0.08,B.head*0.85,-B.head*1.05],r:[0.5,0,sd*0.45]}); },
-  outfit:{kind:'hakama',col:WHT,top:WHT,col2:0x22305E,trim:0x22305E,belt:0xD8342C},weapon:{kind:'bow',col2:0x3A2418},back:{kind:'quiver',col:0x6B3A1E},eyes:{col:0x8A5A1A}});
-def('samurai', {type:'human',build:'chibi',skin:0xF6D2B0,hair:{style:'short',col:0x1C1C22},hat:{kind:'kabuto',col:0x22305E,col2:GLD,crest:'crescent'},outfit:{kind:'armor',col:0x22305E,col2:0x2D4A7A,trim:GLD,plate:0x1E2C50,legs:0x1E2C50},weapon:{kind:'katana'},eyes:{col:0x6B3A1E}});
-def('onmyoji', {type:'human',build:'chibi',hair:{style:'long',col:0x1C1C22,len:1.6},hat:{kind:'eboshi',col:0x1E1E24},outfit:{kind:'robe',col:WHT,col2:0xE6E0F0,trim:0x8E4FD6},weapon:{kind:'talisman'},eyes:{col:0x3A2A55}});
+def('hero',    {type:'human',build:'chibi',skin:0xF6D2B0,hair:{style:'spiky',col:0x22305E,col2:0x2E4280,tip:0x4A62B0},hat:{kind:'none'},extra:(R,B)=>{ R.add('head',G_.tor(B.head*1.02,B.head*0.09,6,24),0xD8342C,{p:[0,B.head*1.25,0],r:[Math.PI/2+0.15,0,0]}); for(const sd of [1,-1]) R.add('head',G_.tube([[0,0,0],[sd*0.1,-0.05,-0.12],[sd*0.22,-0.18,-0.32],[sd*0.3,-0.12,-0.5]],0.035,0.02,5,10),0xD8342C,{p:[sd*0.04,B.head*1.2,-B.head*0.95],grad:0xA81E18}); },
+  outfit:{kind:'hakama',col:0x22305E,top:0xF4F1EA,collar:0x22305E,trim:0x2E4280,belt:0xD8342C,mon:0x22305E,lining:0x22305E},weapon:{kind:'bow',col2:0x3A2418},back:{kind:'quiver',col:0x6B3A1E},eyes:{col:0x8A5A1A}});
+def('samurai', {type:'human',build:'chibi',skin:0xF6D2B0,hair:{style:'short',col:0x1C1C22},hat:{kind:'kabuto',col:0x1E3A3A,col2:GLD,crest:'crescent',lace:0x2D7F8A},outfit:{kind:'armor',col:0x2D7F8A,lace:0x2D8A7A,trim:GLD,plate:0x1E3A3A,sleeve:0x1E2C2C,legs:0x1E2C2C},weapon:{kind:'katana'},eyes:{col:0x6B3A1E,fierce:true}});
+def('onmyoji', {type:'human',build:'chibi',skin:0xF8E4D2,hair:{style:'long',col:0xE6E6EE,col2:0xC8C8D6,len:1.9,strands:10},hat:{kind:'eboshi',col:0x1E1E24},outfit:{kind:'robe',col:0xF4F1EA,inner:0x6E3FB0,trim:0x8E4FD6,belt:0x6E3FB0,pattern:0x8E4FD6},weapon:{kind:'talisman'},eyes:{col:0x6E3FB0},back:{kind:'talismans',col:0x8E4FD6}});
 def('ninja',   {type:'human',build:'chibi',hair:{style:'hood',col:0x2A2433,col2:0x3A3248,mask:0x2A2433},outfit:{kind:'ninja',col:0x2A2433,col2:0x1E1A26,belt:0x6E4FA0,glove:0x2A2433,shoe:0x1E1A26},scarf:0x8E4FD6,weapon:{kind:'dagger',off:{kind:'dagger'}},eyes:{col:0x3A2A1E}});
-def('tengu',   {type:'human',build:'normal',head:'bird',skin:0x1E1E2A,beakCol:0xF09A2A,crestCol:0x2A2A3A,eyes:{col:0xD8342C,glow:true},hat:{kind:'tokin',col:BLK},outfit:{kind:'robe',col:0x4E3A8C,col2:0x3A2A6E,trim:GLD},beads:GLD,weapon:{kind:'fan',col:0x2A2A3A},back:{kind:'wings',col:0x1E1E2A,col2:0x2A2A3A,span:1.4}});
-def('kitsune', {type:'human',build:'slim',skin:0xFBE6D6,hair:{style:'long',col:0xF4F4F8,col2:0xE0E0EA,len:3.4},ears:'fox',earCol:0xF4F4F8,outfit:{kind:'kimono',col:0xF3D9C4,col2:0xE8E0D8,trim:0xD8342C,belt:0xD8342C},back:{kind:'tails',col:0xF4F4F8,col2:0xE8EEF6,tip:0x9FE6FF,n:9},weapon:{kind:'orb',col:0x6FE3FF,hand:'L'},eyes:{col:0xC8A040}});
-def('yuki',    {type:'human',build:'hero',hair:{style:'short',col:0xC8D8E6},hat:{kind:'kabuto',col:0xCFE6F5,col2:0x9FE6FF,crest:'snow'},outfit:{kind:'armor',col:0xB8D4EA,col2:0x6FA8D8,trim:0x9FE6FF,plate:0xE6F2FA,legs:0x4E7AA8},weapon:{kind:'katana',col:0xBFF0FF,glow:true},eyes:{col:0x4E8CC8}});
-def('shogun',  {type:'human',build:'broad',head:'oni',skin:0x6E4A8C,hat:{kind:'kabuto',col:0x1E1A22,col2:GLD,crest:'horns'},outfit:{kind:'armor',col:0x2A1E26,col2:0x8C2A2A,trim:GLD,plate:0x1E1A22,emblem:GLD},weapon:{kind:'greatsword',col:0xE0E6EC},eyes:{col:0xFF5A2A,glow:true,fierce:true},back:{kind:'flames'}});
+def('tengu',   {type:'human',build:'normal',head:'bird',skin:0x1E1E2A,beakCol:0xF09A2A,crestCol:0x2A2A3A,eyes:{col:0xD8342C,glow:true},hat:{kind:'tokin',col:BLK},outfit:{kind:'robe',col:0x5A3A9C,inner:0x2A1E55,trim:GLD,belt:GLD,pattern:GLD},beads:0xF4F1EA,weapon:{kind:'bellstaff',col:GLD,col2:0xC8A040},back:{kind:'wings',col:0x1E1E2A,col2:0x3A3A4E,span:1.5,tip:0x5A5A70}});
+def('kitsune', {type:'human',build:'chibi',skin:0xFBE6D6,hair:{style:'long',col:0xF4F4F8,col2:0xE0E0EA,tip:0xFFFFFF,len:3.2},ears:'fox',earCol:0xF4F4F8,outfit:{kind:'kimono',col:0xF8F4EE,inner:0xD8342C,trim:0xD8342C,belt:0xD8342C,pattern:0xD8342C,motif:'wave'},back:{kind:'tails',col:0xF4F4F8,col2:0xEDEFF6,tip:0xFF8A2A,n:9},weapon:{kind:'orb',col:0x4E9CFF,hand:'L'},eyes:{col:0xC8901A}});
+def('yuki',    {type:'human',build:'hero',hair:{style:'short',col:0xC8D8E6},hat:{kind:'kabuto',col:0xCFE6F5,col2:0x9FE6FF,crest:'snow',lace:0x4E8CC8},outfit:{kind:'armor',col:0x4E8CC8,lace:0x4E7AB8,trim:0x9FE6FF,plate:0xDCEEF8,sleeve:0x2A4A7A,legs:0x2A4A7A},weapon:{kind:'naginata',col:0xBFF0FF,col2:0x2A4A7A,glow:true},eyes:{col:0x4E8CC8,fierce:true},back:{kind:'cape',col:0x2A4A8C}});
+def('shogun',  {type:'human',build:'broad',head:'oni',skin:0x6E4A8C,hat:{kind:'kabuto',col:0x1E1A22,col2:GLD,crest:'horns',lace:0x8C2A2A},outfit:{kind:'armor',col:0x8C2A2A,lace:0x8C2A2A,trim:GLD,plate:0x1E1A22,emblem:GLD,sleeve:0x2A1E26},weapon:{kind:'greatsword',col:0xE0E6EC},eyes:{col:0xFF5A2A,glow:true,fierce:true},back:{kind:'flames'}});
 def('kappa',   {type:'human',build:'normal',head:'duck',skin:0x5E9F46,eyes:{col:0xF5C542},hat:{kind:'leaves',col:0x3F7A3A,col2:0x6FB548},outfit:{kind:'bare',col2:0x3F7A3A},weapon:{kind:'trident',col:GLD,col2:0x6B4A2A},back:{kind:'shell',col:0x4E6E3A,col2:0x8CA05A},beads:GLD});
-def('gasha',   {type:'human',build:'giant',prop:{head:0.34},head:'skull',eyes:{col:0xC58CFF},outfit:{kind:'robe',col:0x4E3A6E,col2:0x3A2A55,trim:GLD,pattern:GLD},skin:0xEDE6D6,extra:(R,B)=>{ for(let i=0;i<5;i++) R.add('chest',G_.tor(B.w*0.75-i*0.02,0.035,5,16,Math.PI),0xEDE6D6,{p:[0,B.torso*(0.15+i*0.07),0.1],r:[0,0,0]}); }});
+def('gasha',   {type:'human',build:'giant',prop:{head:0.34},head:'skull',eyes:{col:0xC58CFF,glow:true},outfit:{kind:'robe',col:0x4E3A6E,inner:0x2A1E3A,trim:0x8E6FC0,pattern:0xC58CFF},skin:0xEDE6D6,back:{kind:'flames',col:0x8E4FD6,col2:0xE6C8FF},extra:(R,B)=>{ for(let i=0;i<5;i++) R.add('chest',G_.tor(B.w*0.75-i*0.02,0.035,5,16,Math.PI),0xEDE6D6,{p:[0,B.torso*(0.15+i*0.07),0.1],r:[0,0,0]}); }});
 def('raijin',  {type:'human',build:'broad',skin:0x3E6EC8,hair:{style:'wild',col:0xF2F2F2,col2:0xDDDDE6},horns:{style:'oni',col:GLD,len:0.6},outfit:{kind:'bare',col2:0xD9A441,stripes:true},eyes:{col:0xFFF27A,glow:true,fierce:true,grin:true},back:{kind:'drums',col:0x8C2A2A,col2:0x5A3A2A},weapon:{kind:'mallet',col:0xD9A441,col2:0x6B4A2A}});
-def('nue',     {type:'quad',len:1.8,height:0.85,w:0.48,col:0xC88A3A,col2:0x2A1E14,stripes:true,headKind:'monkey',headCol:0x8C5A2A,muzzle:0xD98A6A,mane:0x6B4A2A,tail:'snake',tailCol:0x3F7A3A,tailLen:1.4,fangs:true,eyeCol:0xF5C542});
-def('ryujin',  {type:'serpent',heads:1,seg:8,r:0.24,neck:1.1,col:0x2F8F78,col2:0x6FD8B8,belly:0xF5D68A,horns:GLD,whiskers:GLD,mane:0xF5C542,spines:GLD,eyeCol:0xFFE27A,orb:0x9FE6FF,legs:true});
-def('tsuchi',  {type:'spider',col:0x3A2A55,col2:0x6A4E8C,eyeCol:0xFF2A2A});
-def('nurari',  {type:'human',build:'slim',skin:0xE8D2B8,prop:{head:0.24},head:'old',hair:{style:'bald'},eyes:{col:0x3A2A1E},beard:{style:'mustache',col:0xBFB8A8},outfit:{kind:'robe',col:0x2A2A55,col2:0x1E1E3A,trim:0x8E8AB0},weapon:{kind:'pipe',col2:0x3A2418},
-  extra:(R,B)=>{ R.add('head',G_.sph(B.head*0.75,B.head*1.4,B.head*0.8),0xE8D2B8,{p:[0,B.head*1.9,-B.head*0.25]}); for(let i=0;i<3;i++) R.add('back',G_.sph(0.12),0xB98CFF,{p:[(i-1)*0.5,0.6+(i%2)*0.2,-0.2],glow:true}); }});
-def('orochi',  {type:'serpent',heads:8,seg:6,r:0.17,neck:0.95,col:0x2F6A2A,col2:0x5AA048,belly:0xC8D88A,horns:GLD,eyeCol:0xFF3A2A,spines:0x1E3A1A});
-def('namazu',  {type:'fish',col:0x3E4A5A,col2:0xD8C8A8,moss:0x5E7A3A});
-def('mao',     {type:'human',build:'broad',head:'mask',mask:'hannya',maskCol:0x8C1E2A,skin:0x3A2A3A,horns:{style:'curved',col:0x1E1A22},hair:{style:'wild',col:0x1E1A22,col2:0x3A2A4A},outfit:{kind:'armor',col:0x1E1A26,col2:0x5A2A6E,trim:0xC58CFF,plate:0x2A1E30,emblem:0xC58CFF},weapon:{kind:'greatsword',col:0x6E4FA0,glow:true},back:{kind:'cape',col:0x2A1E30}});
+def('nue',     {type:'quad',len:1.8,height:0.85,w:0.5,col:0xD8842A,col2:0x1E1410,belly:0xF2D8A8,stripes:true,headKind:'monkey',headCol:0x8C5A2A,muzzle:0xE07A5A,mane:0x6B4A2A,cheek:0x6B4A2A,tail:'snake',tailCol:0x3F7A3A,tailLen:1.5,fangs:true,eyeCol:0xFFC531,eyeGlow:true,extra:(R,D)=>{ for(let i=0;i<6;i++){ const a=(i/5-0.5)*2.4; R.add('rear',G_.sph(0.3,0.22,0.25),0x6E6E7A,{p:[Math.sin(a)*0.5,0.45+Math.cos(a)*0.15,-0.1],grad:0xB8B8C8}); } }});
+def('ryujin',  {type:'serpent',heads:1,seg:8,r:0.25,neck:1.1,col:0x2F9F88,col2:0x6FD8C0,belly:0xF5E2A0,horns:GLD,whiskers:GLD,mane:0xF5C542,spines:GLD,eyeCol:0xFFE27A,orb:0xDCF4FF,legs:true,waves:0x6FC8F0});
+def('tsuchi',  {type:'spider',col:0x3A2A55,col2:0x8E72C0,eyeCol:0xFF2A2A,mark:0xD8342C});
+def('nurari',  {type:'human',build:'slim',skin:0xE8D2B8,prop:{head:0.27},head:'old',hair:{style:'bald'},eyes:{col:0x3A2A1E},beard:{style:'mustache',col:0xBFB8A8},outfit:{kind:'robe',col:0x9A96A2,inner:0x2A2A3A,trim:0x5A5668,belt:0x2A2A3A,pattern:0xE6E2EC},weapon:{kind:'pipe',col2:0x3A2418},back:{kind:'flames',col:0x8E4FD6,col2:0xE6C8FF},
+  extra:(R,B)=>{ R.add('head',G_.sph(B.head*0.75,B.head*1.4,B.head*0.8),0xE8D2B8,{p:[0,B.head*1.9,-B.head*0.25],grad:0xD8BCA0}); }});
+def('orochi',  {type:'serpent',heads:8,seg:6,r:0.17,neck:0.95,col:0x2F6A2A,col2:0x6AB048,belly:0xE0D8A0,horns:GLD,eyeCol:0xFF3A2A,spines:0x1E3A1A,mane:0x8CA04A});
+def('namazu',  {type:'fish',col:0x4E5A6E,col2:0xE8DCC0,moss:0x6E8A3A,eyeCol:0xE8B030});
+def('mao',     {type:'human',build:'broad',head:'mask',mask:'hannya',maskCol:0x8C1E2A,skin:0x3A2A3A,horns:{style:'curved',col:0x1E1A22},hair:{style:'wild',col:0x1E1A22,col2:0x3A2A4A},outfit:{kind:'armor',col:0x8C1E2A,lace:0x8C1E2A,trim:GLD,plate:0x1E1418,emblem:0xC58CFF,sleeve:0x2A1E26},weapon:{kind:'katana',col:0xE0B0FF,glow:true,off:{kind:'katana',col:0xE0B0FF,glow:true}},back:{kind:'flames',col:0x6E2AA8,col2:0xE6B0FF}});
 def('akaoni',  {type:'human',build:'giant',head:'oni',skin:0xC8342C,hair:{style:'wild',col:0xF2F2F2,col2:0xDDD8D0},horns:{style:'oni',col:HORN,len:0.9,size:0.25},outfit:{kind:'bare',col2:0xD9A441,stripes:true},weapon:{kind:'club',col:0x3A3A42,s:1.3},eyes:{col:0xF5C542,fierce:true,grin:true}});
 def('brute',   {type:'human',build:'giant',head:'oni',skin:0x3E6EC8,hair:{style:'wild',col:0x1E1E2A,col2:0x2A2A3A},horns:{style:'oni',col:HORN,len:0.7},outfit:{kind:'bare',col2:0xD9A441,stripes:true},weapon:{kind:'club',col:0x6B4A2A,s:1.15},eyes:{col:0xF5C542,fierce:true,grin:true}});
-def('umibozu', {type:'blob',col:0x1A2A4A});
-def('kamaitachi',{type:'human',build:'slim',head:'wolf',skin:0x8E8E96,muzzleCol:0xD8D8DE,eyes:{col:0xF5C542},outfit:{kind:'ninja',col:0x6E6E78,col2:0x4E4E58,belt:0x3F7A3A,glove:0x8E8E96},weapon:{kind:'sickle',col:0xE6ECF2,col2:0x3A2418,s:1.3},back:{kind:'tails',col:0x8E8E96,col2:0xA8A8B0,n:1,len:1.3,tip:0xD8D8DE}});
+def('umibozu', {type:'blob',col:0x14203A,col2:0x4E8CC8});
+def('kamaitachi',{type:'human',build:'slim',head:'wolf',skin:0xB8B8C0,muzzleCol:0xF4F4F8,eyes:{col:0xF5C542},outfit:{kind:'ninja',col:0x8E8E96,col2:0x6E6E78,belt:0x3F7A3A,glove:0xB8B8C0},weapon:{kind:'sickle',col:0xE6ECF2,col2:0x3A2418,s:1.3,glow:true,off:{kind:'sickle',col:0xE6ECF2,col2:0x3A2418,s:1.3,glow:true}},back:{kind:'tails',col:0xB8B8C0,col2:0xD8D8DE,n:1,len:1.4,tip:0xF4F4F8,fat:1.3}});
 def('daidara', {type:'human',build:'giant',skin:0x6E6A5A,head:'stone',headCol:0x7A7462,hair:{style:'wild',col:0x3F6A2A,col2:0x5A8A3A},beard:{style:'long',col:0x4E7A3A},outfit:{kind:'bare',col2:0x5A5648},eyes:{col:0x9BF57E,glow:true},back:{kind:'trees'}});
-def('hannya',  {type:'human',build:'slim',head:'mask',mask:'hannya',maskCol:0xF4EEE6,skin:0xF4E6DA,hair:{style:'long',col:0x14121A,len:3.6},outfit:{kind:'kimono',col:0x8C1E2A,col2:0x5A1218,trim:GLD,belt:GLD},back:{kind:'flames',col:0x6FB8FF},weapon:{kind:'fan',col:0xD8342C}});
-def('mikaboshi',{type:'human',build:'hero',skin:0x2A3A6E,hair:{style:'longflow',col:0xE6ECF5,len:2.6},hat:{kind:'stars',col:0x2A2A55,col2:0xDCE6FF},outfit:{kind:'robe',col:0x1E2A55,col2:0x2A3A6E,trim:0xDCE6FF,pattern:0xDCE6FF},eyes:{col:0xDCE6FF,glow:true},back:{kind:'halo',col2:0xC8D8FF}});
-def('ushioni', {type:'human',build:'giant',head:'bull',skin:0x2A2626,muzzleCol:0x3A3434,horns:{style:'bull',col:0xC8B89A},eyes:{col:0xFF5A2A,glow:true},outfit:{kind:'armor',col:0x3A3434,col2:0x2A2626,trim:0x8E8A84,plate:0x2A2626},weapon:{kind:'club',col:0x5A5650,s:1.2},
+def('hannya',  {type:'human',build:'slim',head:'mask',mask:'hannya',maskCol:0xF4EEE6,skin:0xF4E6DA,hair:{style:'long',col:0x14121A,len:3.6},outfit:{kind:'kimono',col:0x8C1E2A,inner:0x1E1418,trim:GLD,belt:0x1E1418,pattern:GLD},back:{kind:'flames',col:0x2A6AFF,col2:0xBFE6FF},weapon:{kind:'fan',col:0xD8342C}});
+def('mikaboshi',{type:'human',build:'hero',skin:0x2A3A6E,hair:{style:'longflow',col:0xE6ECF5,len:2.6},hat:{kind:'stars',col:0x2A2A55,col2:0xDCE6FF},outfit:{kind:'robe',col:0x1E2A6E,inner:0x0E1438,trim:0xDCE6FF,pattern:0xDCE6FF,motif:'star'},weapon:{kind:'spear',col:0xDCE6FF,col2:0x1E2A55,glow:true},eyes:{col:0xDCE6FF,glow:true},back:{kind:'halo',col2:0xC8D8FF}});
+def('ushioni', {type:'human',build:'giant',head:'bull',skin:0x2A2626,muzzleCol:0x3A3434,horns:{style:'bull',col:0xC8B89A},eyes:{col:0xFF5A2A,glow:true},outfit:{kind:'armor',col:0x8C1E1E,lace:0x8C1E1E,trim:GLD,plate:0x2A2626,sleeve:0x1E1A1A},weapon:{kind:'club',col:0x5A5650,s:1.2},
   extra:(R,B)=>{ for(let i=0;i<8;i++) R.add('chest',G_.tor(0.07,0.022,4,10),0x8E8A84,{p:[-0.3+i*0.085,0.3-i*0.06,B.w*0.85],r:[0,i%2?Math.PI/2:0,0]}); }});
-def('shuten',  {type:'human',build:'giant',head:'oni',skin:0xC8342C,hair:{style:'wild',col:0xF2F2F2,col2:0xE6E0D8},horns:{style:'oni',col:GLD,len:1.0},outfit:{kind:'kimono',col:0x2A1E1E,col2:0x8C2A2A,trim:GLD,short:true},weapon:{kind:'club',col:0x3A3A42,s:1.3},eyes:{col:0xF5C542,fierce:true,grin:true},back:{kind:'flames'}});
-def('kirin',   {type:'quad',len:1.8,height:1.0,w:0.4,col:0x2F8F8A,col2:0x1E6A66,headKind:'deer',headCol:0xF5C542,muzzle:0xFFE27A,mane:0x6FD8C8,scales:GLD,antlers:GLD,antlerGlow:true,tail:'fluffy',tailCol:0x6FD8C8,legFire:0xFFF27A,hoof:GLD,eyeCol:0xFFF27A,eyeGlow:true,whiskers:0xFFE27A});
-def('enma',    {type:'human',build:'broad',skin:0xB3261E,beard:{style:'long',col:0x14121A},hat:{kind:'judge',col:0x1E1A22,col2:GLD},outfit:{kind:'robe',col:0x8C1E2A,col2:0x5A1218,trim:GLD},weapon:{kind:'staff',col:GLD,col2:0x2A1E1E,orb:0x6FE36F},eyes:{col:0xF5C542,fierce:true},back:{kind:'flames',col:0x6FE36F}});
-def('susanoo', {type:'human',build:'hero',skin:0xE8D2B8,hair:{style:'wild',col:0x1E2A55,col2:0x2A3A6E},outfit:{kind:'armor',col:0x1E2A55,col2:0x2A3A6E,trim:0xDCE6FF,plate:0x162044,robe:0x1E2A55},weapon:{kind:'greatsword',col:0xDCE6FF,glow:true},eyes:{col:0x9FE6FF,fierce:true},back:{kind:'clouds',col:0x3A4A6E}});
-def('jorogumo',{type:'human',build:'slim',skin:0xF4E6DA,hair:{style:'bun',col:0x14121A,pin:GLD},eyes:{col:0xD8342C,n:6,glow:true},outfit:{kind:'kimono',col:0x14121A,col2:0x2A1E1E,trim:0xD8342C,belt:0xD8342C},back:{kind:'spiderlegs',col:0x2A1E26},weapon:{kind:'fan',col:0xD8342C}});
-def('karura',  {type:'human',build:'hero',head:'bird',skin:0xF06A1F,beakCol:0xF5C542,crestCol:0xFFB04A,eyes:{col:0xFFE27A,glow:true},outfit:{kind:'armor',col:0xD8541E,col2:0xF5A042,trim:GLD,plate:0xC8401A},back:{kind:'wings',col:0xF06A1F,col2:0xFFB04A,span:1.6},weapon:{kind:'spear',col:GLD,col2:0x8C2A2A}});
-def('kuzuryu', {type:'serpent',heads:9,seg:6,r:0.15,neck:0.95,col:0x1E4A8C,col2:0x4E8CC8,belly:0xC8E0F5,horns:0xDCE6FF,eyeCol:0xFFF27A,whiskers:0x9FE6FF,mane:0xDCE6FF});
-def('izanami', {type:'human',build:'slim',skin:0xE6E6EA,hair:{style:'long',col:0x14121A,len:3.8},eyes:{col:0xB98CFF,glow:true},hat:{kind:'veil',col:0x3A3A42},outfit:{kind:'kimono',col:0x8E8A96,col2:0x6E6A76,trim:0x3A3A42,belt:0x3A3A42},back:{kind:'halo',col2:0xB98CFF},
-  extra:(R,B)=>{ R.add('head',G_.box(0.012,B.head*0.8,0.01),0x3A3A42,{p:[0.08,B.head*0.9,B.head*0.95],r:[0,0,0.3],ol:false}); }});
-def('tsukuyomi',{type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0xE6ECF5,col2:0xC8D4E6,len:2.6},hat:{kind:'moon',col:0xC8D4E6,col2:0xDCE6FF,glow:true},outfit:{kind:'robe',col:0xC9C2EC,col2:0xC8D4E6,trim:0x8E9AB8},weapon:{kind:'katana',col:0xDCE6FF,glow:true},eyes:{col:0x8E9AB8}});
-def('raiju',   {type:'quad',len:1.6,height:0.85,w:0.38,col:0xF5D23A,col2:0x2A5AC8,stripes:true,headKind:'beast',headCol:0xF5D23A,muzzle:0xFFF4C8,mane:0x3E6EC8,tail:'lightning',tailCol:0x3E6EC8,eyeCol:0xFFF27A,eyeGlow:true,fangs:true,legFire:0x9FE6FF});
+def('shuten',  {type:'human',build:'giant',head:'oni',skin:0xC8342C,hair:{style:'wild',col:0xF2F2F2,col2:0xE6E0D8},horns:{style:'oni',col:GLD,len:1.0},outfit:{kind:'kimono',col:0x8C2A1E,inner:0x1E1414,trim:GLD,belt:0x2A1E1E,short:true,pattern:GLD},weapon:{kind:'club',col:0x3A3A42,s:1.3},eyes:{col:0xF5C542,fierce:true,grin:true},extra:(R,B)=>{ R.add('hips',G_.lathe([[0.001,0.2],[0.1,0.15],[0.06,0.05],[0.14,-0.08],[0.12,-0.2],[0.001,-0.22]],14),0xC8902A,{p:[B.w*1.05,-0.1,0.1],grad:0x8C5A1E}); }});
+def('kirin',   {type:'quad',len:1.8,height:1.0,w:0.4,col:0xE8C050,col2:0x2F8F8A,belly:0xFFF0C0,headKind:'deer',headCol:0xF5D060,muzzle:0xFFF0C0,mane:0x6FD8C8,maneTip:0xF4FFFC,scales:0x3EB0A0,antlers:GLD,antlerGlow:true,tail:'fluffy',tailCol:0x6FD8C8,tailTip:0xF4FFFC,legFire:0x4E9CFF,hoof:GLD,eyeCol:0x2AC8FF,eyeGlow:true,whiskers:0xFFE27A,cheek:0x6FD8C8});
+def('enma',    {type:'human',build:'broad',skin:0xB3261E,beard:{style:'long',col:0x14121A},hat:{kind:'judge',col:0x1E1A22,col2:GLD},outfit:{kind:'robe',col:0x8C1E2A,inner:0x1E1418,trim:GLD,belt:GLD,pattern:GLD},weapon:{kind:'staff',col:GLD,col2:0x2A1E1E,orb:0xFF6A2A},eyes:{col:0xF5C542,fierce:true}});
+def('susanoo', {type:'human',build:'hero',skin:0xE8D2B8,hair:{style:'wild',col:0x1E2A55,col2:0x2A3A6E,tip:0x4E6AB0},outfit:{kind:'armor',col:0x2A4A8C,lace:0x2A4A8C,trim:0xDCE6FF,plate:0x162044,robe:0x1E2A55,sleeve:0x14183A},weapon:{kind:'greatsword',col:0xBFE6FF,glow:true},eyes:{col:0x9FE6FF,fierce:true},back:{kind:'clouds',col:0x3A4A7E,col2:0x6E86C8}});
+def('jorogumo',{type:'human',build:'slim',skin:0xF4E6DA,hair:{style:'bun',col:0x14121A,pin:GLD,pinGem:0xD8342C},eyes:{col:0xD8342C},outfit:{kind:'kimono',col:0x1E1418,inner:0xA8241E,trim:0xD8342C,belt:0xA8241E,pattern:GLD},back:{kind:'spiderlegs',col:0x1E1418},weapon:{kind:'fan',col:0xD8342C},extra:(R,B)=>{ R.add('head',G_.sph(B.head*0.07),0xD8342C,{p:[0,B.head*1.35,B.head*0.92],glow:true}); }});
+def('karura',  {type:'human',build:'hero',head:'bird',skin:0xF06A1F,beakCol:0xF5C542,crestCol:0xFFB04A,eyes:{col:0xFFE27A,glow:true},outfit:{kind:'armor',col:0xD8541E,lace:0xD8541E,trim:GLD,plate:0xE8A030,sleeve:0xC8401A},back:{kind:'wings',col:0xE8541E,col2:0xFFB04A,span:1.7,tip:0xFFE27A,n:8},weapon:{kind:'spear',col:GLD,col2:0x8C2A2A},hat:{kind:'halo',col2:0xFFC14A}});
+def('kuzuryu', {type:'serpent',heads:9,seg:6,r:0.15,neck:0.95,col:0x1E5AA8,col2:0x5A9CE0,belly:0xDCEEFA,horns:0xDCE6FF,eyeCol:0xFFF27A,whiskers:0x9FE6FF,mane:0xDCE6FF,spines:0xDCE6FF,waves:0x6FC8F0});
+def('izanami', {type:'human',build:'slim',skin:0xE6E6EA,hair:{style:'long',col:0x14121A,col2:0x2A2830,tip:0x3A3848,len:3.8},eyes:{col:0xB98CFF,glow:true},hat:{kind:'veil',col:0x3A3A42},outfit:{kind:'kimono',col:0x3A3842,inner:0x8E8A96,trim:0xC8C4D0,belt:0x8E8A96,pattern:0xC8C4D0},back:{kind:'halo',col2:0xB98CFF},
+  extra:(R,B)=>{ for(const sd of [1,-1]){ R.add('back',G_.lathe([[0.02,0.16],[0.13,0.1],[0.15,0],[0.13,-0.1],[0.02,-0.16]],12),0xB98CFF,{p:[sd*0.75,0.45,-0.1],glow:true}); R.add('back',G_.cyl(0.004,0.004,0.3,3),0x3A3A42,{p:[sd*0.75,0.75,-0.1],ol:false}); } }});
+def('tsukuyomi',{type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0xE6ECF5,col2:0xC8D4E6,len:2.8},hat:{kind:'moon',col:0xC8D4E6,col2:0xDCE6FF,glow:true},outfit:{kind:'robe',col:0xC9C2EC,inner:0x4E5A9C,trim:0xDCE6FF,pattern:0xF4F8FF,motif:'star'},weapon:{kind:'sickle',col:0xDCE6FF,col2:0x4E5A9C,s:1.6,glow:true},eyes:{col:0x6E7AB8}});
+def('raiju',   {type:'quad',len:1.6,height:0.85,w:0.4,col:0xF4F4FA,col2:0x3E6EC8,belly:0xFFFFFF,stripes:true,headKind:'beast',headCol:0xF4F4FA,muzzle:0xFFFFFF,mane:0x6E9CFF,maneTip:0xFFF27A,cheek:0xDCE6FF,tail:'lightning',tailCol:0x3E6EC8,eyeCol:0x6FE3FF,eyeGlow:true,fangs:true,legFire:0xFFF27A});
 def('baku',    {type:'quad',len:1.8,height:0.9,w:0.55,col:0x3E3A8C,col2:0x8C8AD8,stripes:true,headKind:'elephant',headCol:0x4E4AA0,tail:'fluffy',tailCol:0x6E6AC8,eyeCol:0xF5C542,
   extra:(R)=>{ for(let i=0;i<5;i++) R.add('body',G_.sph(0.14),0xB98CFF,{p:[(i-2)*0.4,0.9,(i%2)*0.3],glow:true}); }});
-def('onryo',   {type:'human',build:'hero',skin:0x6FA8D8,hat:{kind:'kabuto',col:0x2A4A7A,col2:0x9FE6FF,crest:'crescent'},outfit:{kind:'armor',col:0x2A4A7A,col2:0x3E6EA8,trim:0x9FE6FF,plate:0x1E3A6A},weapon:{kind:'katana',col:0x9FE6FF,glow:true},eyes:{col:0x9FE6FF,glow:true,fierce:true},back:{kind:'flames',col:0x6FB8FF}});
-def('shachi',  {type:'quad',len:1.7,height:0.85,w:0.45,col:0xF5B820,col2:0x2A1E14,stripes:true,headKind:'tiger',headCol:0xF5B820,muzzle:0xFFF4C8,tail:'fish',tailCol:0xF5C542,finCol:0x3EA8A0,fangs:true,eyeCol:0x6FE36F,scales:0x3EA8A0,tailLen:1.4});
-def('amaterasu',{type:'human',build:'slim',skin:0xFBE6D6,hair:{style:'longflow',col:0xF5C542,col2:0xE8B030,len:3.2},hat:{kind:'sun',col:GLD,col2:0xFFE27A},outfit:{kind:'kimono',col:0xF6DA9A,col2:0xE2562E,trim:GLD,belt:0xC8341E},weapon:{kind:'orb',col:0xFFE27A},eyes:{col:0xC8901A},back:{kind:'halo',col2:0xFFE27A}});
+def('onryo',   {type:'human',build:'hero',skin:0x6FA8D8,hat:{kind:'kabuto',col:0x2A4A7A,col2:0x9FE6FF,crest:'crescent',glow:true,lace:0x3E6EA8},outfit:{kind:'armor',col:0x3E6EA8,lace:0x3E6EA8,trim:0x9FE6FF,plate:0x1E3A6A,sleeve:0x14284A},weapon:{kind:'katana',col:0x9FE6FF,glow:true},eyes:{col:0x9FE6FF,glow:true,fierce:true},back:{kind:'flames',col:0x2A8AFF,col2:0xBFF0FF}});
+def('shachi',  {type:'quad',len:1.7,height:0.85,w:0.46,col:0xF5B820,col2:0x2A1E14,belly:0xFFF0C8,stripes:true,headKind:'tiger',headCol:0xF5B820,muzzle:0xFFF4C8,cheek:0xFFF4C8,tail:'fish',tailCol:0xF5C542,finCol:0x3EA8A0,fins:true,fangs:true,eyeCol:0x6FE36F,eyeGlow:true,scales:0xE8A010,tailLen:1.5});
+def('amaterasu',{type:'human',build:'chibi',prop:{head:0.33,leg:0.7,torso:0.54,arm:0.52,w:0.26},skin:0xFFE0C8,hair:{style:'flow',col:0xF7C232,col2:0xFFEDA0,len:4.1,strands:20,flare:1.1,ornament:'sun'},outfit:{kind:'furisode',col:0xFFF6E6,col2:0xD8341E,trim:0xF5C542,belt:0xC8241A},weapon:{kind:'sunbow',col:0xF5C542},eyes:{style:'anime',col:0xD08A18},back:{kind:'sunflame'}});
 def('fujin',   {type:'human',build:'broad',skin:0x4E8A3A,hair:{style:'wild',col:0xF2F2F2,col2:0xE0E6E0},horns:{style:'oni',col:GLD,len:0.5},outfit:{kind:'bare',col2:0x2A4A8C},eyes:{col:0xF5C542,fierce:true,grin:true},back:{kind:'bag',col:0xDCE6F5,col2:0x2A4A8C}});
-def('yukionna',{type:'human',build:'slim',skin:0xE6F0FA,hair:{style:'long',col:0x14121A,len:3.6,ornament:0xDCE6FF},outfit:{kind:'kimono',col:0xC4E2F4,col2:0xDCE6F5,trim:0x9FC8E6,belt:0x9FC8E6},eyes:{col:0x6FA8D8},weapon:{kind:'fan',col:0xDCE6FF}});
-def('benkei',  {type:'human',build:'broad',skin:0xD8A878,hat:{kind:'hood',col:WHT},outfit:{kind:'monk',col:0x1E1E24,col2:0x14141A,trim:0x3A3A42,belt:WHT},weapon:{kind:'naginata',col:0xE6ECF2,col2:0x2A1E1E},eyes:{col:0x3A2A1E,fierce:true},beads:0x2A1E18});
+def('yukionna',{type:'human',build:'slim',skin:0xE6F0FA,hair:{style:'long',col:0x1A1E2E,col2:0x2A3048,tip:0x4E5A80,len:3.6,ornament:0xDCE6FF},outfit:{kind:'kimono',col:0xDCEEFA,inner:0x6FA8D8,trim:0x9FC8E6,belt:0x6FA8D8,pattern:0xFFFFFF,motif:'star'},eyes:{col:0x4E8CC8},weapon:{kind:'fan',col:0xDCE6FF}});
+def('benkei',  {type:'human',build:'broad',skin:0xD8A878,hat:{kind:'hood',col:WHT},outfit:{kind:'monk',col:0x1E1E24,inner:0x3A3A42,trim:0x8E8A84,belt:WHT,kesa:0x6E5A44},weapon:{kind:'naginata',col:0xE6ECF2,col2:0x2A1E1E},eyes:{col:0x3A2A1E,fierce:true},beads:0x2A1E18,extra:(R,B)=>{ for(let i=0;i<5;i++){ const a=(i/4-0.5)*1.2; R.add('back',G_.cyl(0.02,0.02,1.2,5),i%2?0x6B4A2A:0x8E8A84,{p:[Math.sin(a)*0.3,0.3,-0.2],r:[0,0,a*0.6]}); } }});
 def('kagutsuchi',{type:'human',build:'hero',skin:0xE8A878,hair:{style:'flame',col:0xFF6A1F,col2:0xFFB04A},outfit:{kind:'armor',col:0xC8341E,col2:0xF5A042,trim:GLD,plate:0x8C1E14},eyes:{col:0xFFE27A,glow:true,fierce:true},back:{kind:'flames'}});
 def('izanagi', {type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0xE6E8F2,col2:0xB8BCD6,len:3},outfit:{kind:'robe',col:0xD4DCEE,col2:0x4F74C0,trim:GLD,belt:0x3A5A9E},weapon:{kind:'spear',col:GLD,col2:0xF5E6C8,glow:true},eyes:{col:0xC8901A},back:{kind:'halo',col2:0xFFE27A}});
 def('takemika',{type:'human',build:'hero',skin:0xE8D2B8,hat:{kind:'kabuto',col:GLD,col2:0x9FE6FF,crest:'horns'},outfit:{kind:'armor',col:0x2A4A8C,col2:GLD,trim:0x9FE6FF,plate:0xD8B030},weapon:{kind:'greatsword',col:0xDCF4FF,glow:true},eyes:{col:0x9FE6FF,glow:true,fierce:true},back:{kind:'flames',col:0x9FE6FF}});
-def('hachiman',{type:'human',build:'hero',skin:0x8C5A3A,hat:{kind:'kabuto',col:0x1E1A1A,col2:GLD,crest:'sun',glow:true},outfit:{kind:'armor',col:0x8C1E1E,col2:0x1E1A1A,trim:GLD,plate:0xA8281E},weapon:{kind:'bow',col2:0x2A1E1E},back:{kind:'quiver',col:0x8C1E1E},eyes:{col:0x3A2A1E,fierce:true}});
-def('bishamon',{type:'human',build:'broad',skin:0x4E8A5A,hat:{kind:'pagoda',col:0x2F6A3A,col2:GLD},outfit:{kind:'armor',col:0x2F6A3A,col2:GLD,trim:GLD,plate:0x3F8A4A,emblem:0xD8342C},weapon:{kind:'spear',col:GLD,col2:0x6B3A1E},eyes:{col:0xF5C542,fierce:true},back:{kind:'halo',col2:GLD}});
-def('inari',   {type:'human',build:'slim',head:'mask',mask:'fox',maskCol:GLD,skin:0xF4E6DA,hair:{style:'long',col:0xF4F4F8,len:3},ears:'fox',earCol:0xF4F4F8,outfit:{kind:'kimono',col:0xF2D2B8,col2:0xE8E0D8,trim:0xD8342C,belt:0xD8342C},back:{kind:'tails',col:0xF4F4F8,col2:0xE8EEF6,tip:0x6FB8FF,n:5},weapon:{kind:'orb',col:0x6FB8FF,hand:'L'}});
-def('saruta',  {type:'human',build:'broad',skin:0xC8342C,beard:{style:'long',col:0xF2F2F2},hair:{style:'wild',col:0xF2F2F2},hat:{kind:'leaves',col:0x3F6A2A,col2:0x5A8A3A},outfit:{kind:'robe',col:0x3F6A2A,col2:0x2F5A2A,trim:GLD},weapon:{kind:'staff',col:GLD,col2:0x6B4A2A,orb:0x9BF57E},eyes:{col:0xF5C542,fierce:true},
+def('hachiman',{type:'human',build:'hero',skin:0x8C5A3A,hat:{kind:'kabuto',col:0x1E1A1A,col2:GLD,crest:'horns',lace:0xA8281E},outfit:{kind:'armor',col:0xA8281E,lace:0xA8281E,trim:GLD,plate:0x6E1414,sleeve:0x2A1E1E},weapon:{kind:'naginata',col:0xF5C542,col2:0x2A1E1E,glow:true},back:{kind:'quiver',col:0x8C1E1E},eyes:{col:0x3A2A1E,fierce:true}});
+def('bishamon',{type:'human',build:'broad',skin:0xE8C8A8,hat:{kind:'pagoda',col:0xE8E4D8,col2:GLD},outfit:{kind:'armor',col:0x2F6A3A,lace:0x2F6A3A,trim:GLD,plate:0xEDE8DA,emblem:0xD8342C,sleeve:0x2A4A30},weapon:{kind:'spear',col:GLD,col2:0x6B3A1E},eyes:{col:0x6B3A1E,fierce:true},back:{kind:'halo',col2:GLD}});
+def('inari',   {type:'human',build:'slim',head:'mask',mask:'fox',maskCol:0xF8F4EE,skin:0xF4E6DA,hair:{style:'long',col:0xF4F4F8,len:3},ears:'fox',earCol:0xF4F4F8,outfit:{kind:'kimono',col:0xF8F4EE,inner:0xC8241E,trim:GLD,belt:0xC8241E,pattern:GLD},back:{kind:'tails',col:0xF4F4F8,col2:0xEDEFF6,tip:0xF5C542,n:5},weapon:{kind:'orb',col:0x4E9CFF,hand:'L'}});
+def('saruta',  {type:'human',build:'broad',skin:0xC8342C,beard:{style:'long',col:0xF2F2F2},hair:{style:'wild',col:0xF2F2F2},hat:{kind:'leaves',col:0x3F6A2A,col2:0x5A8A3A},outfit:{kind:'robe',col:0x4E6A3A,inner:0x2A3A1E,trim:0xC8A46E,pattern:0x8CA05A},weapon:{kind:'staff',col:GLD,col2:0x6B4A2A,orb:0x9BF57E},eyes:{col:0xF5C542,fierce:true},
   extra:(R,B)=>{ R.add('head',G_.cone(B.head*0.2,B.head*1.1,8),0xC8342C,{p:[0,B.head*0.85,B.head*1.3],r:[Math.PI/2+0.1,0,0]}); }});
 def('minaka',  {type:'human',build:'hero',skin:0xF4ECE6,beard:{style:'long',col:0xF4F4F8},hair:{style:'longflow',col:0xF4F4F8,len:2.6},hat:{kind:'crown',col:GLD,gem:0xC58CFF},outfit:{kind:'robe',col:0x3A2A6E,col2:0x2A1E55,trim:GLD,pattern:GLD},weapon:{kind:'staff',col:GLD,col2:0x3A2A6E,orb:0xFFE27A},back:{kind:'planets'},eyes:{col:0xC8901A}});
 def('kunitoko',{type:'human',build:'giant',skin:0x6E6A5A,head:'stone',headCol:0x7A7462,beard:{style:'long',col:0x4E7A3A},hair:{style:'wild',col:0x3F6A2A,col2:0x5A8A3A},outfit:{kind:'bare',col2:0x5A5648},eyes:{col:0x9BF57E,glow:true},back:{kind:'trees'}});
@@ -587,10 +890,10 @@ def('marishi', {type:'human',build:'slim',skin:0xFBE6D6,hair:{style:'longflow',c
   extra:(R,B)=>{ for(const sd of [1,-1]){ R.add('head',G_.sph(B.head*0.8),0xFBE6D6,{p:[sd*B.head*1.3,B.head*0.9,-B.head*0.3]}); R.add('head',G_.sph(B.head*0.85,B.head*0.9,B.head*0.8),0xF4F4F8,{p:[sd*B.head*1.32,B.head*1.0,-B.head*0.5]}); } }});
 def('mioya',   {type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0xF4F4F8,len:2.6},hat:{kind:'sun',col:GLD,col2:0xFFE27A},outfit:{kind:'robe',col:0xCFE6F2,col2:0xF5E6C8,trim:GLD},weapon:{kind:'staff',col:GLD,col2:0xF5E6C8,orb:0xFFE27A},eyes:{col:0xC8901A}});
 def('wata',    {type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0x5AC8D8,col2:0x3EA8C8,len:3},hat:{kind:'crown',col:0xDCF4FF,col2:0x9FE6FF,gem:0x6FE3FF},outfit:{kind:'robe',col:0xA8D8F0,col2:0x9FD8E6,trim:0x3EA8C8},weapon:{kind:'trident',col:0x9FE6FF,col2:0x2A6A8C,glow:true},back:{kind:'halo',col2:0x9FE6FF},eyes:{col:0x2A8CA8}});
-def('oyama',   {type:'human',build:'broad',skin:0xE8D2B8,beard:{style:'long',col:0xF4F4F8},hair:{style:'wild',col:0xF4F4F8},hat:{kind:'crown',col:GLD,gem:0x6FE36F},outfit:{kind:'robe',col:0x3F6A2A,col2:0x2F5A2A,trim:GLD},weapon:{kind:'staff',col:GLD,col2:0x6B4A2A,orb:0x9BF57E},eyes:{col:0x6FB548,fierce:true}});
-def('kurao',   {type:'human',build:'hero',skin:0xEAF2F8,hair:{style:'longflow',col:0xF4F8FC,col2:0xDCE6F0,len:3},horns:{style:'antler',col:0x6FD8C8,glow:true},outfit:{kind:'robe',col:0xC8D2EE,col2:0xDCE6F0,trim:0x6FD8C8},weapon:{kind:'orb',col:0x9FE6FF},eyes:{col:0x6FD8C8,glow:true}});
+def('oyama',   {type:'human',build:'broad',skin:0xE8D2B8,beard:{style:'long',col:0xF4F4F8},hair:{style:'wild',col:0xF4F4F8},hat:{kind:'crown',col:GLD,gem:0x6FE36F},outfit:{kind:'robe',col:0xE8E4D8,inner:0x3F6A2A,trim:GLD,belt:0x3F6A2A,pattern:0x6E9A5A},weapon:{kind:'staff',col:GLD,col2:0x6B4A2A,orb:0x9BF57E},eyes:{col:0x6FB548,fierce:true}});
+def('kurao',   {type:'human',build:'hero',skin:0xEAF2F8,hair:{style:'longflow',col:0xF4F8FC,col2:0xDCE6F0,len:3},horns:{style:'antler',col:0x6FD8C8,glow:true},outfit:{kind:'robe',col:0x8CB4E6,inner:0x2A4A8C,trim:0xDCF4FF,belt:0x2A4A8C,pattern:0xDCF4FF,motif:'star'},weapon:{kind:'orb',col:0x9FE6FF},eyes:{col:0x6FD8C8,glow:true}});
 def('magatsu', {type:'human',build:'broad',skin:0x3A2626,hair:{style:'flame',col:0xD8341E,col2:0xFF6A1F},horns:{style:'curved',col:0x1E1A1A},outfit:{kind:'armor',col:0x2A1E1E,col2:0x8C1E14,trim:0xFF6A1F,plate:0x1E1414},weapon:{kind:'greatsword',col:0xFF6A1F,glow:true},eyes:{col:0xFFE27A,glow:true,fierce:true},back:{kind:'flames'}});
-def('ryugu',   {type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0xE6F4EC,col2:0x9FD8B8,len:3},horns:{style:'antler',col:GLD},hat:{kind:'crown',col:GLD,gem:0x6FE3FF},outfit:{kind:'robe',col:0x2F8F78,col2:0x1E6A5A,trim:GLD},weapon:{kind:'trident',col:GLD,col2:0x1E6A5A},eyes:{col:0x2F8F78}});
+def('ryugu',   {type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0xE6F4EC,col2:0x9FD8B8,len:3},horns:{style:'antler',col:GLD},hat:{kind:'crown',col:GLD,gem:0x6FE3FF},outfit:{kind:'robe',col:0xA8342A,inner:0x2F8F78,trim:GLD,belt:0x2F8F78,pattern:GLD},weapon:{kind:'trident',col:GLD,col2:0x1E6A5A},eyes:{col:0x2F8F78}});
 def('chochin', {type:'human',build:'broad',skin:0xA8341E,hair:{style:'flame',col:0xFF6A1F,col2:0xFFB04A},horns:{style:'curved',col:0x2A1E1A},outfit:{kind:'armor',col:0x2A1E1A,col2:0x8C2A1E,trim:GLD,plate:0x1E1414,emblem:0xFF6A2A},weapon:{kind:'lantern'},eyes:{col:0xFFE27A,glow:true,fierce:true},back:{kind:'flames'}});
 def('kane',    {type:'human',build:'broad',skin:0xD8A878,beard:{style:'full',col:0x8E8A84},hair:{style:'wild',col:0x5A5648},hat:{kind:'leaves',col:0x4E7A3A,col2:0x6E9A4A},outfit:{kind:'armor',col:0x5A4A3A,col2:0x3A2E24,trim:0xC8A46E,plate:0x6E5A44},weapon:{kind:'bell',col:0xC8A46E},eyes:{col:0xF5C542,fierce:true}});
 def('karakasa',{type:'human',build:'hero',skin:0xF4ECE6,hair:{style:'longflow',col:0xD8DCE6,len:2.4},hat:{kind:'kasa',col:0xC8241E,col2:GLD},outfit:{kind:'kimono',col:0x1E2A44,col2:0x162034,trim:0xC8241E,belt:0xC8241E},weapon:{kind:'katana',col:0x9FE6FF,glow:true},eyes:{col:0x6FE3FF,glow:true}});

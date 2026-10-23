@@ -13,7 +13,7 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, sm=t=>{ t=clamp(t,0
 const U={time:{value:0}};
 
 /* ---------------------------------------------------------------- materials */
-const TOON=toonMat({flat:0.12,sat:1.06,fog:true,wcap:1});   /* scenery stays lit by the sun, dusk and night */
+const TOON=toonMat({flat:0.12,sat:1.06,fog:true,wcap:1,soft:false,neutral:0});   /* scenery stays lit by the sun, dusk and night */
 const OLS=new T.MeshBasicMaterial({color:0x1A1422,side:T.BackSide});
 OLS.onBeforeCompile=sh=>{ sh.uniforms.uTime=U.time; sh.vertexShader='uniform float uTime;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  transformed += normal * 0.035;'); };
 OLS.customProgramCacheKey=()=>'gk3d-ol-static';
