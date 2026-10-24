@@ -71,7 +71,7 @@ class Rig{
   build(){
     const groups={toon:[],ol:[],glow:[]};
     for(const pt of this.parts){
-      if(this.minPart){ const g=pt.geo; if(!g.boundingSphere) g.computeBoundingSphere(); if(g.boundingSphere.radius*Math.max(pt.s[0],pt.s[1],pt.s[2])<this.minPart&&!pt.glow) continue; }   /* v83: troops skip specks */
+      let rad=1; if(this.minPart||this.minPartOl){ const g=pt.geo; if(!g.boundingSphere) g.computeBoundingSphere(); rad=g.boundingSphere.radius*Math.max(pt.s[0],pt.s[1],pt.s[2]); if(this.minPart&&rad<this.minPart&&!pt.glow) continue; }   /* v83: troops skip specks */
       const b=pt.bone, w=b.userData.world;
       _q.setFromEuler(_e.set(pt.r[0],pt.r[1],pt.r[2])); _s.set(pt.s[0],pt.s[1],pt.s[2]); _v.set(pt.p[0]+w.x,pt.p[1]+w.y,pt.p[2]+w.z);
       _m.compose(_v,_q,_s); _nm.getNormalMatrix(_m);
@@ -83,7 +83,7 @@ class Rig{
         _v.fromBufferAttribute(src.attributes.normal,i).applyMatrix3(_nm).normalize(); N[i*3]=_v.x; N[i*3+1]=_v.y; N[i*3+2]=_v.z;
         C[i*3]=_c.r; C[i*3+1]=_c.g; C[i*3+2]=_c.b; SI[i*4]=b.userData.idx; SW[i*4]=1; }
       const rec={P,N,C,SI,SW,n};
-      if(pt.glow) groups.glow.push(rec); else { groups.toon.push(rec); if(pt.ol) groups.ol.push(rec); } }
+      if(pt.glow) groups.glow.push(rec); else { groups.toon.push(rec); if(pt.ol&&!(this.minPartOl&&rad<this.minPartOl)) groups.ol.push(rec); } }
     const geo=list=>{ if(!list.length) return null; let n=0; for(const r of list) n+=r.n;
       const P=new Float32Array(n*3),N=new Float32Array(n*3),C=new Float32Array(n*3),SI=new Uint16Array(n*4),SW=new Float32Array(n*4); let o=0;
       for(const r of list){ P.set(r.P,o*3); N.set(r.N,o*3); C.set(r.C,o*3); SI.set(r.SI,o*4); SW.set(r.SW,o*4); o+=r.n; }
@@ -1325,7 +1325,11 @@ function getBuilt(key){ if(BUILT[key]) return BUILT[key]; const sp=DEFS[key]; if
   const pK=SEGK; SEGK=SEGK_OF[key]||1; let b; try{ b=buildByType(sp); } finally{ SEGK=pK; }
   const geos=b.rig.build(); const bb=geos.toon.boundingBox; geos.height=bb.max.y-Math.min(0,bb.min.y);
   if(STYLE==='anime'&&b.kind==='human'){ const hw=b.rig.byName.head.userData.world.y, hr=b.B.head; geos.height=Math.min(geos.height,(hw+hr*2.15)*1.06); }
-  return (BUILT[key]={sp,b,geos,height:geos.height,proto:b.rig}); }
+  let tip=null; try{ const hb=b.rig.byName.handR; let best=0; const v=new T.Vector3(), qq=new T.Quaternion(), ee=new T.Euler(), sc3=new T.Vector3();
+    for(const pt of b.rig.parts){ if(pt.bone!==hb||pt.glow) continue; const ps=pt.geo.attributes.position; qq.setFromEuler(ee.set(pt.r[0],pt.r[1],pt.r[2])); sc3.set(pt.s[0],pt.s[1],pt.s[2]);
+      for(let i=0;i<ps.count;i+=3){ v.fromBufferAttribute(ps,i).multiply(sc3).applyQuaternion(qq).add(new T.Vector3(pt.p[0],pt.p[1],pt.p[2])); const d=v.lengthSq(); if(d>best){ best=d; tip=v.clone(); } } }
+    if(tip&&best<0.09) tip=null; }catch(err){ tip=null; }   /* v86: weapon tip in hand space, for the swing trail */
+  return (BUILT[key]={sp,b,geos,height:geos.height,proto:b.rig,tip}); }
 function buildByType(sp){ return sp.type==='quad'?buildQuad(sp):sp.type==='serpent'?buildSerpent(sp):sp.type==='spider'?buildSpider(sp):sp.type==='blob'?buildBlob(sp):sp.type==='fish'?buildFish(sp):buildHuman(sp); }
 function cloneRig(proto){ /* fresh bone hierarchy matching the prototype's bind pose */
   const map={}, bones=[];
@@ -1601,7 +1605,7 @@ function onScreen(x,y,z,r){ _vis.in=true; _vis.px=999; if(!CAM.ok) return _vis;
    of that type in a single instanced draw (plus one outline draw). Each soldier still has its own skeleton, posed by
    the same animation library as the heroes (run, seven attack styles, hits) on the 15 Hz anime beat; the poses are
    written to a float texture that the GPU reads per instance. Troops without a design keep their painted sprite. */
-const TROOP_SEGK=0.22, TROOP_CAP=64, TROOP_MINPART=0.06;   /* parts smaller than this (model units) vanish at troop size */
+const TROOP_SEGK=0.22, TROOP_CAP=64, TROOP_MINPART=0.06, TROOP_MINPART_OL=0.11;   /* parts smaller than this (model units) vanish at troop size */
 const TROOP_SPECS={
   archer:  {base:'hero',abuild:'a_youth',o:{hair:{style:'short',col:0x3A2418,col2:0x4A2E1E},outfit:{col:0x2A2E3A,top:0x2F5DB8,collar:0x1E3A7A,trim:0x1E3A7A,lining:0x1E3A7A,mon:0x2F5DB8}}},
   samurai: {base:'samurai',abuild:'a_male'},
@@ -1632,16 +1636,18 @@ const TROOP={};   /* cls -> {sp,b,proto,NB,height,tex,data,body,ol,n,bind} or nu
 function getTroop(cls){ if(cls in TROOP) return TROOP[cls]; const sp=troopSpec(cls); if(!sp) return (TROOP[cls]=null);
   const pS=STYLE, pK=SEGK; let b; STYLE='anime'; SEGK=TROOP_SEGK; try{ b=buildByType(sp); } catch(err){ console.warn('troop build failed',cls,err&&err.message); } finally{ STYLE=pS; SEGK=pK; }
   if(!b) return (TROOP[cls]=null);
-  b.rig.minPart=TROOP_MINPART; const g=b.rig.build(), parts=[g.toon,g.glow].filter(Boolean), geo=mergeRaw(parts);
+  b.rig.minPart=TROOP_MINPART; b.rig.minPartOl=TROOP_MINPART_OL; const g=b.rig.build(), parts=[g.toon,g.glow].filter(Boolean), geo=mergeRaw(parts);
   /* colour and bone index per vertex; every part of a code-built character follows exactly one bone */
   let n=0; for(const q of parts) n+=q.attributes.position.count; const Cc=new Float32Array(n*3), Bi=new Float32Array(n); let o=0;
   for(const q of parts){ Cc.set(q.attributes.color.array,o*3); const si=q.attributes.skinIndex; for(let i=0;i<si.count;i++) Bi[o+i]=si.getX(i); o+=si.count; }
   geo.setAttribute('color',new T.BufferAttribute(Cc,3)); geo.setAttribute('aBone',new T.BufferAttribute(Bi,1)); geo.computeBoundingSphere();
+  /* v86: the ink line only needs the big shapes (body, head, hair, weapon); it skips the small parts and the face, which halves its triangles */
+  let olGeo=geo; if(g.ol){ olGeo=mergeRaw([g.ol]); const m=g.ol.attributes.position.count, C2=new Float32Array(m*3), B2=new Float32Array(m); C2.set(g.ol.attributes.color.array); const si=g.ol.attributes.skinIndex; for(let i=0;i<m;i++) B2[i]=si.getX(i); olGeo.setAttribute('color',new T.BufferAttribute(C2,3)); olGeo.setAttribute('aBone',new T.BufferAttribute(B2,1)); olGeo.computeBoundingSphere(); }
   const bb=g.toon.boundingBox; let height=bb.max.y-Math.min(0,bb.min.y);
   if(b.kind==='human'){ const hw=b.rig.byName.head.userData.world.y, hr=b.B.head; height=Math.min(height,(hw+hr*2.15)*1.06); }
   const NB=b.rig.bones.length, data=new Float32Array(NB*3*TROOP_CAP*4), tex=new T.DataTexture(data,NB*3,TROOP_CAP,T.RGBAFormat,T.FloatType);
   tex.minFilter=tex.magFilter=T.NearestFilter; tex.generateMipmaps=false; tex.needsUpdate=true;
-  const body=new T.InstancedMesh(geo,celMat({bones:tex}),TROOP_CAP), ol=new T.InstancedMesh(geo,olBonesMat(tex),TROOP_CAP);
+  const body=new T.InstancedMesh(geo,celMat({bones:tex}),TROOP_CAP), ol=new T.InstancedMesh(olGeo,olBonesMat(tex),TROOP_CAP);
   for(const m of [body,ol]){ m.frustumCulled=false; m.count=0; m.visible=false; if(opt.scene) opt.scene.add(m); }
   for(let i=0;i<TROOP_CAP;i++) body.setColorAt(i,WHITE);
   ol.onBeforeRender=olBeforeRender;
@@ -1703,12 +1709,33 @@ const TROOPS={
 
 /* ================================================================ public driver */
 const live=new Map(), pool={}; let frameTag=0;
+/* v86 weapon trail: while a heroic character swings, a ribbon between the hand and the weapon tip follows the arc and fades in
+   about 0.18 s (one extra additive draw, only for the one or two characters mid-swing) */
+const TRAIL_N=9, TRAIL_LIFE=0.24, TRAIL_MAT=new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,side:T.DoubleSide,fog:false,toneMapped:false});
+const TRAIL_STYLES={blade:0xDDF0FF,melee:0xFFDDA8,thrust:0xE8F6FF,spin:0xFFC8A0};
+const _th=new T.Vector3(), _te=new T.Vector3(), _tt=new T.Vector3();
+function trailOf(I){ if(I.trail) return I.trail;
+  const g=new T.BufferGeometry(), P=new Float32Array(TRAIL_N*6), C=new Float32Array(TRAIL_N*8), idx=[];
+  g.setAttribute('position',new T.BufferAttribute(P,3).setUsage(T.DynamicDrawUsage)); g.setAttribute('color',new T.BufferAttribute(C,4).setUsage(T.DynamicDrawUsage));
+  for(let i=0;i<TRAIL_N-1;i++){ const a=i*2; idx.push(a,a+1,a+2,a+1,a+3,a+2); } g.setIndex(idx);
+  const m=new T.Mesh(g,TRAIL_MAT); m.frustumCulled=false; m.renderOrder=4; m.visible=false; if(opt.scene) opt.scene.add(m);
+  return (I.trail={m,P,C,g,pts:[]}); }
+function trailTick(I,active,dt,sc,col){ let TR=I.trail; if(!TR&&!active) return; if(active&&!TR) TR=trailOf(I);
+  if(active&&I.b&&I.b.handR&&I.b.elbowR){ I.grp.updateMatrixWorld(true); I.b.handR.getWorldPosition(_th); I.b.elbowR.getWorldPosition(_te);
+    if(I.B&&I.B.tip) I.b.handR.localToWorld(_tt.copy(I.B.tip)); else _tt.copy(_th).sub(_te).normalize().multiplyScalar(1.0*sc).add(_th); TR.pts.unshift({h:_th.clone(),t:_tt.clone(),age:0}); if(TR.pts.length>TRAIL_N) TR.pts.pop(); }
+  for(const q of TR.pts) q.age+=dt; while(TR.pts.length&&TR.pts[TR.pts.length-1].age>TRAIL_LIFE) TR.pts.pop();
+  if(TR.pts.length<2){ TR.m.visible=false; return; }
+  _tint.set(col); const L=TR.pts.length;
+  for(let i=0;i<TRAIL_N;i++){ const q=TR.pts[Math.min(i,L-1)], f=(i<L?Math.pow(Math.max(0,1-q.age/TRAIL_LIFE),1.4)*(1-i/TRAIL_N*0.5):0)*1.2;
+    TR.P[i*6]=q.h.x; TR.P[i*6+1]=q.h.y; TR.P[i*6+2]=q.h.z; TR.P[i*6+3]=q.t.x; TR.P[i*6+4]=q.t.y; TR.P[i*6+5]=q.t.z;
+    TR.C[i*8]=_tint.r; TR.C[i*8+1]=_tint.g; TR.C[i*8+2]=_tint.b; TR.C[i*8+3]=Math.min(1,f*0.4); TR.C[i*8+4]=_tint.r; TR.C[i*8+5]=_tint.g; TR.C[i*8+6]=_tint.b; TR.C[i*8+7]=Math.min(1,f); }
+  TR.g.attributes.position.needsUpdate=true; TR.g.attributes.color.needsUpdate=true; TR.m.visible=true; }
 const _tint=new T.Color(), WHITE=new T.Color(1,1,1);
 function acquire(ent,key){ let I=live.get(ent); if(I&&I.key===key){ I.tag=frameTag; return I; }
   if(I) release(ent,I);
   const p=pool[key]; I=(p&&p.length)?p.pop():makeInstance(key); if(!I) return null;
   I.st.last=null; I.st.atkU=-1; I.st.hit=0; I.st.hitT=0; I.prev=null; I.tag=frameTag; I.grp.visible=true; live.set(ent,I); if(opt.scene&&!I.grp.parent) opt.scene.add(I.grp); return I; }
-function release(ent,I){ live.delete(ent); I.grp.visible=false; (pool[I.key]=pool[I.key]||[]).push(I); }
+function release(ent,I){ live.delete(ent); I.grp.visible=false; if(I.trail){ I.trail.m.visible=false; I.trail.pts.length=0; } (pool[I.key]=pool[I.key]||[]).push(I); }
 const API={
   has:key=>!!DEFS[key],
   troops:TROOPS,
@@ -1740,7 +1767,7 @@ const API={
     /* v82 performance: skip characters outside the camera view entirely (no posing, no skinning, no draw),
        and pose small, distant ones less often */
     const vis=onScreen(p.x,(p.y||0)+(p.H||2)*0.5,p.z,(p.H||2)*0.75*(p.scale||1));
-    I.grp.visible=vis.in; if(!vis.in){ LODN.off++; S.stepAcc=0; I.grp.position.set(p.x,p.y||0,p.z); return true; }
+    I.grp.visible=vis.in; if(!vis.in){ if(I.trail) I.trail.m.visible=false; LODN.off++; S.stepAcc=0; I.grp.position.set(p.x,p.y||0,p.z); return true; }
     /* v82 anime motion: the impact pose freezes for a moment when the blow lands (local hit-stop), and in the
        anime style the body is posed on a 15 Hz beat ("on twos", like TV animation) while movement stays smooth */
     const st=I.kind==='human'?styleOf(I.sp,p.style):'def', iu=IMPACT_U[st]||IMPACT_U.def;
@@ -1757,6 +1784,7 @@ const API={
     I.grp.position.set(p.x,p.y||0,p.z); I.grp.scale.setScalar(sc);
     const targetYaw=p.rot+(S.yaw||0); let d=targetYaw-I.grp.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); I.grp.rotation.y+=d*(1-Math.exp(-dt*14));
     if(OL_MAT.userData.sh) OL_MAT.userData.sh.uniforms.uOut.value=1;
+    if(I.kind==='human'&&!I.imported&&STYLE==='anime'){ const swing=S.atkU>=0.1&&S.atkU<iu+0.2&&(TRAIL_STYLES[st]!=null)&&!(p.cast); trailTick(I,swing,dt,sc,TRAIL_STYLES[st]||0xFFFFFF); }
     /* status tints and hit flash */
     _tint.copy(WHITE); if(p.tint!=null) _tint.set(p.tint).lerp(WHITE,0.55); if(p.frozen) _tint.setRGB(0.65,0.9,1.0); if(p.burn) _tint.setRGB(1,0.82,0.7);
     for(const m of (I.mats||[I.mat])){ m.color.copy(m.userData.base||WHITE).multiply(_tint); m.emissive.setRGB(S.hit*0.55,S.hit*0.12,S.hit*0.1); }

@@ -29,7 +29,7 @@
   <i></i>
   <div>Loading Goldstack Keep</div>
   <div id="bootStep">Starting…</div>
-  <div id="bootVer">Build v85 · 65 stages · 70 heroes · 21 recruits</div>
+  <div id="bootVer">Build v86 · 65 stages · 70 heroes · 21 recruits</div>
   <div id="bootErr"></div>
 </div>
 <script type="importmap">
@@ -45,7 +45,7 @@
   window.GK_SUPABASE = { url: "https://xrsvrvrqrctvufkneizs.supabase.co", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyc3ZydnJxcmN0dnVma25laXpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MDQ2NzQsImV4cCI6MjA5ODk4MDY3NH0.R372wC1w81zfMjLMjG7L_sFKM67bdVoGd3-E4JUQ97s" };
 
   (function(){
-    var GAME='./goldstack-keep-game.js?v=85';   /* the game now lives in your own repo */
+    var GAME='./goldstack-keep-game.js?v=86';   /* the game now lives in your own repo */
     var step=document.getElementById('bootStep'), errBox=document.getElementById('bootErr'), done=false;
     function say(t){ step.textContent=t; }
     function fail(t,d){ errBox.style.display='block'; errBox.innerHTML='<b>'+t+'</b><br>'+(d||''); }
@@ -68,11 +68,11 @@
     function go(){
       if(!window.THREE){ fail('3D engine did not start','Your browser may be blocking WebGL.'); return; }
       load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','Loading accounts…',function(){
-      load('./goldstack-art-core.js?v=85','Loading artwork…',function(){
-      load('./goldstack-art-gods.js?v=85','Loading the gods…',function(){
+      load('./goldstack-art-core.js?v=86','Loading artwork…',function(){
+      load('./goldstack-art-gods.js?v=86','Loading the gods…',function(){
       preloadArt(function(){
-      load('./goldstack-3d-chars.js?v=85','Loading 3D characters…',function(){
-      load('./goldstack-3d-world.js?v=85','Building the village…',function(){
+      load('./goldstack-3d-chars.js?v=86','Loading 3D characters…',function(){
+      load('./goldstack-3d-world.js?v=86','Building the village…',function(){
       load(GAME,'Loading game…',function(){ done=true; var b=document.getElementById('boot'); if(b) b.remove(); });
       });
       });

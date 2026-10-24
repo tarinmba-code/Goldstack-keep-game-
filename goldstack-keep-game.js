@@ -385,6 +385,16 @@ const MELEE_CLS=['samurai','oniw','yari','sohei','sumo','kusari','komainu','kuno
 /* v83 scenery budget: terrain grid sizes (ground, wide paint layer, detail layer; were 150, 110, 80) and the radius
    around the castle inside which trees keep their ink outline */
 const TERRAIN_SEG=[112,80,56], TREE_OUTLINE_R=26;
+/* v86: instanced trees keep only the instances near the camera view. They were all drawn every frame (about 100k triangles
+   on Sakura Village), most of them off screen. The list is refreshed a few times a second and the margin is wide enough
+   that a tree is back before it can slide into view or throw its shadow in. */
+const TREEG=[]; let _tcT=0; const _tcV=new T.Vector3();
+function cullTrees(dt,force){ if(!TREEG.length) return; _tcT-=dt; if(_tcT>0&&!force) return; _tcT=0.2; camera.updateMatrixWorld();
+  for(const g of TREEG){ let k=0, sig=0; const n=g.mats.length;
+    for(let i=0;i<n;i++){ let keep=false;
+      for(const f of [0.05,0.55,1]){ _tcV.set(g.xs[i],g.ys[i]+g.hh*f,g.zs[i]).project(camera); if(_tcV.z<1&&Math.abs(_tcV.x)<1.35&&_tcV.y>-1.35&&_tcV.y<1.6){ keep=true; break; } }
+      if(keep){ for(const m of g.ms) m.setMatrixAt(k,g.mats[i]); k++; sig=(sig*31+i+1)|0; } }
+    if(sig!==g.sig||k!==g.k){ g.sig=sig; g.k=k; for(const m of g.ms){ m.count=k; m.instanceMatrix.needsUpdate=true; } } } }
 const MELEE_AGGRO=7.5, MELEE_LEASH=11, MELEE_CHARGE=2.0;   /* v83: how far melee troops look, how far they may stray from the hero, sprint multiplier */
 const ICONS = {acad_ground:'⚔️', acad_heavy:'👹', acad_mage:'⛩️', aup:'⬆️', sumopit:'🤼', kabukipit:'🎭', falconpit:'🦅', kusaripit:'⛓️', komainupit:'🦁', shugenpit:'🔥', kunoichipit:'❄️', taikopit:'🥁', naginatapit:'🗡️', tatepit:'🛡️', foxmagepit:'🦊', yaripit:'🔱', teppopit:'💥', soheipit:'🔔', mikopit:'🎐', tanukipit:'🧨', ctower:'💣', onipit:'👹', range:'🏹', dojo:'⚔️', shrine:'⛩️', ninja:'🥷', banner:'🎌', mine:'⛏️', forge:'🔥', armory:'🛡️', tower:'🗼', fence:'🪵', tup:'⬆️', lvl2:'⭐'};
 
@@ -969,10 +979,12 @@ function buildEnvironment(si){
     if(W&&t3){ const sec=SECOND[th.tree]||t3, main=spots.filter((t,i)=>i%5!==4), alt=spots.filter((t,i)=>i%5===4);
       /* v83: trees near the battlefield keep their ink outline; trees out at the map edge drop it (about 300
          triangles saved per tree, and at that distance the outline was barely a pixel anyway) */
+      TREEG.length=0;
       const nearK=t=>Math.hypot(t.x-KEEP.x,t.z-KEEP.z)<TREE_OUTLINE_R, groups=[];
       for(const [kind,list] of [[t3,main],[sec,alt]]){ groups.push([kind,list.filter(nearK),true],[kind,list.filter(t=>!nearK(t)),false]); }
       for(const [kind,list,ol] of groups){ if(!list.length) continue; const ms=W.instanced(kind,list.length,ol?null:{outline:false}), mh=W.heightOf(kind), kh=kind==='t_crystal'?3.4:kind==='t_bamboo'?5.6:kind==='t_cedar'?5.6:th0;
-        list.forEach((t,i)=>{ _p.set(t.x,TH(t.x,t.z)-0.05,t.z); _q.setFromAxisAngle(_Y,t.r); _s.setScalar(t.s*kh/mh); _m4.compose(_p,_q,_s); for(const m of ms) m.setMatrixAt(i,_m4); });
+        const tg={ms,mats:[],xs:[],ys:[],zs:[],hh:kh*1.1,sig:-1}; TREEG.push(tg);
+        list.forEach((t,i)=>{ _p.set(t.x,TH(t.x,t.z)-0.05,t.z); _q.setFromAxisAngle(_Y,t.r); _s.setScalar(t.s*kh/mh); _m4.compose(_p,_q,_s); for(const m of ms) m.setMatrixAt(i,_m4); tg.mats.push(_m4.clone()); tg.xs.push(t.x); tg.ys.push(_p.y); tg.zs.push(t.z); tg.hh=Math.max(tg.hh,kh*1.1*t.s); });
         env.add(...ms); }
       /* drifting air: petals, leaves, snow, embers, ash, wisps, fireflies, crystal sparkles */
       const AIRK={sakura:'petal',autumn:'leaf',bamboo:'greenleaf',snow:'snow',storm:'storm',volcano:'ember',ember:'ember',eclipse:'ash',grave:'wisp',swamp:'firefly',mist:'firefly',forest:'firefly',cave:'sparkle',moon:'sparkle',temple:'gold',coast:null}[st.theme];
@@ -2133,6 +2145,11 @@ function hitEnemy(e,dmg,src,el,depth=0,isArrow=false){
   if(e.cls==='boss'||Math.random()<0.3) popText(e.x,(e.cls==='boss'?BOSSES[e.kind].h:1.9),e.z,'-'+Math.round(dmg));
   const vel=el||(src&&src.vel)||null;
   if(depth===0&&src&&src.isHero){ spawnParticles(e.x,e.cls==='boss'?2:1.1,e.z,6,vel?ELCOL[vel]:0xFFE9A8,4,0.28,1.5,0); fx('fx_glow',e.x,1.3,e.z,1.0,0.16,vel?ELCOL[vel]:0xFFE9A8,{grow:1.3}); }
+  /* v86 game feel: troops' blows get a spark too, ordinary foes are shoved back a step (drawn only, so lanes and hit boxes stay put),
+     and a heavy hero blow lands with a 35 ms freeze */
+  if(depth===0&&src&&!src.isHero&&QL>=0.6) spawnParticles(e.x,e.cls==='boss'?2:1.0,e.z,3,vel?ELCOL[vel]:0xFFF2C8,3.2,0.2,1.1,0);
+  if(depth===0&&src&&src.x!==undefined&&e.cls!=='boss'&&e.cls!=='etreasure'){ const dx=e.x-src.x, dz=e.z-src.z, d=Math.hypot(dx,dz)||1, k=(src.isHero?0.6:0.3)*(EN[e.cls]&&EN[e.cls].armor?0.5:1); e.kx=clamp((e.kx||0)+dx/d*k,-0.9,0.9); e.kz=clamp((e.kz||0)+dz/d*k,-0.9,0.9); }
+  if(depth===0&&src&&src.isHero&&e.cls!=='boss'&&dmg>=e.max*0.3&&G.hitStop<0.035) G.hitStop=0.035;
   if(depth===0) spawnParticles(e.x,e.cls==='boss'?2:0.9,e.z,3,el?(ELCOL[el]||0xBFEFFF):0xBFEFFF,3.5,0.28,0.8,-4);
   if(vel&&src&&(src.isHero||src.isAlly)) heroImpact(e,vel);
   sfx('hit');
@@ -3626,7 +3643,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   hero.ring.position.set(rc.x,0.06,rc.z); hero.ring.scale.setScalar(lerp(hero.ring.scale.x,Math.max(1.5,rr),1-Math.exp(-dt*6)));
 
   hero.g.visible=false;
-  Object.values(SB).forEach(bBegin); bBegin(B.badge); bBegin(BLOB); G._rdt=dt; if(CH3()) CH3().begin(); if(_w3d) _w3d.tick(dt);
+  Object.values(SB).forEach(bBegin); bBegin(B.badge); bBegin(BLOB); G._rdt=dt; cullTrees(dt,G._cullNow); G._cullNow=false; if(CH3()) CH3().begin(); if(_w3d) _w3d.tick(dt);
   if(G.ally){ const a=G.ally, grow=Math.min(1,a.t/0.35), fade=Math.min(1,(a.dur-a.t)/0.4), aH=sprH(a.sprite,(5.4*(DIV_UP[a.sprite]||1)/(SPR_H[a.sprite]||6))*grow*Math.max(0.2,fade));
     if(!draw3D(a,a.sprite,a.x,0.25+Math.sin(TIME*2)*0.15,a.z,a.rot,{H:aH*0.92,moving:a.moving,atk:a.atk,style:HSTYLE[(HEROES[a.id]||{}).attack],wide:0.55})) drawSprite(a.sprite,a,a.x,0.25+Math.sin(TIME*2)*0.15,a.z,a.rot,0,a.moving,a.seed,false,a.atk,(5.4*(DIV_UP[a.sprite]||1)/(SPR_H[a.sprite]||6))*grow*Math.max(0.2,fade),false); }
   if(h.alive){ let hx=0.7*G.heroDef.h*(HERO_UP[G.heroDef.sprite]||1)/SPR_H[G.heroDef.sprite];
@@ -3667,7 +3684,8 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
       if(e.kind==='kitsune'&&Math.random()<dt*6) spawnParticles(e.x+rand(-1.5,1.5),rand(1.5,4),e.z,1,0x6FE3FF,0.6,0.7,0.9,1);
       continue; }
     if(e.burrow) continue;
-    drawSprite(e.cls,e,e.x,(EN[e.cls]&&EN[e.cls].flier)?1.7+Math.sin(TIME*3+e.seed)*0.25:0,e.z,e.rot,Math.max(e.flash,e.mut?0.42+Math.sin(TIME*4+e.seed)*0.12:0),e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,e.mut?1.18:1,e.burnT>0);
+    if(e.kx||e.kz){ const kd=Math.exp(-(G._rdt||0.016)*11); e.kx*=kd; e.kz*=kd; if(Math.abs(e.kx)+Math.abs(e.kz)<0.01) e.kx=e.kz=0; }
+    drawSprite(e.cls,e,e.x+(e.kx||0),(EN[e.cls]&&EN[e.cls].flier)?1.7+Math.sin(TIME*3+e.seed)*0.25:0,e.z+(e.kz||0),e.rot,Math.max(e.flash,e.mut?0.42+Math.sin(TIME*4+e.seed)*0.12:0),e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,e.mut?1.18:1,e.burnT>0);
   }
   if(CH3()){ CH3().troops.end(); CH3().end(); }
   Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
