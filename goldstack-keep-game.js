@@ -665,14 +665,19 @@ const BLD={b_cannon:4.2,b_yari:3.2,b_teppo:3.2,b_sohei:3.6,b_tanuki:3.2,b_tower:
 const GFX=(()=>{ try{ const q=new URLSearchParams(location.search).get('gfx'); if(q==='3d'||q==='sprite'){ localStorage.setItem('gk-gfx2',q); return q; } return localStorage.getItem('gk-gfx2')||'3d'; }catch(e){ return '3d'; } })();
 const MODELS3D={};
 /* v68: 3D heroes, bosses and summons (goldstack-3d-chars.js). Anything without a model keeps its sprite. */
-let _ch3d; const CH3=()=>_ch3d!==undefined?_ch3d:(_ch3d=(GFX==='3d'&&window.GK3D_CHARS)?window.GK3D_CHARS(T,{gradTex,scene}):null);
+/* v82: sculpted, rigged models for heroes and bosses. Add a line per model, e.g.
+     ronin:{url:'assets/models/ronin.glb'}   (key = the character key used in goldstack-3d-chars.js)
+   Each one plays the shared animation library through the canonical skeleton; until its file loads, or if it
+   fails, the code-built character keeps drawing. Optional: yaw (radians), boneMap {gkBone:'ModelBoneName'}, cel:false, outline:false. */
+const CHAR_MODELS={};
+let _ch3d; const CH3=()=>_ch3d!==undefined?_ch3d:(_ch3d=(GFX==='3d'&&window.GK3D_CHARS)?(C=>{ for(const k in CHAR_MODELS) C.registerModel(k,CHAR_MODELS[k]).catch(()=>{}); return C; })(window.GK3D_CHARS(T,{gradTex,scene,camera,loadModel})):null);
 /* v68 Phase 1: 3D world (goldstack-3d-world.js) - terrain, trees, props, castle, buildings */
 let _w3d; const W3=()=>_w3d!==undefined?_w3d:(_w3d=(GFX==='3d'&&window.GK3D_WORLD&&CH3())?window.GK3D_WORLD(T,CH3().kit,{scene}):null);
 const TH=(x,z)=>_w3d?_w3d.terrainHeight(x,z):0;
 const HSTYLE={arrow:'arrow',wind:'wind',orb:'orb',fox:'orb',melee:'melee',blade:'blade',ice:'ice',bolt:'bolt',flame:'flame'};
 const sprH=(k,extra)=>(SPR_H[k]||2.2)*(extra||1)*((ANIM_META[k]&&ANIM_META[k].hs)||1);
 function draw3D(ent,key,x,y,z,rot,o){ const C=CH3(); if(!C||!C.has(key)) return false;
-  const ty=TH(x,z); const ok=C.drive(ent,key,Object.assign({x,y:y+ty,z,rot,dt:Math.min(0.05,G._rdt||0.016)},o)); if(!ok) return false;
+  const ty=TH(x,z); const ok=C.drive(ent,key,Object.assign({x,y:y+ty,z,rot,dt:Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1)},o));   /* v82: characters share the global hit-stop */ if(!ok) return false;
   const W=(o.H||2)*(o.wide||0.5); bYaw(BLOB,x,0.04+ty,z,0,W*1.1,1,W*0.65,WHITE); return true; }   /* Phase 1 fills this, e.g. b_dojo:{url:'assets/models/dojo.glb', scale:1, rotY:0} */
 let _kit3d=null; const _glb={};
 function load3DKit(){ if(!_kit3d) _kit3d=Promise.all([import('three/addons/loaders/GLTFLoader.js'),import('three/addons/loaders/KTX2Loader.js'),import('three/addons/libs/meshopt_decoder.module.js')])

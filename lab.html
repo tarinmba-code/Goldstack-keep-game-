@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Character Lab</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{ color-scheme: light only; }
+  html,body{ margin:0; height:100%; background:#CFE9F5; color:#1F2B22; color-scheme: light only; font-family:"Nunito Sans",system-ui,sans-serif; overflow:hidden; }
+  @media (prefers-color-scheme: dark){ html,body{ background:#CFE9F5 !important; color:#1F2B22 !important; color-scheme: light only; } }
+  #c{ position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  #ui{ position:fixed; left:8px; right:8px; bottom:calc(env(safe-area-inset-bottom) + 8px); display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  #ui select, #ui button{ font:800 13px "Nunito Sans",system-ui,sans-serif; border:0; border-radius:999px; padding:8px 12px; background:rgba(255,255,255,.92); color:#1F2B22; box-shadow:0 2px 0 rgba(0,0,0,.18); }
+  #ui button.on{ background:#6E3FB0; color:#fff; }
+  #info{ position:fixed; left:8px; top:calc(env(safe-area-inset-top) + 8px); font:700 12px/1.4 ui-monospace,Menlo,monospace; background:rgba(255,255,255,.85); border-radius:10px; padding:6px 9px; white-space:pre; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">Loading…</div>
+<div id="ui">
+  <select id="key"></select>
+  <button id="sty">Style</button>
+  <button data-a="idle" class="on">Idle</button><button data-a="run">Run</button><button data-a="atk">Attack</button>
+  <button data-a="hit">Hit</button><button data-a="cast">Cast</button>
+  <button id="cam">Close-up</button><button id="spin">Spin</button>
+</div>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three-r186/three.module.min.js", "three/addons/": "./vendor/three-r186/addons/" } }
+</script>
+<script type="module">
+/* Character Lab: view any 3D hero or boss up close or at the in-game camera distance, in either style,
+   with each animation state. Not linked from the game; open /lab.html. URL: ?k=akaoni&style=anime&a=atk&cam=game */
+import * as T from 'three';
+window.THREE = T;
+const q = new URLSearchParams(location.search);
+await new Promise((ok, no) => { const s = document.createElement('script'); s.src = './goldstack-3d-chars.js?v=' + Date.now(); s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+if (T.ColorManagement) T.ColorManagement.enabled = false;
+const cv = document.getElementById('c');
+const renderer = new T.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true });
+renderer.outputColorSpace = T.LinearSRGBColorSpace;
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+const scene = new T.Scene(); scene.background = new T.Color(0xCFE9F5);
+const LK = Math.PI;   /* same lights as the game */
+scene.add(new T.HemisphereLight(0xDCEFFF, 0x4E8A30, 0.62 * LK));
+const sun = new T.DirectionalLight(0xFFEBD0, 0.7 * LK); sun.position.set(8, 16, 10); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 40 }); scene.add(sun);
+const ground = new T.Mesh(new T.CircleGeometry(6, 48).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: 0xC9B98A }));
+ground.receiveShadow = true; scene.add(ground);
+const camera = new T.PerspectiveCamera(35, 1, 0.1, 400);
+const C = window.GK3D_CHARS(T, { scene, style: q.get('style') === 'chibi' ? 'chibi' : (q.get('style') || undefined) });
+if (q.get('style') === 'anime' || q.get('style') === 'chibi') C.setStyle(q.get('style'));
+C.setCamera(camera);
+const keys = C.keys().sort();
+const sel = document.getElementById('key');
+for (const k of keys) { const o = document.createElement('option'); o.value = o.textContent = k; sel.appendChild(o); }
+let key = keys.includes(q.get('k')) ? q.get('k') : (keys.includes('hero') ? 'hero' : keys[0]); sel.value = key;
+let act = q.get('a') || 'idle', camMode = q.get('cam') || 'close', spin = q.get('spin') === '1', t = 0, yaw = q.get('yaw') != null ? +q.get('yaw') : 0.5;
+const H = () => { if (q.get('h')) return +q.get('h'); const d = C.DEFS[key] || {}; return d.type && d.type !== 'human' ? 4.6 : /giant|titan|broad/.test(d.build || '') ? 4.2 : 2.2; };
+const ent = { id: 1 };
+let x = 0, atkT = 0, castU = 0;
+function setAct(a) { act = a; atkT = 0; castU = 0; for (const b of document.querySelectorAll('[data-a]')) b.classList.toggle('on', b.dataset.a === a); }
+for (const b of document.querySelectorAll('[data-a]')) b.onclick = () => setAct(b.dataset.a);
+setAct(act);
+sel.onchange = () => { C.clear(); key = sel.value; };
+document.getElementById('sty').onclick = () => { C.setStyle(C.style() === 'anime' ? 'chibi' : 'anime'); };
+document.getElementById('cam').onclick = () => { camMode = camMode === 'close' ? 'game' : 'close'; };
+document.getElementById('spin').onclick = () => { spin = !spin; };
+let drag = null; cv.addEventListener('pointerdown', e => drag = e.clientX); addEventListener('pointerup', () => drag = null);
+cv.addEventListener('pointermove', e => { if (drag != null) { yaw += (e.clientX - drag) * 0.01; drag = e.clientX; } });
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+const info = document.getElementById('info');
+let last = performance.now(), fixedDt = q.get('dt') ? +q.get('dt') : 0;
+window.__LAB = { C, renderer, scene, camera, inst: () => C.instance(ent), setKey: k => { C.clear(); key = k; sel.value = k; }, setAct, setCam: m => camMode = m, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); }, get t() { return t; } };
+function tick(dt) {
+  t += dt; const h = H();
+  let moving = false, atk = 0, flash = 0, cast = false;
+  if (act === 'run') { moving = true; x += dt * h * 1.6; if (x > 3) x -= 6; }
+  else x = 0;
+  if (act === 'atk') { atkT += dt; if (atkT > 1.1) atkT = 0; atk = atkT < 0.05 ? 0.9 : Math.max(0, 0.9 - atkT * 3); }
+  if (act === 'hit') { atkT += dt; if (atkT > 1.0) atkT = 0; flash = atkT < 0.12 ? 1 : 0; }
+  if (act === 'cast') { castU = (castU + dt / 1.4) % 1; cast = true; }
+  C.begin();
+  C.drive(ent, key, { x: act === 'run' ? 0 : x, y: 0, z: 0, rot: (act === 'run' ? Math.PI / 2 : 0), H: h, dt, moving, atk, flash, cast, castKind: 'summon', castU, style: undefined });
+  if (act === 'run') { const I = C.instance(ent); if (I) { I.st.last = { x: I.st.last.x - dt * h * 1.6, z: 0 }; } }
+  C.end();
+  if (spin) yaw += dt * 0.6;
+  const d = camMode === 'game' ? 40 : h * 2.6, pitch = camMode === 'game' ? 55 * Math.PI / 180 : 0.22;
+  const cx = Math.sin(yaw) * Math.cos(pitch) * d, cz = Math.cos(yaw) * Math.cos(pitch) * d, cy = Math.sin(pitch) * d + h * 0.5;
+  camera.position.set(cx, cy, cz); camera.lookAt(0, h * 0.5, 0);
+  renderer.render(scene, camera);
+  const I = C.instance(ent);
+  let tri = 0, bones = 0; if (I) I.grp.traverse(m => { if (m.isMesh && m.visible) { const g = m.geometry; tri += g.index ? g.index.count / 3 : g.attributes.position.count / 3; if (m.isSkinnedMesh) bones = Math.max(bones, m.skeleton.bones.length); } });
+  info.textContent = `${key}${I && I.imported ? ' (imported model)' : ''}  style ${C.style()}  ${act}  cam ${camMode}\nheight ${h.toFixed(2)}  tris ${Math.round(tri)}  bones ${bones}  draws ${renderer.info.render.calls}`;
+}
+function frame(now) { requestAnimationFrame(frame); const dt = fixedDt || Math.min(0.05, (now - last) / 1000); last = now; if (!window.__LAB_PAUSE) tick(dt); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

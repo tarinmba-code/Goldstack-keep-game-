@@ -13,6 +13,9 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, sm=t=>{ t=clamp(t,0
 /* character style: 'anime' = heroic anime proportions (default), 'chibi' = the big-headed look of the 2D art */
 let STYLE=opt.style||window.GK_STYLE||(()=>{ try{ const q=new URLSearchParams(location.search).get('style'); if(q==='anime'||q==='chibi'){ localStorage.setItem('gk-style2',q); return q; } return localStorage.getItem('gk-style2')||'chibi'; }catch(e){ return 'chibi'; } })();   /* chibi (big heads) is the default */
 const TAU=Math.PI*2;
+/* v82: anime-style humans draw this much taller than their gameplay size, so a slim adult figure keeps the same
+   on-screen presence as the big-headed chibi troops around it. Visual only: hit boxes and spacing are unchanged. */
+const ANIME_PRESENCE=1.2;
 
 /* ================================================================ geometry kit
    Every helper returns a non-indexed BufferGeometry with position + normal only, so parts merge freely. */
@@ -89,10 +92,23 @@ class Rig{
 }
 
 /* ================================================================ materials */
+/* v82 ink outline: pushed out in screen space so the line keeps the same pixel width at any distance.
+   At the game camera a hero is only 40-70 pixels tall, and the old model-space outline thinned to under a
+   pixel there, so the character melted into the ground. Now the width is the larger of the model-space
+   width (close-ups stay bold) and a minimum of OUTLINE.minPx screen pixels, capped at OUTLINE.maxPx. */
+const OUTLINE={world:0.022, minPx:1.35, maxPx:4};
+const OL_U={uOut:{value:1}, uRes:{value:new T.Vector2(1280,720)}, uMinPx:{value:OUTLINE.minPx}, uMaxPx:{value:OUTLINE.maxPx}, uWorld:{value:OUTLINE.world}};
+const _rv=new T.Vector2();
 const OL_MAT=new T.MeshBasicMaterial({color:0x1A1422,side:T.BackSide,fog:false});
-OL_MAT.onBeforeCompile=sh=>{ sh.uniforms.uOut={value:1}; OL_MAT.userData.sh=sh;
-  sh.vertexShader='uniform float uOut;\n'+sh.vertexShader.replace('#include <skinning_vertex>','#include <skinning_vertex>\n#ifdef USE_SKINNING\n  transformed += normalize(objectNormal) * 0.022 * uOut;\n#endif'); };
-OL_MAT.customProgramCacheKey=()=>'gk3d-outline';
+OL_MAT.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,OL_U); OL_MAT.userData.sh=sh;
+  sh.vertexShader='uniform float uOut; uniform vec2 uRes; uniform float uMinPx; uniform float uMaxPx; uniform float uWorld;\n'+sh.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\n'+
+  '#ifdef USE_SKINNING\n{ vec3 nV=normalize(normalMatrix*objectNormal); vec2 d=(projectionMatrix*vec4(nV,0.0)).xy; float dl=length(d);\n'+
+  '  if(dl>1e-5){ float sc=length(modelMatrix[0].xyz); float w=max(gl_Position.w,1e-3);\n'+
+  '    float px=clamp(uWorld*sc*projectionMatrix[1][1]*0.5*uRes.y/w, uMinPx, uMaxPx)*uOut;\n'+
+  '    gl_Position.xy += (d/dl)*px*2.0/uRes*w; } }\n#endif'); };
+OL_MAT.customProgramCacheKey=()=>'gk3d-outline-ss2';
+/* keeps the screen size and pixel ratio current for the outline; costs a few uniform writes per character */
+function olBeforeRender(r){ r.getDrawingBufferSize(_rv); OL_U.uRes.value.copy(_rv); const pr=r.getPixelRatio(); OL_U.uMinPx.value=OUTLINE.minPx*pr; OL_U.uMaxPx.value=OUTLINE.maxPx*pr; }
 const GLOW_MAT=new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,fog:false});
 /* heroes and bosses must read as clearly as the painted troops: no fog, and half of their colour is unlit so night
    and dusk lighting never wash them out; a touch of extra saturation keeps them vivid next to the sprites */
@@ -102,6 +118,27 @@ function toonMat(o){ o=Object.assign({flat:0.32,sat:1.2,fog:false,wcap:0.84,soft
     sh.fragmentShader=sh.fragmentShader.replace('#include <opaque_fragment>',
     '{ vec3 lit=outgoingLight; float Ld=max(dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)),0.02); lit=mix(lit,diffuseColor.rgb*(dot(lit,vec3(0.299,0.587,0.114))/Ld),'+(o.neutral!=null?o.neutral:0.8).toFixed(2)+'); outgoingLight=mix(lit,diffuseColor.rgb*vec3(1.04),'+o.flat.toFixed(2)+'); float lum=dot(outgoingLight,vec3(0.299,0.587,0.114)); outgoingLight=clamp(mix(vec3(lum),outgoingLight,'+o.sat.toFixed(2)+'),0.0,1.0); float rim=1.0-max(dot(normalize(normal),normalize(vViewPosition)),0.0); outgoingLight+=diffuseColor.rgb*smoothstep(0.55,1.0,rim)*0.32+vec3(0.06)*smoothstep(0.75,1.0,rim); }\n#include <opaque_fragment>'); };
   m.customProgramCacheKey=()=>'gk3d-toon-rim4-'+o.neutral+o.soft+o.flat+'-'+o.sat+'-'+o.fog+'-'+o.wcap; return m; }
+/* v82 anime cel shading for heroes and bosses (the "Basic Anime" double-shade look):
+   a crisp light/shadow line from the sun's direction, a cool violet first shade, a deeper second shade
+   for the side facing away, and a lit-side rim. Brightness follows the scene's lights, so dusk and night
+   stages still darken characters, but the shading shape no longer depends on light strength. */
+const CEL={step1:0.44, step2:0.16, feather:0.035, shade1:[0.80,0.74,0.92], shade2:[0.60,0.54,0.76], lit:1.03, rim:0.30, sat:1.16, wcap:0.84, dayRef:2.55};
+function celMat(){ const f=v=>(+v).toFixed(3), v3=a=>'vec3('+a.map(f).join(',')+')';
+  const m=new T.MeshToonMaterial({vertexColors:true,gradientMap:softGrad,color:0xFFFFFF,emissive:0x000000,fog:false});
+  m.onBeforeCompile=sh=>{
+    sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  { float L0=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)); if(L0>'+f(CEL.wcap)+') diffuseColor.rgb*='+f(CEL.wcap)+'/L0; }');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <opaque_fragment>',
+    '{ vec3 W=vec3(0.299,0.587,0.114), N=normalize(normal), base=diffuseColor.rgb; float hl=0.72, env=1.0;\n'+
+    '#if NUM_DIR_LIGHTS > 0\n  hl=dot(N,directionalLights[0].direction)*0.5+0.5; env=dot(directionalLights[0].color,W)*0.6;\n#endif\n'+
+    '#if NUM_HEMI_LIGHTS > 0\n  env+=dot(hemisphereLights[0].skyColor+hemisphereLights[0].groundColor,W)*0.5;\n#endif\n'+
+    '  env=clamp(env/'+f(CEL.dayRef)+',0.5,1.12);\n'+
+    '  float m1=smoothstep('+f(CEL.step1-CEL.feather)+','+f(CEL.step1+CEL.feather)+',hl), m2=smoothstep('+f(CEL.step2-CEL.feather*1.5)+','+f(CEL.step2+CEL.feather*1.5)+',hl);\n'+
+    '  vec3 tone=mix('+v3(CEL.shade2)+',mix('+v3(CEL.shade1)+',vec3('+f(CEL.lit)+'),m1),m2);\n'+
+    '  vec3 c=base*tone; float l=dot(c,W); c=mix(vec3(l),c,'+f(CEL.sat)+'+0.12*(1.0-m1));\n'+
+    '  float rim=1.0-max(dot(N,normalize(vViewPosition)),0.0);\n'+
+    '  c+=base*smoothstep(0.58,1.0,rim)*'+f(CEL.rim)+'*(0.35+0.65*m1)+vec3(0.05)*smoothstep(0.8,1.0,rim);\n'+
+    '  outgoingLight=clamp(c*env,0.0,1.0)+totalEmissiveRadiance; }\n#include <opaque_fragment>'); };
+  m.customProgramCacheKey=()=>'gk3d-cel1'; return m; }
 
 /* ================================================================ palette helpers */
 const shade=(c,f)=>{ _c.set(c); const r=Math.min(255,Math.round(_c.r*255*f)), g=Math.min(255,Math.round(_c.g*255*f)), b=Math.min(255,Math.round(_c.b*255*f)); return (r<<16)|(g<<8)|b; };
@@ -120,13 +157,14 @@ const BUILDS={
   heroic: {head:0.27,leg:0.96,torso:0.74,w:0.36,limb:0.1,  arm:0.78},   /* warriors: tall, broad shoulders, smaller head */
   titan:  {head:0.26,leg:0.9, torso:0.82,w:0.48,limb:0.13, arm:0.86},   /* warlords and war gods */
   divine: {head:0.25,leg:1.0, torso:0.7, w:0.3, limb:0.08, arm:0.76},
-  /* heroic anime: heads about a seventh of the body */
-  a_male:   {head:0.19,leg:1.14,torso:0.82,w:0.27,limb:0.066,arm:0.86},
-  a_female: {head:0.183,leg:1.16,torso:0.74,w:0.215,limb:0.054,arm:0.8},
-  a_youth:  {head:0.2, leg:1.02,torso:0.74,w:0.25,limb:0.062,arm:0.78},
-  a_hero:   {head:0.185,leg:1.12,torso:0.92,w:0.36,limb:0.085,arm:0.92},
-  a_titan:  {head:0.19, leg:1.06,torso:1.0, w:0.47,limb:0.115,arm:1.0},
-  a_round:  {head:0.22, leg:0.72,torso:0.78,w:0.5, limb:0.1,  arm:0.7},
+  /* heroic anime, tuned for the game camera (v82): heads about a sixth of the body rather than a seventh,
+     because at 50-70 pixels tall a seventh-size head leaves the face as a few pixels; limbs a touch thicker */
+  a_male:   {head:0.21, leg:1.12,torso:0.8, w:0.28,limb:0.072,arm:0.85},
+  a_female: {head:0.203,leg:1.13,torso:0.72,w:0.225,limb:0.06,arm:0.79},
+  a_youth:  {head:0.218,leg:1.0, torso:0.72,w:0.26,limb:0.068,arm:0.77},
+  a_hero:   {head:0.2,  leg:1.1, torso:0.9, w:0.37,limb:0.09, arm:0.91},
+  a_titan:  {head:0.2,  leg:1.06,torso:1.0, w:0.47,limb:0.118,arm:1.0},
+  a_round:  {head:0.23, leg:0.72,torso:0.78,w:0.5, limb:0.1,  arm:0.7},
   /* chibi class bodies: big heads on bodies shaped by class */
   c_warrior:{head:0.33, leg:0.64,torso:0.6, w:0.35,limb:0.1,  arm:0.6},
   c_titan:  {head:0.32, leg:0.64,torso:0.7, w:0.47,limb:0.13, arm:0.7},
@@ -1246,11 +1284,11 @@ function cloneRig(proto){ /* fresh bone hierarchy matching the prototype's bind 
   for(const b of proto.bones){ const n=new T.Bone(); n.name=b.name; n.position.copy(b.position); n.userData.rest=b.position.clone(); map[b.name]=n; bones.push(n);
     if(b.parent&&b.parent.isBone) map[b.parent.name].add(n); }
   return {bones,map,root:map.root}; }
-function makeInstance(key){ const B=getBuilt(key); if(!B) return null;
+function makeInstance(key){ if(IMPORTED[key]&&IMPORTED[key].status==='ready'&&_skelClone) return makeImported(key); const B=getBuilt(key); if(!B) return null;
   const grp=new T.Group(), rig=cloneRig(B.proto); grp.add(rig.root); grp.updateMatrixWorld(true);
   const skel=new T.Skeleton(rig.bones);
-  const mat=toonMat(), body=new T.SkinnedMesh(B.geos.toon,mat); body.bind(skel); body.frustumCulled=false; grp.add(body);
-  let ol=null; if(B.geos.ol){ ol=new T.SkinnedMesh(B.geos.ol,OL_MAT); ol.bind(skel); ol.frustumCulled=false; grp.add(ol); }
+  const mat=celMat(), body=new T.SkinnedMesh(B.geos.toon,mat); body.bind(skel); body.frustumCulled=false; grp.add(body);
+  let ol=null; if(B.geos.ol){ ol=new T.SkinnedMesh(B.geos.ol,OL_MAT); ol.bind(skel); ol.frustumCulled=false; ol.onBeforeRender=olBeforeRender; grp.add(ol); }
   let gl=null; if(B.geos.glow){ gl=new T.SkinnedMesh(B.geos.glow,GLOW_MAT); gl.bind(skel); gl.frustumCulled=false; grp.add(gl); }
   return {key,grp,b:rig.map,body,ol,gl,mat,kind:B.b.kind,B,sp:B.sp,
     st:{phase:Math.random()*TAU,move:0,atk:0,last:null,yaw:0,t:Math.random()*10,hit:0,cast:0,dash:0,lift:0}}; }
@@ -1266,10 +1304,13 @@ const WSTYLE={club:'melee',mallet:'melee',greatsword:'melee',bell:'melee',none:'
 const SALIAS={bow:'arrow',fox:'cast',orb:'cast',talisman:'cast',fan:'wind',lute:'cast',lantern:'cast',dagger:'blade',sickle:'blade',ice:'spin',flame:'spin',bolt:'thrust',spear:'thrust',trident:'thrust'};
 function styleOf(sp,want){ const w=want||WSTYLE[(sp.weapon&&sp.weapon.kind)||'none']||'melee'; return SALIAS[w]||w; }
 /* a = wind-up weight, h = impact weight; they overlap so the body never jumps between poses */
+/* v82 anime timing: a readable wind-up (about a third of the swing), a strike that arrives in a couple of frames,
+   then the impact pose is HELD before recovering. IMPACT_U is where the blow lands; the body freezes there briefly. */
+const IMPACT_U={arrow:0.47,cast:0.42,def:0.38};
 function atkWeights(u,st){
-  if(st==='arrow') return {a:sm(u/0.22)*(1-sm((u-0.46)/0.1)), h:sm((u-0.42)/0.1)*(1-sm((u-0.68)/0.32))};
-  if(st==='cast') return {a:sm(u/0.3)*(1-sm((u-0.4)/0.14)), h:sm((u-0.34)/0.16)*(1-sm((u-0.66)/0.34))};
-  return {a:sm(u/0.3)*(1-sm((u-0.34)/0.14)), h:sm((u-0.3)/0.16)*(1-sm((u-0.64)/0.36))}; }
+  if(st==='arrow') return {a:sm(u/0.22)*(1-sm((u-0.45)/0.05)), h:sm((u-0.43)/0.05)*(1-sm((u-0.7)/0.3))};
+  if(st==='cast') return {a:sm(u/0.3)*(1-sm((u-0.38)/0.08)), h:sm((u-0.36)/0.08)*(1-sm((u-0.68)/0.32))};
+  return {a:sm(u/0.3)*(1-sm((u-0.33)/0.07)), h:sm((u-0.31)/0.08)*(1-sm((u-0.66)/0.32))}; }
 function attackPose(st,b,a,h,mv){ const P=(bn,x,y,z)=>ADD(b[bn],x,y,z), legs=1-mv*0.7;
   switch(st){
     case 'arrow':   /* draw to the cheek, hold, loose: the drawing hand flies back */
@@ -1389,14 +1430,122 @@ function poseFish(I,s){ const b=I.b, S=I.st, t=S.t, mv=S.move;
   const u=S.atkU; if(u>=0&&u<1){ const c=attackCurve(u); ADD(b.f0,-0.3*c.wind+0.25*c.strike,0,0); OFF(b.root,0,0.2*c.wind,0.4*c.strike); }
   if(s.cast){ const e=sm(Math.min(1,(s.castU||0)*1.4)); OFF(b.root,0,0.6*e,0); ADD(b.f0,-0.4*e,0,0); } }
 /* critically damped spring on every bone: velocity stays continuous, so poses flow into each other instead of popping */
-function smoothPose(I,dt){ const w=24, P=I.prev||(I.prev={}), h=Math.min(dt,0.05), n2=Math.max(1,Math.ceil(h/0.0084)), sdt=h/n2;
-  for(const n in I.b){ const bn=I.b[n]; let pr=P[n];
+/* v82: hair, sleeves-skirt, tails and wings use a looser spring so they trail behind the body (follow-through);
+   during the strike window the body spring stiffens so the blow snaps into its key pose instead of easing in */
+const SECONDARY=/^(hair|skirt|tail\d*|wing[LR])$/;
+function smoothPose(I,dt,snap){ const wB=24+46*(snap||0), wS=11, P=I.prev||(I.prev={}), h=Math.min(dt,0.07), n2=Math.max(1,Math.ceil(h/0.0084)), sdt=h/n2;
+  for(const n in I.b){ const bn=I.b[n]; let pr=P[n]; const w=SECONDARY.test(n)?wS:wB;
     const tr=[bn.rotation.x,bn.rotation.y,bn.rotation.z,bn.position.x,bn.position.y,bn.position.z];
     if(!pr){ P[n]={x:tr.slice(),v:[0,0,0,0,0,0]}; continue; }
     for(let c=0;c<6;c++){ let tgt=tr[c]; if(c<3){ let d=tgt-pr.x[c]; d=Math.atan2(Math.sin(d),Math.cos(d)); tgt=pr.x[c]+d; }
       for(let k=0;k<n2;k++){ const a=w*w*(tgt-pr.x[c])-2*w*pr.v[c]; pr.v[c]+=a*sdt; pr.x[c]+=pr.v[c]*sdt; } }
     bn.rotation.set(pr.x[0],pr.x[1],pr.x[2]); bn.position.set(pr.x[3],pr.x[4],pr.x[5]); } }
 const POSE={human:poseHuman,quad:poseQuad,serpent:poseSerpent,spider:poseSpider,blob:poseBlob,fish:poseFish};
+
+/* ================================================================ v82 shared skeleton and imported models
+   Every humanoid hero and boss is posed on one canonical 22-bone skeleton (GK_BONES), and every animation
+   (idle, walk/run, seven attack styles, hits, boss casts) is written once against it. An imported rigged
+   model (a sculpted hero from Tripo, a Mixamo rig, an artist's GLB) borrows that whole animation library:
+   a hidden copy of the canonical rig is posed each beat, and each pose is retargeted onto the model's own
+   bones by matching bone directions, so T-pose and A-pose rigs both work and no per-model animation is needed.
+   Usage: C.registerModel('ronin', {url:'assets/models/ronin.glb'}) -> Promise. Until it loads (or if it
+   fails) the code-built character keeps drawing, so a missing file never breaks the game. */
+const GK_BONES=['root','hips','spine','chest','neck','head','armL','elbowL','handL','armR','elbowR','handR','thighL','kneeL','footL','thighR','kneeR','footR','skirt','back','tail','hair'];
+const GK_CHILD={hips:'spine',spine:'chest',chest:'neck',neck:'head',armL:'elbowL',elbowL:'handL',armR:'elbowR',elbowR:'handR',thighL:'kneeL',kneeL:'footL',thighR:'kneeR',kneeR:'footR'};
+/* name patterns for common rigs (Mixamo "mixamorig:LeftForeArm", Tripo/Blender "upperarm.L", Unity "Left_UpperArm") */
+const BONE_PATTERNS={hips:/^(hips|pelvis|root_?hips)$/, spine:/^(spine|spine0|spine_?01|abdomen)$/, chest:/^(spine2|spine_?03|upperchest|chest|spine1|spine_?02)$/,
+  neck:/^(neck|neck1|neck_?01)$/, head:/^head$/,
+  arm:/^(upperarm|arm|uparm|shoulder_?arm)$/, elbow:/^(forearm|lowerarm|elbow|loarm)$/, hand:/^(hand|wrist)$/,
+  thigh:/^(upleg|upperleg|thigh|hip)$/, knee:/^(leg|lowerleg|calf|shin|knee)$/, foot:/^(foot|ankle)$/};
+function sideOf(n){ return /(^|[^a-z])l$|^l[^a-z]|left|\.l$|_l$/.test(n)?'L':/(^|[^a-z])r$|^r[^a-z]|right|\.r$|_r$/.test(n)?'R':''; }
+function coreName(n){ return n.toLowerCase().replace(/^.*:/,'').replace(/mixamorig\d*/,'').replace(/^(def|bip\d*|bone|cc_base|j)[_\-. ]/,'').replace(/(left|right)/,'').replace(/([._\- ]+[lr])$|^([lr][._\- ]+)/,'').replace(/[._\- ]/g,''); }
+function autoBoneMap(bones){ const map={}, prio={chest:['spine2','upperchest','chest','spine03','spine1','spine02']};
+  for(const b of bones){ const c=coreName(b.name), sd=sideOf(b.name.toLowerCase());
+    for(const k in BONE_PATTERNS){ if(!BONE_PATTERNS[k].test(c)) continue;
+      const gk=['arm','elbow','hand','thigh','knee','foot'].includes(k)?k+sd:k; if(gk.length===k.length&&['arm','elbow','hand','thigh','knee','foot'].includes(k)) continue;
+      if(gk==='chest'&&map.chest){ const pr=prio.chest; if(pr.indexOf(c)<0||pr.indexOf(c)>=pr.indexOf(coreName(map.chest.name))) continue; }
+      if(!map[gk]||gk==='chest') map[gk]=b; } }
+  if(map.chest&&map.spine&&map.chest===map.spine) delete map.chest;
+  return map; }
+const IMPORTED={};   /* key -> {status, gltf, proto info} */
+let _skelClone=null;
+const _q1=new T.Quaternion(), _q2=new T.Quaternion(), _q3=new T.Quaternion(), _v1=new T.Vector3(), _v2=new T.Vector3(), _mI=new T.Matrix4();
+function modelQ(o,stop,out){ out.identity(); const chain=[]; for(let n=o;n&&n!==stop;n=n.parent) chain.push(n); for(let i=chain.length-1;i>=0;i--) out.multiply(chain[i].quaternion); return out; }
+function modelP(o,stop,out){ o.updateWorldMatrix(true,false); stop.updateWorldMatrix(true,false); _mI.copy(stop.matrixWorld).invert(); return out.setFromMatrixPosition(o.matrixWorld).applyMatrix4(_mI); }
+function celMatFor(src){ const m=celMat(); m.vertexColors=!!(src&&src.vertexColors); if(src&&src.map){ m.map=src.map; } if(src&&src.color) m.color.copy(src.color); m.userData.base=m.color.clone(); return m; }
+function prepImported(key,gltf,o){ const root=gltf.scene; root.updateMatrixWorld(true);
+  let skinned=null, bones=[]; root.traverse(n=>{ if(n.isSkinnedMesh&&!skinned) skinned=n; if(n.isBone) bones.push(n); });
+  if(!skinned) throw new Error('no skinned mesh in '+o.url);
+  const map=o.boneMap&&typeof o.boneMap==='object'?Object.fromEntries(Object.entries(o.boneMap).map(([k,v])=>[k,bones.find(b=>b.name===v)]).filter(e=>e[1])):autoBoneMap(bones);
+  const need=['hips','spine','head','armL','elbowL','armR','elbowR','thighL','kneeL','thighR','kneeR']; const miss=need.filter(k=>!map[k]);
+  if(miss.length) throw new Error('rig is missing '+miss.join(', ')+' in '+o.url);
+  const bb=new T.Box3().setFromObject(root,true), height=Math.max(0.01,bb.max.y-Math.min(0,bb.min.y));
+  const xl=modelP(map.thighL,root,new T.Vector3()).x, xr=modelP(map.thighR,root,new T.Vector3()).x, flip=xl<xr;   /* left leg on -X: the model faces -Z */
+  return {root,flip,map:Object.fromEntries(Object.entries(map).map(([k,b])=>[k,b.name])),height,o}; }
+function makeImported(key){ const R=IMPORTED[key], B=getBuilt(R&&R.o.template||key); if(!R||!B) return null;
+  const P=R.proto, grp=new T.Group(), inner=new T.Group(); grp.add(inner);
+  /* align turns the model to face +Z like the canonical rig (auto-detected from which side its left leg is on);
+     all retarget maths runs in the inner frame F so both rigs share left, right and forward */
+  const model=_skelClone(P.root), align=new T.Group(); align.add(model); inner.add(align); inner.scale.setScalar(1/P.height); align.rotation.y=(P.o.yaw||0)+(P.flip?Math.PI:0);
+  const F=inner; F.updateMatrixWorld(true);
+  const mats=[]; const extra=[];
+  model.traverse(n=>{ if(!n.isMesh) return; n.frustumCulled=false; n.castShadow=false;
+    if(P.o.cel!==false){ const src=Array.isArray(n.material)?n.material[0]:n.material; n.material=celMatFor(src); mats.push(n.material); }
+    if(n.isSkinnedMesh&&P.o.outline!==false){ const ol=new T.SkinnedMesh(n.geometry,OL_MAT); ol.position.copy(n.position); ol.quaternion.copy(n.quaternion); ol.scale.copy(n.scale); ol.bind(n.skeleton,n.bindMatrix); ol.frustumCulled=false; ol.onBeforeRender=olBeforeRender; extra.push([n.parent,ol]); } });
+  for(const [par,ol] of extra) par.add(ol);
+  /* the hidden driver: a bones-only copy of the canonical rig, posed by the shared animation library */
+  const drv=cloneRig(B.proto), dg=new T.Group(); dg.add(drv.root); dg.updateMatrixWorld(true);
+  const tb={}; model.traverse(n=>{ if(n.isBone) tb[n.name]=n; });
+  const pairs=[]; for(const k in P.map){ const t=tb[P.map[k]], d=drv.map[k]; if(!t||!d) continue; pairs.push({k,t,d}); }
+  /* bind-time correction: rotate the canonical bone direction onto the model's bone direction */
+  model.updateMatrixWorld(true);
+  for(const pr of pairs){ pr.rest=modelQ(pr.t,F,new T.Quaternion()); pr.local=pr.t.quaternion.clone(); pr.rc=new T.Quaternion();
+    const ck=GK_CHILD[pr.k], cp=ck&&pairs.find(x=>x.k===ck);
+    if(cp){ const d0=modelP(cp.d,dg,new T.Vector3()).sub(modelP(pr.d,dg,new T.Vector3())).normalize(), t0=modelP(cp.t,F,new T.Vector3()).sub(modelP(pr.t,F,new T.Vector3())).normalize();
+      if(d0.lengthSq()>0.5&&t0.lengthSq()>0.5) pr.rc.setFromUnitVectors(d0,t0); } }
+  /* end bones (hands, feet, head) have no child to aim at: they inherit their parent's correction so a T-pose
+     hand turns down with its forearm instead of staying pointed sideways */
+  const PARENT_OF={handL:'elbowL',handR:'elbowR',footL:'kneeL',footR:'kneeR',head:'neck'};
+  for(const pr of pairs){ const pk=PARENT_OF[pr.k], pp=pk&&pairs.find(x=>x.k===pk); if(pp&&!GK_CHILD[pr.k]) pr.rc.copy(pp.rc); }
+  const order=[]; model.traverse(n=>{ if(n.isBone) order.push(n); });
+  const byT=new Map(pairs.map(p=>[p.t,p])), restLocal=new Map(order.map(b=>[b,b.quaternion.clone()])), mq=new Map();
+  /* the rig may sit under non-bone nodes with their own rotation (e.g. an 'Armature' turned 90 degrees and scaled 0.01) */
+  const baseQ=new Map(order.filter(b=>!(b.parent&&b.parent.isBone)).map(b=>[b,modelQ(b.parent,F,new T.Quaternion())]));
+  const hipsP=pairs.find(p=>p.k==='hips'), hipRestT=hipsP&&hipsP.t.position.clone(), hipRestD=modelP(drv.map.hips,dg,new T.Vector3()), hipHT=hipsP?modelP(hipsP.t,F,new T.Vector3()).y:1;
+  const hipRatio=hipHT/Math.max(1e-3,hipRestD.y), hipRestM=hipsP?modelP(hipsP.t,F,new T.Vector3()):null;
+  function retarget(){ dg.updateMatrixWorld(true); mq.clear();
+    for(const b of order){ const pq=mq.get(b.parent)||baseQ.get(b)||_q3.identity(); const pr=byT.get(b);
+      if(pr){ modelQ(pr.d,dg,_q1);   /* posed canonical rotation; its rest is identity */
+        _q2.copy(pr.rc).invert(); _q1.multiply(_q2).multiply(pr.rest);   /* Qd * Rc^-1 * rest */
+        b.quaternion.copy(pq).invert().multiply(_q1); mq.set(b,_q1.clone()); }
+      else { b.quaternion.copy(restLocal.get(b)); mq.set(b,pq.clone().multiply(b.quaternion)); } }
+    if(hipsP){ /* lunges, crouches and the walk bob move the hips, scaled to the model's leg length */
+      modelP(drv.map.hips,dg,_v1).sub(hipRestD).multiplyScalar(hipRatio); _v2.copy(hipRestM).add(_v1);
+      F.updateWorldMatrix(true,false); _v2.applyMatrix4(F.matrixWorld); const par=hipsP.t.parent; par.updateWorldMatrix(true,false); hipsP.t.position.copy(par.worldToLocal(_v2)); } }
+  const mat=mats[0]||celMat();
+  return {key,grp,b:drv.map,body:model,ol:null,gl:null,mat,mats,kind:'human',B:{height:1,b:{kind:'human'}},sp:B.sp,imported:true,retarget,
+    st:{phase:Math.random()*TAU,move:0,atk:0,last:null,yaw:0,t:Math.random()*10,hit:0,cast:0,dash:0,lift:0}}; }
+function registerModel(key,o){ o=o||{}; if(!DEFS[key]){ const tk=o.template||'hero'; DEFS[key]=Object.assign({},DEFS[tk],{key}); o.template=tk; }   /* a new key draws as its template until the model loads */
+  const R=IMPORTED[key]={status:'loading',o};
+  const load=opt.loadModel||(url=>import('three/addons/loaders/GLTFLoader.js').then(m=>new m.GLTFLoader().loadAsync(url)));
+  return Promise.all([load(o.url), _skelClone?null:import('three/addons/utils/SkeletonUtils.js').then(m=>{ _skelClone=m.clone; })])
+    .then(([gltf])=>{ R.proto=prepImported(key,gltf,o); R.status='ready';
+      for(const [ent,I] of [...live]) if(I.key===key) release(ent,I); delete pool[key];   /* swap live copies on their next frame */
+      return {key,height:R.proto.height,bones:R.proto.map}; })
+    .catch(err=>{ R.status='failed'; R.error=String(err&&err.message||err); console.warn('3D model kept as code-built:',key,R.error); throw err; }); }
+
+/* ================================================================ v82 motion and level-of-detail settings
+   MOTION.step: 'auto' poses anime-style characters at stepHz and chibi ones every frame; 'stepped' or 'smooth' force it.
+   ?motion=smooth or ?motion=stepped in the address overrides it on this device. */
+const MOTION={step:(()=>{ try{ const q=new URLSearchParams(location.search).get('motion'); if(q==='smooth'||q==='stepped'||q==='auto'){ localStorage.setItem('gk-motion',q); return q; } return localStorage.getItem('gk-motion')||'auto'; }catch(e){ return 'auto'; } })(),
+  stepHz:15, impactFreeze:0.06, farPx:34, farHz:10};
+const stepHz=()=>MOTION.step==='smooth'?0:MOTION.step==='stepped'?MOTION.stepHz:(STYLE==='anime'?MOTION.stepHz:0);
+const CAM={c:opt.camera||null,ok:false}, _pm=new T.Matrix4(), _fr=new T.Frustum(), _sp=new T.Sphere(), LODN={off:0,posed:0,held:0,frozen:0};
+const _vis={in:true,px:999};
+function onScreen(x,y,z,r){ _vis.in=true; _vis.px=999; if(!CAM.ok) return _vis;
+  _sp.center.set(x,y,z); _sp.radius=r; if(!_fr.intersectsSphere(_sp)){ _vis.in=false; return _vis; }
+  const c=CAM.c; if(c.isPerspectiveCamera){ const d=Math.max(0.1,c.position.distanceTo(_sp.center)); _vis.px=r*(4/3)*c.projectionMatrix.elements[5]*0.5*OL_U.uRes.value.y/d; }   /* about the character's height in drawn pixels */
+  return _vis; }
 
 /* ================================================================ public driver */
 const live=new Map(), pool={}; let frameTag=0;
@@ -1408,6 +1557,7 @@ function acquire(ent,key){ let I=live.get(ent); if(I&&I.key===key){ I.tag=frameT
 function release(ent,I){ live.delete(ent); I.grp.visible=false; (pool[I.key]=pool[I.key]||[]).push(I); }
 const API={
   has:key=>!!DEFS[key],
+  registerModel, models:()=>Object.fromEntries(Object.entries(IMPORTED).map(([k,v])=>[k,{status:v.status,error:v.error,bones:v.proto&&v.proto.map,height:v.proto&&v.proto.height}])), bones:GK_BONES, autoBoneMap,
   keys:()=>Object.keys(DEFS),
   prebuild:keys=>{ for(const k of keys) getBuilt(k); },
   style:()=>STYLE,
@@ -1417,7 +1567,9 @@ const API={
     for(const k in pool){ for(const I of pool[k]) if(I.grp.parent) I.grp.parent.remove(I.grp); delete pool[k]; }
     for(const k in BUILT){ const g=BUILT[k].geos; for(const n of ['toon','ol','glow']) if(g[n]) g[n].dispose(); delete BUILT[k]; }
     return STYLE; },
-  begin(){ frameTag++; },
+  begin(){ frameTag++; LODN.off=LODN.posed=LODN.held=LODN.frozen=0; if(CAM.c){ const c=CAM.c; c.updateMatrixWorld(); _pm.multiplyMatrices(c.projectionMatrix,c.matrixWorldInverse); _fr.setFromProjectionMatrix(_pm); CAM.ok=true; } },
+  setCamera(c){ CAM.c=c||null; CAM.ok=false; },
+  motion:MOTION, cel:CEL, outline:OUTLINE, lod:()=>Object.assign({},LODN),
   /* p: {x,y,z,rot,H,dt,moving,atk,style,flash,frozen,burn,cast,castKind,castU,stun,scale,tint} */
   drive(ent,key,p){ const I=acquire(ent,key); if(!I) return false; const S=I.st, dt=Math.min(0.05,p.dt||0.016);
     S.t+=dt;
@@ -1429,20 +1581,34 @@ const API={
     const a=p.atk||0; if(a>(S.prevAtk||0)+0.2) S.atkU=p.atkStart!=null?p.atkStart:0.18; S.prevAtk=a;   /* start just into the wind-up so the impact lands as the hit happens */
     if(S.atkU>=0){ S.atkU+=dt/(p.atkDur||0.42); if(S.atkU>=1) S.atkU=-1; }
     S.hitT=Math.max((S.hitT||0)-dt*5,p.flash>0.5?1:0); S.hit+=(S.hitT-S.hit)*(1-Math.exp(-dt*(S.hitT>S.hit?30:9)));
-    POSE[I.kind](I,{style:p.style,cast:!!p.cast,castKind:p.castKind,castU:p.castU,stun:p.stun},dt);
-    smoothPose(I,dt);
+    const sc=(p.H||2)/I.B.height*(p.scale||1)*(STYLE==='anime'&&I.kind==='human'?ANIME_PRESENCE:1);
+    /* v82 performance: skip characters outside the camera view entirely (no posing, no skinning, no draw),
+       and pose small, distant ones less often */
+    const vis=onScreen(p.x,(p.y||0)+(p.H||2)*0.5,p.z,(p.H||2)*0.75*(p.scale||1));
+    I.grp.visible=vis.in; if(!vis.in){ LODN.off++; S.stepAcc=0; I.grp.position.set(p.x,p.y||0,p.z); return true; }
+    /* v82 anime motion: the impact pose freezes for a moment when the blow lands (local hit-stop), and in the
+       anime style the body is posed on a 15 Hz beat ("on twos", like TV animation) while movement stays smooth */
+    const st=I.kind==='human'?styleOf(I.sp,p.style):'def', iu=IMPACT_U[st]||IMPACT_U.def;
+    if(S.atkU>=0&&S.prevU!=null&&S.prevU<iu&&S.atkU>=iu&&!S.frz){ S.frz=MOTION.impactFreeze; S.atkU=iu; }
+    S.prevU=S.atkU; if(S.frz>0){ S.frz-=dt; if(S.frz<=0) S.frz=0; else { if(S.atkU>=0) S.atkU=iu; S.t-=dt; } }
+    const hz=vis.px<MOTION.farPx?MOTION.farHz:(stepHz()||0);
+    S.stepAcc=(S.stepAcc||0)+dt; const snap=S.atkU>=0&&S.atkU>iu-0.1&&S.atkU<iu+0.08?1:0;
+    if(S.frz>0) LODN.frozen++;
+    else if(!hz||S.stepAcc>=1/hz||!I.prev){ const pdt=S.stepAcc; S.stepAcc=hz?S.stepAcc%(1/hz):0;
+      POSE[I.kind](I,{style:p.style,cast:!!p.cast,castKind:p.castKind,castU:p.castU,stun:p.stun},pdt);
+      smoothPose(I,pdt,snap); if(I.retarget) I.retarget(); LODN.posed++; }
+    else LODN.held++;
     /* place, face and scale */
-    const sc=(p.H||2)/I.B.height*(p.scale||1);
     I.grp.position.set(p.x,p.y||0,p.z); I.grp.scale.setScalar(sc);
     const targetYaw=p.rot+(S.yaw||0); let d=targetYaw-I.grp.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); I.grp.rotation.y+=d*(1-Math.exp(-dt*14));
     if(OL_MAT.userData.sh) OL_MAT.userData.sh.uniforms.uOut.value=1;
     /* status tints and hit flash */
     _tint.copy(WHITE); if(p.tint!=null) _tint.set(p.tint).lerp(WHITE,0.55); if(p.frozen) _tint.setRGB(0.65,0.9,1.0); if(p.burn) _tint.setRGB(1,0.82,0.7);
-    I.mat.color.copy(_tint); I.mat.emissive.setRGB(S.hit*0.55,S.hit*0.12,S.hit*0.1);
+    for(const m of (I.mats||[I.mat])){ m.color.copy(m.userData.base||WHITE).multiply(_tint); m.emissive.setRGB(S.hit*0.55,S.hit*0.12,S.hit*0.1); }
     return true; },
   end(){ for(const [ent,I] of [...live]) if(I.tag!==frameTag) release(ent,I); },
   clear(){ for(const [ent,I] of [...live]) release(ent,I); },
-  stats:()=>({live:live.size,built:Object.keys(BUILT).length,pooled:Object.values(pool).reduce((a,p)=>a+p.length,0)}),
+  stats:()=>({live:live.size,built:Object.keys(BUILT).length,pooled:Object.values(pool).reduce((a,p)=>a+p.length,0),lod:Object.assign({},LODN),style:STYLE,motion:MOTION.step,stepHz:stepHz()}),
   instance:ent=>live.get(ent),
   DEFS, BUILDS, kit:{G_,Rig,toonMat,shade,mergeRaw} };
 return API; };
