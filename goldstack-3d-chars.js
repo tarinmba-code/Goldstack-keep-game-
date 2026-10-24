@@ -83,6 +83,11 @@ class Rig{
         _v.fromBufferAttribute(src.attributes.normal,i).applyMatrix3(_nm).normalize(); N[i*3]=_v.x; N[i*3+1]=_v.y; N[i*3+2]=_v.z;
         C[i*3]=_c.r; C[i*3+1]=_c.g; C[i*3+2]=_c.b; SI[i*4]=b.userData.idx; SW[i*4]=1; }
       const rec={P,N,C,SI,SW,n};
+      /* v89 polygon look: toon shading uses one flat normal per triangle; the ink outline keeps the smooth normals so the shell has no cracks */
+      if(this.facet&&!pt.glow&&!pt.smooth){ const NF=new Float32Array(n*3), a3=new T.Vector3(), b3=new T.Vector3(), c3=new T.Vector3();
+        for(let i=0;i+2<n;i+=3){ a3.set(P[i*3],P[i*3+1],P[i*3+2]); b3.set(P[i*3+3],P[i*3+4],P[i*3+5]); c3.set(P[i*3+6],P[i*3+7],P[i*3+8]); b3.sub(a3); c3.sub(a3); b3.cross(c3).normalize();
+          for(let k=0;k<3;k++){ NF[(i+k)*3]=b3.x; NF[(i+k)*3+1]=b3.y; NF[(i+k)*3+2]=b3.z; } }
+        const recT=Object.assign({},rec,{N:NF}); groups.toon.push(recT); if(pt.ol&&!(this.minPartOl&&rad<this.minPartOl)) groups.ol.push(rec); continue; }
       if(pt.glow) groups.glow.push(rec); else { groups.toon.push(rec); if(pt.ol&&!(this.minPartOl&&rad<this.minPartOl)) groups.ol.push(rec); } }
     const geo=list=>{ if(!list.length) return null; let n=0; for(const r of list) n+=r.n;
       const P=new Float32Array(n*3),N=new Float32Array(n*3),C=new Float32Array(n*3),SI=new Uint16Array(n*4),SW=new Float32Array(n*4); let o=0;
@@ -1322,17 +1327,17 @@ const BUILT={};   /* key -> {geos, kind, height, meta} shared geometry */
    (35k triangles for heroes, 50k for multi-headed bosses, outline included) */
 
 /* v88 KAIJU: ten building-sized bosses, each also recruitable as a hero */
-def('gokaryu',  {type:'kaiju',v:'saurian',atk:'bite'});
-def('heikegani',{type:'kaiju',v:'crab'});
-def('genbu',    {type:'quad',len:4.2,height:1.7,w:1.75,leg:0.7,headR:1.7,col:0x2F5A4A,col2:0x1E3A2E,belly:0xCFD8B8,headKind:'dragon',headCol:0x3F7A5A,muzzle:0xB8D8A8,eyeCol:0xFFD04A,tail:'snake',tailLen:2.4,tailCol:0x3F7A5A,mane:0x1E4A3A,hoof:0xC8B890,whiskers:0x9FE6FF,extra:genbuExtra});
-def('omukade',  {type:'kaiju',v:'chain'});
-def('otori',    {type:'kaiju',v:'roc',atk:'wing'});
+def('gokaryu',  {type:'kaiju',v:'gz',g:'ember',atk:'bite'});
+def('mizuchi',  {type:'kaiju',v:'gz',g:'tide',atk:'bite'});
+def('genbu',    {type:'quad',len:4.2,height:1.7,w:1.75,leg:0.8,headR:1.6,col:0x2F5A4A,col2:0x1E3A2E,belly:0xCFD8B8,headKind:'dragon',headCol:0x3F7A5A,muzzle:0xB8D8A8,eyeCol:0xFFD04A,tail:'snake',tailLen:2.4,tailCol:0x3F7A5A,mane:0x1E4A3A,hoof:0xC8B890,whiskers:0x9FE6FF,extra:genbuExtra});
+def('yamata',   {type:'kaiju',v:'gz',g:'hydra',atk:'bite'});
+def('otori',    {type:'kaiju',v:'gz',g:'wyvern',atk:'wing'});
 def('hitotsume',{type:'kaiju',v:'cyclops',atk:'club'});
-def('odokuro',  {type:'kaiju',v:'skeleton',atk:'slam'});
-def('wanyudo',  {type:'kaiju',v:'wheel'});
-def('okubi',    {type:'kaiju',v:'head'});
-def('oshiro',   {type:'kaiju',v:'castle',atk:'slam'});
-const SEGK_OF={gokaryu:0.6,heikegani:0.6,genbu:0.6,omukade:0.55,otori:0.55,hitotsume:0.6,odokuro:0.6,wanyudo:0.6,okubi:0.6,oshiro:0.6,kuzuryu:0.42,orochi:0.48,kitsune:0.55,amaterasu:0.55,susanoo:0.75,saruta:0.75,orizuru:0.72,kane:0.75,raijin:0.8,mao:0.8,inari:0.8};
+def('odokuro',  {type:'kaiju',v:'gz',g:'bone',atk:'bite'});
+def('mekaryu',  {type:'kaiju',v:'gz',g:'mecha',atk:'slam'});
+def('shishi',   {type:'quad',key:'shishi',len:4.4,height:1.9,w:1.9,leg:0.85,headR:1.9,col:0x8C9098,col2:0x5E626C,belly:0xC8CCD4,headKind:'lion',headCol:0x9CA0AA,muzzle:0xB4B8C2,mane:0x2E8C78,maneTip:0xBFF5DC,eyeCol:0xFFB03A,eyeGlow:true,fangs:true,tail:'fluffy',tailLen:2.0,tailCol:0x2E8C78,tailTip:0xBFF5DC,extra:shishiExtra});
+def('oshiro',   {type:'kaiju',v:'gz',g:'castle',atk:'slam'});
+const SEGK_OF={gokaryu:0.42,mizuchi:0.42,genbu:0.42,yamata:0.4,otori:0.42,hitotsume:0.45,odokuro:0.42,mekaryu:0.5,shishi:0.42,oshiro:0.42,kuzuryu:0.42,orochi:0.48,kitsune:0.55,amaterasu:0.55,susanoo:0.75,saruta:0.75,orizuru:0.72,kane:0.75,raijin:0.8,mao:0.8,inari:0.8};
 function getBuilt(key){ if(BUILT[key]) return BUILT[key]; const sp=DEFS[key]; if(!sp) return null;
   const pK=SEGK; SEGK=SEGK_OF[key]||1; let b; try{ b=buildByType(sp); } finally{ SEGK=pK; }
   const geos=b.rig.build(); const bb=geos.toon.boundingBox; geos.height=bb.max.y-Math.min(0,bb.min.y);
@@ -1342,9 +1347,9 @@ function getBuilt(key){ if(BUILT[key]) return BUILT[key]; const sp=DEFS[key]; if
       for(let i=0;i<ps.count;i+=3){ v.fromBufferAttribute(ps,i).multiply(sc3).applyQuaternion(qq).add(new T.Vector3(pt.p[0],pt.p[1],pt.p[2])); const d=v.lengthSq(); if(d>best){ best=d; tip=v.clone(); } } }
     if(tip&&best<0.09) tip=null; }catch(err){ tip=null; }   /* v86: weapon tip in hand space, for the swing trail */
   return (BUILT[key]={sp,b,geos,height:geos.height,proto:b.rig,tip}); }
-function kBuild(sp){ const o=KJV[sp.v](sp); o.rig.minPart=0.1; o.rig.minPartOl=0.35; return o; }
-function kQuad(sp){ const o=buildQuad(sp); o.rig.minPart=0.07; o.rig.minPartOl=0.22; return o; }
-function buildByType(sp){ return sp.type==='quad'?(sp.key==='genbu'?kQuad(sp):buildQuad(sp)):sp.type==='serpent'?buildSerpent(sp):sp.type==='spider'?buildSpider(sp):sp.type==='blob'?buildBlob(sp):sp.type==='kaiju'?kBuild(sp):sp.type==='fish'?buildFish(sp):buildHuman(sp); }
+function kBuild(sp){ const o=KJV[sp.v](sp); o.rig.minPart=0.1; o.rig.minPartOl=0.35; o.rig.facet=true; return o; }
+function kQuad(sp){ const o=buildQuad(sp); o.rig.minPart=0.07; o.rig.minPartOl=0.22; o.rig.facet=true; return o; }
+function buildByType(sp){ return sp.type==='quad'?(sp.key==='genbu'||sp.key==='shishi'?kQuad(sp):buildQuad(sp)):sp.type==='serpent'?buildSerpent(sp):sp.type==='spider'?buildSpider(sp):sp.type==='blob'?buildBlob(sp):sp.type==='kaiju'?kBuild(sp):sp.type==='fish'?buildFish(sp):buildHuman(sp); }
 function cloneRig(proto){ /* fresh bone hierarchy matching the prototype's bind pose */
   const map={}, bones=[];
   for(const b of proto.bones){ const n=new T.Bone(); n.name=b.name; n.position.copy(b.position); n.userData.rest=b.position.clone(); map[b.name]=n; bones.push(n);
@@ -1909,6 +1914,146 @@ KJV.head=function(sp){
 };
 
 /* ---- 10. GENBU, the mountain tortoise: a quadruped carrying a whole shrine mountain on its shell */
+/* ================================================================ v89 GODZILLA-TYPE POLYGON KAIJU
+   One hunched, heavy-tailed biped (the Toho silhouette: huge thighs, small clawed arms, dorsal plates, a long tail)
+   shared by seven bosses; sp.g picks the species. Built at low curve detail and flat shaded, so every body reads as
+   cut facets rather than smooth putty. */
+const GZ={
+  ember :{hide:0x2E2C36,hide2:0x4D4660,belly:0x7A4A38,plate:0x4D4660,hot:0xFF6A1F,hot2:0xFFD04A,eye:0xFFD04A,claw:0xEDE3CC},
+  tide  :{hide:0x1E5A6E,hide2:0x2F86A0,belly:0xBFE3DC,plate:0x4FD0E6,hot:0x4FE6FF,hot2:0xE8FFFF,eye:0xB8FFF0,claw:0xF4F0E0},
+  wyvern:{hide:0x1F2A5A,hide2:0x3A58B8,belly:0x8FA8E0,plate:0x2E3E8C,hot:0xFFF27A,hot2:0xFFFFFF,eye:0xFFF27A,claw:0xE8E0C8},
+  hydra :{hide:0x8A6A1E,hide2:0xE0B030,belly:0xF2DC90,plate:0xF5C542,hot:0xFF8A3A,hot2:0xFFE27A,eye:0xFF3A2A,claw:0xFFF4D0},
+  bone  :{hide:0xE6DCC4,hide2:0xB8AC90,belly:0xC8BC9E,plate:0xD8CCB0,hot:0xB070FF,hot2:0xE8C8FF,eye:0xB070FF,claw:0xCFC6AE},
+  mecha :{hide:0x262A34,hide2:0x434A5A,belly:0x1A1D26,plate:0x2E3340,hot:0x59E6FF,hot2:0xFFFFFF,eye:0x59E6FF,claw:0xD8A82A},
+  castle:{hide:0x3C5448,hide2:0x6A8C70,belly:0xC8BE98,plate:0x7C8290,hot:0xFFB03A,hot2:0xFFE79A,eye:0xFFE27A,claw:0xF5C542}};
+/* a flat diamond dorsal plate standing in the body's mid-plane; its tip leans back */
+function gzPlate(R,bone,x,y,z,s,col,hot,lean){ const a=G_.shape([[-0.62,0],[-0.22,0.95],[0,1.55],[0.22,0.95],[0.62,0]],0.2,0);
+  R.add(bone,a,col,{p:[x,y,z],r:[-(lean==null?0.5:lean),Math.PI/2,0],s:[s,s,s]});
+  if(hot) R.add(bone,G_.shape([[-0.2,0.9],[0,1.6],[0.2,0.9]],0.24,0),hot,{p:[x,y,z],r:[-(lean==null?0.5:lean),Math.PI/2,0],s:[s,s,s],glow:true,ol:false}); }
+/* long-necked head (one of three on the hydra) */
+function gzHead(R,bone,jawBone,hr,P,g){
+  const mech=g==='mecha', skull=g==='bone';
+  if(mech){
+    R.add(bone,G_.box(hr*1.5,hr*1.1,hr*1.7),P.hide,{p:[0,0,hr*0.2],grad:P.hide2});
+    R.add(bone,G_.box(hr*1.2,hr*0.38,hr*0.5),P.hide2,{p:[0,-hr*0.05,hr*1.15]});
+    R.add(bone,G_.box(hr*1.3,hr*0.2,hr*0.35),P.hot,{p:[0,hr*0.12,hr*1.08],glow:true,ol:false,grad:P.hot2});
+    for(const sd of [1,-1]){ R.add(bone,G_.box(hr*0.25,hr*0.9,hr*1.0),P.plate,{p:[sd*hr*0.82,-hr*0.1,hr*0.1]});
+      R.add(bone,G_.cone(hr*0.22,hr*1.6,4),P.claw,{p:[sd*hr*0.9,hr*0.85,-hr*0.2],r:[-0.5,0,sd*-0.7],grad:0x9A7418}); }
+    R.add(bone,G_.shape([[-0.2,0],[0.2,0],[0.12,1.9],[0,2.4],[-0.12,1.9]],0.12,0),P.claw,{p:[0,hr*0.55,hr*0.55],r:[-0.3,0,0],s:[hr*0.8,hr*0.8,hr*0.8]});
+    R.add(jawBone||bone,G_.box(hr*1.1,hr*0.38,hr*1.2),P.hide2,{p:[0,-hr*0.5,hr*0.75]});
+    return; }
+  const hc=skull?P.hide:P.hide, hc2=P.hide2;
+  R.add(bone,G_.sph(hr*0.95,hr*0.8,hr*1.1,18,14),hc,{p:[0,0.05,0.1],grad:hc2,gax:1.5});
+  R.add(bone,G_.sph(hr*(skull?0.55:0.72),hr*(skull?0.38:0.48),hr*(g==='wyvern'?1.25:1.05),16,12),hc,{p:[0,-hr*0.12,hr*1.15]});
+  for(const sd of [1,-1]){
+    R.add(bone,G_.box(hr*0.55,hr*0.14,hr*0.7),shade(hc,0.55),{p:[sd*hr*0.46,hr*0.5,hr*0.78],r:[0.35,sd*-0.2,sd*-0.5]});   /* angry brow wedge */
+    kEyeGlow(R,bone,sd*hr*0.46,hr*(skull?0.18:0.3),hr*1.0,hr*(skull?0.34:0.26),P.eye,sd*-0.5);
+    R.add(bone,G_.sph(hr*0.07,hr*0.06,hr*0.08,5,4),0x120E14,{p:[sd*hr*0.2,hr*0.02,hr*2.05],ol:false}); }
+  /* species crests and horns */
+  if(g==='ember') for(const sd of [1,-1]){ R.add(bone,G_.cone(hr*0.18,hr*1.0,4),0xE8DCC0,{p:[sd*hr*0.5,hr*0.95,-hr*0.35],r:[-0.9,0,sd*-0.3],grad:0xA89878});
+      kSpike(R,bone,hr*0.1,hr*0.5,P.plate,[sd*hr*0.75,hr*0.2,-hr*0.5],-0.4,sd*-1.1); }
+  if(g==='tide'){ R.add(bone,G_.shape([[-0.2,0],[0.0,1.8],[0.3,1.0],[0.55,1.5],[0.7,0.4],[0.9,0.7],[0.95,0]],0.2,0),P.plate,{p:[0,hr*0.7,-hr*0.5],r:[-0.1,Math.PI/2,0],s:[hr*0.8,hr*0.8,hr*0.8]});
+    for(const sd of [1,-1]) R.add(bone,G_.shape([[0,0],[1.5,0.5],[1.2,0],[1.6,-0.5],[0,-0.35]],0.1,0),P.plate,{p:[sd*hr*0.85,0,-hr*0.2],r:[0,sd>0?0.2:Math.PI-0.2,0],s:[hr*0.6,hr*0.6,hr*0.6]}); }
+  if(g==='wyvern'){ R.add(bone,G_.cone(hr*0.38,hr*1.2,4),0xF5C542,{p:[0,-hr*0.2,hr*2.2],r:[Math.PI/2,0,0],grad:0xB88810});
+    for(const sd of [1,-1]){ R.add(bone,G_.cone(hr*0.2,hr*2.1,4),0xE8E0C8,{p:[sd*hr*0.55,hr*0.7,-hr*0.9],r:[-1.25,0,sd*-0.35],grad:0x9A8E70}); }
+    R.add(bone,G_.shape([[-0.2,0],[0,1.6],[0.25,0.9],[0.5,1.5],[0.7,0]],0.18,0),0xF5C542,{p:[0,hr*0.7,-hr*0.2],r:[-0.5,Math.PI/2,0],s:[hr*0.8,hr*0.8,hr*0.8]}); }
+  if(g==='hydra'){ for(const sd of [1,-1]){ R.add(bone,G_.cone(hr*0.2,hr*1.6,4),P.plate,{p:[sd*hr*0.5,hr*0.8,-hr*0.2],r:[-0.7,0,sd*-0.5],grad:0xA07818});
+      R.add(bone,G_.cone(hr*0.12,hr*0.9,4),0xFFF4D0,{p:[sd*hr*0.85,hr*0.1,hr*0.1],r:[-0.3,0,sd*-1.35]}); }
+    R.add(bone,G_.shape([[-0.2,0],[0,1.4],[0.2,0]],0.16,0),P.plate,{p:[0,hr*0.75,-hr*0.1],r:[-0.4,Math.PI/2,0],s:[hr*0.9,hr*0.9,hr*0.9]}); }
+  if(skull) for(const sd of [1,-1]) R.add(bone,G_.cone(hr*0.16,hr*1.0,4),P.hide2,{p:[sd*hr*0.55,hr*0.85,-hr*0.2],r:[-0.7,0,sd*-0.45]});
+  if(g==='castle') for(const sd of [1,-1]){ R.add(bone,G_.cone(hr*0.24,hr*1.8,4),P.claw,{p:[sd*hr*0.6,hr*0.85,-hr*0.2],r:[-0.55,0,sd*-0.6],grad:0xB88810}); R.add(bone,G_.box(hr*0.5,hr*0.14,hr*0.7),0xC8241E,{p:[sd*hr*0.46,hr*0.62,hr*0.75],r:[0.35,sd*-0.2,sd*-0.5]}); }
+  /* mouth: dark gap, glow, teeth, jaw */
+  R.add(bone,G_.sph(hr*0.55,hr*0.14,hr*1.0),skull?0x14101E:P.hot,{p:[0,-hr*0.52,hr*1.0],glow:!skull,ol:false,grad:P.hot2});
+  kTeeth(R,bone,6,hr*0.5,hr*0.36,hr*0.5,hr*(g==='wyvern'?1.9:1.7),-hr*0.5,hr*(skull?0.4:0.32),0xFFFFFF,false);
+  if(jawBone){ R.add(jawBone,G_.sph(hr*0.58,hr*0.24,hr*1.15),hc,{p:[0,-hr*0.05,hr*0.75],grad:P.belly,gax:1.5}); kTeeth(R,jawBone,5,hr*0.44,hr*0.34,hr*0.35,hr*1.4,hr*0.2,hr*0.3,0xFFFFFF,true); }
+  else R.add(bone,G_.sph(hr*0.55,hr*0.2,hr*1.0),hc,{p:[0,-hr*0.78,hr*0.85],r:[0.12,0,0],grad:P.belly,gax:1.5}); }
+/* bat wings: arm spar, finger spars and two flat membranes per side; wing/wing2 bones are posed by poseBiped */
+function gzWings(R,P,W1,W2,L,span){ const mem=P.plate, fing=P.hide;
+  for(const sd of [1,-1]){ const n=sd>0?'L':'R';
+    R.bone('wing'+n,'chest',[sd*1.9,1.3,-0.5]); R.bone('wing2'+n,'wing'+n,[sd*W1,0,-0.2]);
+    R.add('wing'+n,G_.tube([[0,0,0],[sd*W1*0.5,0.25,-0.05],[sd*W1,0,-0.2]],0.55,0.34,5,6),fing,{});
+    R.add('wing'+n,G_.sph(0.72,0.66,0.72,8,5),fing,{});
+    R.add('wing'+n,G_.shape([[0,0],[sd*W1,0],[sd*W1*1.0,L*0.95],[sd*W1*0.62,L*0.62],[sd*W1*0.3,L*1.05],[0,L*0.75]],0.07,0),mem,{p:[0,0,-0.2],r:[-Math.PI/2,0,0],grad:P.hide2,gax:1.2});
+    R.add('wing2'+n,G_.tube([[0,0,0],[sd*W2*0.5,-0.05,-0.1],[sd*W2,-0.3,-0.2]],0.34,0.14,5,6),fing,{});
+    R.add('wing2'+n,G_.shape([[0,0],[sd*W2,0.1],[sd*W2*0.82,L*0.8],[sd*W2*0.5,L*0.5],[sd*W2*0.22,L*0.95],[0,L*0.7]],0.07,0),mem,{p:[0,-0.05,-0.2],r:[-Math.PI/2,0,0],grad:P.hide2,gax:1.2});
+    for(let k=0;k<3;k++){ const t=(k+1)/3.4; R.add('wing2'+n,G_.tube([[0,0,0],[sd*W2*t*0.55,-0.02,-L*t*0.35],[sd*W2*t*0.9,-0.05,-L*t*0.85]],0.16,0.05,4,6),fing,{p:[0,-0.04,-0.2],ol:false}); }
+    kSpike(R,'wing2'+n,0.22,1.3,P.claw,[sd*W2,-0.3,-0.2],0,sd*-1.57); } }
+KJV.gz=function(sp){
+  const g=sp.g, P=GZ[g], R=new Rig(), mech=g==='mecha', skel=g==='bone', hyd=g==='hydra', wyv=g==='wyvern', cas=g==='castle', tide=g==='tide';
+  const o={L1:2.3,L2:2.1,ft:0.35,tH:3.7,hw:1.45,cw:2.2,nk:1.1,hr:1.8,aU:1.2,aF:1.1,tl:1.55,tr:1.65,thR:1.4,shR:0.95,arR:0.5,fl:2.0,fr:0.85,col:P.hide,belly:P.belly,foot:P.hide,claw:P.claw,neckZ:0.55,headZ:0.5};
+  if(tide) Object.assign(o,{thR:1.2,shR:0.8,aU:1.5,aF:1.4,arR:0.45,fr:0.95,tr:1.4});
+  if(wyv) Object.assign(o,{thR:1.1,shR:0.75,L1:2.6,L2:2.6,nk:1.7,hr:1.55,aU:0,tl:1.7,tr:1.1,neckZ:0.9,fl:2.2,fr:0.7});
+  if(hyd) Object.assign(o,{nk:2.4,hr:1.4,aU:0,thR:1.3,tl:1.8,tr:1.4,neckZ:0.7});
+  if(skel) Object.assign(o,{thR:1.0,shR:0.72,arR:0.42,L1:2.7,L2:2.6,tH:3.9,hw:1.3,cw:2.0,tr:1.1,hr:2.0,fl:2.0,fr:0.8,belly:P.hide2});
+  if(mech) Object.assign(o,{thR:1.55,shR:1.15,arR:0.8,aU:1.9,aF:1.8,cw:2.8,tr:1.25,hr:1.5,fl:2.3,fr:1.15});
+  if(cas) Object.assign(o,{thR:1.9,shR:1.25,tH:4.0,cw:3.0,hw:1.9,arR:0.75,aU:1.6,aF:1.5,hr:2.0,tr:2.1,tl:1.9,fl:2.5,fr:1.2});
+  kBipedBones(R,o);
+  const blob=(rx,ry,rz,ws,hs)=>mech?G_.box(rx*1.9,ry*1.9,rz*1.9):G_.sph(rx,ry,rz,ws,hs);
+  /* legs, arms, tail */
+  if(mech){ for(const sd of [1,-1]){ const n=sd>0?'L':'R';
+      R.add('thigh'+n,G_.box(o.thR*1.9,o.L1*0.95,o.thR*1.9),P.hide,{p:[0,-o.L1*0.5,0],grad:P.hide2}); R.add('thigh'+n,G_.box(o.thR*2.1,0.25,o.thR*2.1),P.claw,{p:[0,-0.1,0],ol:false});
+      R.add('shin'+n,G_.box(o.shR*1.9,o.L2*0.95,o.shR*1.9),P.hide,{p:[0,-o.L2*0.5,0]}); R.add('shin'+n,G_.box(o.shR*2.0,0.5,o.shR*2.0),P.hide2,{p:[0,0.0,0.1]});
+      R.add('foot'+n,G_.box(o.fr*2.2,0.7,o.fl*1.35),P.hide2,{p:[0,-0.2,o.fl*0.35]});
+      for(let k=-1;k<=1;k++) R.add('foot'+n,G_.cone(o.fr*0.25,o.fl*0.5,4),P.claw,{p:[k*o.fr*0.6,-0.2,o.fl*0.98],r:[Math.PI/2,0,0]});
+      R.add('arm'+n,G_.box(o.arR*2.2,o.arR*2.2,o.arR*2.2),P.hide2,{p:[sd*0.3,0.1,0]}); R.add('arm'+n,G_.box(o.arR*1.7,o.aU,o.arR*1.7),P.hide,{p:[0,-o.aU*0.5,0]});
+      R.add('fore'+n,G_.box(o.arR*1.9,o.aF,o.arR*1.9),P.hide2,{p:[0,-o.aF*0.5,0]}); R.add('hand'+n,G_.box(o.arR*2.2,o.arR*1.6,o.arR*2.0),P.hide,{p:[0,-o.arR*0.5,0.05]});
+      for(let k=-1;k<=1;k++) R.add('hand'+n,G_.cone(o.arR*0.22,o.arR*1.5,4),P.claw,{p:[k*o.arR*0.6,-o.arR*1.4,o.arR*0.5],r:[Math.PI-0.7,0,0]}); }
+    for(let i=0;i<6;i++){ const r=o.tr*(1-i*0.13); R.add('tail'+i,G_.box(r*1.8,r*1.5,o.tl*0.95),i%2?P.hide2:P.hide,{p:[0,0,-o.tl*0.5]}); } }
+  else { kLegs(R,o); if(o.aU) kArms(R,o); kTail(R,o,P.hide,P.hide2); if(skel) for(let i=0;i<6;i++) R.add('tail'+i,G_.sph(o.tr*(1-i*0.12)*0.75,o.tr*0.6,0.2),P.hide2,{p:[0,0.05,-o.tl*0.3]}); }
+  /* torso */
+  R.add('pelvis',blob(1.8,1.5,2.0,12,8),P.hide,{grad:P.belly,gax:2.4});
+  if(skel){ R.add('spine',G_.tube([[0,-1.2,0],[0,0.2,-0.2],[0,1.3,-0.1]],0.42,0.4,5,6),P.hide,{p:[0,0.2,-0.5]});
+    for(let i=0;i<5;i++){ const y=1.4-i*0.55, rr=1.75-Math.abs(i-1.5)*0.18; for(const sd of [1,-1]) R.add('chest',G_.tor(rr,0.2,4,9,Math.PI*0.95),P.hide,{p:[0,y-0.4,0.2],r:[Math.PI/2+0.15,sd>0?0:Math.PI,0.15]});
+      R.add('chest',G_.tor(rr,0.2,4,9,Math.PI*0.95),P.hide,{p:[0,y-0.4,0.2],r:[Math.PI/2+0.15,0,0.15]}); }
+    for(const [bn,y] of [['pelvis',0.2],['spine',0.5],['spine',-0.6],['chest',1.1],['chest',0.2],['chest',-0.7]]) R.add(bn,G_.sph(0.55,0.5,0.55,6,4),P.hide2,{p:[0,y,-1.3]});
+    R.add('chest',G_.sph(0.9,1.0,0.8,8,5),P.hot,{p:[0,0.0,0.2],glow:true,ol:false,grad:P.hot2}); }
+  else { R.add('spine',blob(2.0,1.8,1.95,12,8),P.hide,{grad:P.belly,gax:2.2}); R.add('chest',blob(2.5,2.1,2.15,12,8),P.hide,{grad:P.belly,gax:2.2});
+    for(let i=0;i<5;i++){ const y=1.0-i*0.5; R.add('chest',mech?G_.box(1.9,0.12,0.2):G_.sph(1.1-Math.abs(y)*0.2,0.14,0.3,8,4),shade(P.belly,1.15),{p:[0,y,2.05*Math.sqrt(Math.max(0.05,1-(y/2.1)**2))],ol:false}); } }
+  /* species dorsal armour */
+  if(!skel&&!wyv){ const sp0=tide?1.7:cas?0.8:mech?1.2:hyd?1.1:1.5, col=P.plate, hot=(g==='ember'||g==='tide'||mech)?P.hot:null;
+    gzPlate(R,'chest',0,1.2,-1.76,sp0*0.95,col,hot); gzPlate(R,'chest',0,0.2,-2.12,sp0*1.2,col,hot); gzPlate(R,'chest',0,-0.8,-1.98,sp0*1.1,col,hot);
+    gzPlate(R,'spine',0,0.5,-1.85,sp0,col,hot); gzPlate(R,'pelvis',0,0.5,-1.9,sp0*0.9,col,hot);
+    for(const sd of [1,-1]){ gzPlate(R,'chest',sd*1.35,0.7,-1.5,sp0*0.6,col,null,0.3); gzPlate(R,'spine',sd*1.2,0.2,-1.4,sp0*0.55,col,null,0.3); }
+    for(let i=0;i<5;i++) gzPlate(R,'tail'+i,0,o.tr*0.62*(1-i*0.12),-0.3,sp0*(0.85-i*0.14),col,hot); }
+  if(wyv) for(let i=0;i<3;i++) gzPlate(R,'chest',0,1.2-i*0.9,-1.8+i*0.1,0.9-i*0.1,P.plate,null);
+  if(skel) for(let i=0;i<5;i++) gzPlate(R,'tail'+i,0,o.tr*0.6*(1-i*0.12),-0.3,0.9-i*0.14,P.hide2,null);
+  if(g==='ember') for(const sd of [1,-1]){ kTube(R,'chest',[[sd*0.9,1.2,1.5],[sd*1.1,0.5,1.7],[sd*0.95,-0.1,1.75],[sd*1.15,-0.8,1.55]],0.1,0.05,P.hot,{glow:true,ol:false,rs:4,seg:6});
+    kTube(R,'thigh'+(sd>0?'L':'R'),[[sd*0.2,-0.2,1.0],[sd*0.45,-0.9,0.95],[sd*0.3,-1.6,0.85]],0.08,0.04,P.hot,{glow:true,ol:false,rs:4,seg:6}); }
+  if(mech){ R.add('chest',G_.sph(0.95,0.95,0.5,10,6),P.hot,{p:[0,0.45,2.12],glow:true,ol:false,grad:P.hot2}); R.add('chest',G_.tor(1.15,0.16,4,12),P.claw,{p:[0,0.45,2.1]});
+    for(const sd of [1,-1]){ R.add('chest',G_.cyl(0.55,0.65,2.2,6),P.hide2,{p:[sd*2.4,1.9,-0.3],r:[Math.PI/2-0.3,0,0]}); R.add('chest',G_.sph(0.4,0.4,0.4,6,4),P.hot,{p:[sd*2.4,2.5,1.0],glow:true,ol:false});
+      R.add('chest',G_.box(1.1,1.6,2.2),P.plate,{p:[sd*2.5,0.6,0.2]}); for(let k=0;k<3;k++) R.add('chest',G_.box(0.2,0.1,0.3),P.hot,{p:[sd*2.62,0.2+k*0.3,1.35],glow:true,ol:false}); }
+    for(let i=0;i<6;i++) R.add('tail'+i,G_.box(0.15,0.12,0.5),P.hot,{p:[0,o.tr*0.8*(1-i*0.13),-0.3],glow:true,ol:false}); }
+  if(cas){ /* the castle riding its back: three tiers of white plaster under dark tiled roofs, burning windows, a golden shachi crown */
+    const plaster=0xF2EEE2, tile=0x2F3C4E, gold=0xF5C542, red=0xC8241E, roof=(w,d,y)=>{ R.add('chest',G_.cyl(w*0.45,w*1.0,0.9,4),tile,{p:[0,y,-1.2],r:[0,Math.PI/4,0],s:[1,1,d/w],grad:shade(tile,1.6),gax:1.4});
+      for(const sd of [1,-1]){ kSpike(R,'chest',0.16,0.9,tile,[sd*w*0.74,y-0.2,-1.2],0,sd*-1.0,{ol:false}); R.add('chest',G_.cone(0.2,0.7,4),gold,{p:[sd*w*0.42,y+0.75,-1.2],r:[0,0,sd*-0.2]}); } };
+    R.add('chest',G_.box(4.4,1.5,3.0),plaster,{p:[0,2.5,-1.2],grad:0xDAD4C2,gax:1.6}); roof(3.1,2.2,3.5);
+    R.add('chest',G_.box(3.0,1.4,2.2),plaster,{p:[0,4.4,-1.2],grad:0xDAD4C2}); roof(2.3,1.7,5.3);
+    R.add('chest',G_.box(1.9,1.2,1.5),plaster,{p:[0,6.0,-1.2],grad:0xDAD4C2}); roof(1.6,1.3,6.9);
+    for(const sd of [1,-1]){ R.add('chest',G_.sph(0.2,0.5,0.2,6,4),gold,{p:[sd*0.6,7.8,-1.2],r:[0,0,sd*-0.35]}); kSpike(R,'chest',0.16,0.55,gold,[sd*0.5,8.1,-1.2],0,sd*0.5); }
+    for(const [y,w] of [[2.5,1.2],[4.4,0.9],[6.0,0.6]]) for(const sx of [-1,1]) R.add('chest',G_.box(w*0.5,0.5,0.1),P.hot,{p:[sx*w*1.1,y,0.38],glow:true,ol:false,grad:P.hot2});
+    for(const sd of [1,-1]){ R.add('chest',G_.cyl(0.07,0.07,4.6,4),0x3A2A22,{p:[sd*2.6,3.2,-2.4],ol:false}); R.add('chest',G_.shape([[0,0],[0.9,0.1],[0.95,-2.2],[0,-2.1]],0.03,0),red,{p:[sd*2.6+sd*0.5,5.2,-2.4]}); }
+    /* stone shoulder bastions and a gold-trimmed belly plate */
+    for(const sd of [1,-1]){ R.add('chest',G_.box(1.5,1.1,1.7),P.plate,{p:[sd*2.6,1.4,0.0],grad:P.hide2}); R.add('chest',G_.box(1.6,0.2,1.8),gold,{p:[sd*2.6,2.0,0.0],ol:false}); } }
+  /* neck(s) and head(s) */
+  R.add('neck',G_.cap(hyd?0.75:wyv?0.7:skel?0.5:1.05,hyd?1.6:wyv?1.1:0.8,6),P.hide,{p:[0,hyd?0.9:0.45,0.2],r:[hyd?0.2:0.45,0,0],grad:P.belly,gax:2});
+  const hr=o.hr;
+  gzHead(R,'head','jaw',hr,P,g);
+  if(hyd){ for(const sd of [1,-1]){ const n=sd>0?'L':'R';
+      const seg=[[sd*1.0,1.5,0.7],[sd*0.8,1.5,0.8],[sd*0.2,1.2,0.9]];
+      R.bone('nk'+n+'1','chest',[sd*2.0,o.tH*0.4,0.6]); R.bone('nk'+n+'2','nk'+n+'1',seg[0]); R.bone('nk'+n+'3','nk'+n+'2',seg[1]); R.bone('hd'+n,'nk'+n+'3',seg[2]);
+      for(let i=1;i<=3;i++){ const e=seg[i-1]; R.add('nk'+n+i,G_.tube([[0,0,0],[e[0]*0.5,e[1]*0.55,e[2]*0.5],e],0.8-i*0.08,0.72-i*0.1,6,6),P.hide,{grad:P.belly,gax:1.8}); }
+      for(let i=0;i<3;i++) gzPlate(R,'nk'+n+(i+1),0,0.9,-0.5,0.5,P.plate,null);
+      gzHead(R,'hd'+n,null,hr*0.85,P,g); }
+    for(let i=0;i<4;i++) gzPlate(R,'neck',0,0.5+i*0.0,-0.85,0.55,P.plate,null); }
+  if(wyv||hyd) gzWings(R,P,wyv?4.4:5.0,wyv?4.8:5.2,wyv?3.6:4.6,0);
+  return {rig:R,kind:'kaiju',var:'biped'};
+};
+
+function shishiExtra(R,d,G){ const W=d.W, L=d.L, stone=0x7C8290, jade=0x2E8C78, gold=0xF5C542;
+  for(let i=0;i<5;i++){ const z=(i-2)*L*0.17; gzPlate(R,'body',0,W*0.82,z,0.75-Math.abs(i-2)*0.08,stone,null,0.2); }
+  R.add('neck',G_.tor(0.75,0.12,4,10),0xD8C8A0,{p:[0,0.05,0.0],r:[Math.PI/2,0.5,0]});   /* the sacred rope round its throat */
+  R.add('head',G_.cone(d.hr*0.16,d.hr*0.9,4),gold,{p:[0,d.hr*0.95,d.hr*0.45],r:[0.35,0,0],grad:0xB88810});          /* one golden horn */
+  for(const sd of [1,-1]){ R.add('front',G_.box(0.7,0.12,0.7),jade,{p:[sd*W*0.75,W*0.5,0.0],glow:true,ol:false}); R.add('rear',G_.box(0.7,0.12,0.7),jade,{p:[sd*W*0.7,W*0.5,0.0],glow:true,ol:false}); } }
 function genbuExtra(R,d,G){ const W=d.W, L=d.L, shell=0x2F5A4A, rock=0x7C8290, snow=0xF4F8FF, pine=0x2E6A3A, red=0xC8241E, gold=0xF5C542, wood=0x5A3A22;
   R.add('body',G.sph(W*1.6,W*1.15,L*0.68,24,16),shell,{p:[0,W*0.5,-L*0.03],grad:shade(shell,0.55),gax:1.6});
   for(let i=0;i<8;i++){ const a=i/8*TAU, rr=W*1.5; R.add('body',G.sph(W*0.45,W*0.2,W*0.45,8,6),shade(shell,1.3),{p:[Math.sin(a)*rr*0.95,W*0.5+Math.cos(a*1.0)*0.0+W*0.35,Math.cos(a)*L*0.62*0.95-L*0.03],r:[0,a,0],ol:false}); }
@@ -1926,22 +2071,24 @@ function genbuExtra(R,d,G){ const W=d.W, L=d.L, shell=0x2F5A4A, rock=0x7C8290, s
 /* ================================================================ poses */
 function poseBiped(I,s){ const b=I.b, S=I.st, t=S.t, mv=S.move, ph=S.phase, V=I.sp.v, atk=I.sp.atk;
   for(const k in b){ R0(b[k]); OFF(b[k]); }
-  const sw=Math.sin(ph), cw=Math.cos(ph), A=0.5*Math.min(1,mv*1.5)*(V==='castle'?0.7:1);
+  const gz=V==='gz', gg=I.sp.g, sw=Math.sin(ph), cw=Math.cos(ph), A=0.5*Math.min(1,mv*1.5)*(gg==='castle'||gg==='mecha'?0.7:1);
   ADD(b.thighL,-sw*A,0,0); ADD(b.thighR,sw*A,0,0);
   ADD(b.shinL,Math.max(0,sw)*A*1.25+0.05,0,0); ADD(b.shinR,Math.max(0,-sw)*A*1.25+0.05,0,0);
   ADD(b.footL,-Math.max(0,sw)*A*0.55,0,0); ADD(b.footR,-Math.max(0,-sw)*A*0.55,0,0);
   OFF(b.pelvis,0,-Math.abs(sw)*0.22*mv+Math.sin(t*1.3)*0.04,0); ADD(b.pelvis,0,sw*0.1*mv,Math.sin(ph)*0.035*mv);
-  ADD(b.spine,0.06+Math.sin(t*1.2)*0.02,-sw*0.09*mv,0); ADD(b.chest,0.02,-sw*0.07*mv,Math.sin(t*0.9)*0.01);
+  ADD(b.spine,0.06+(gz?0.13:0)+Math.sin(t*1.2)*0.02,-sw*0.09*mv,0); ADD(b.chest,0.02+(gz?0.06:0),-sw*0.07*mv,Math.sin(t*0.9)*0.01);
   if(b.chest) b.chest.scale.setScalar(1+Math.sin(t*1.7)*0.012);
-  ADD(b.neck,-0.08+Math.sin(t*1.5)*0.03,Math.sin(t*0.7)*0.12*(1-mv),0); ADD(b.head,Math.sin(t*2.1)*0.03,Math.sin(t*0.9)*0.15*(1-mv),0);
+  ADD(b.neck,-0.08-(gz?0.12:0)+Math.sin(t*1.5)*0.03,Math.sin(t*0.7)*0.12*(1-mv),0); ADD(b.head,Math.sin(t*2.1)*0.03,Math.sin(t*0.9)*0.15*(1-mv),0);
   if(b.armL){ ADD(b.armL,sw*A*0.75+Math.sin(t*1.3)*0.04,0,0.08); ADD(b.armR,-sw*A*0.75-Math.sin(t*1.3+1)*0.04,0,-0.08); ADD(b.foreL,-0.25,0,0); ADD(b.foreR,-0.25,0,0); }
-  if(atk==='bite'||V==='skeleton') ADD(b.jaw,0.17+Math.sin(t*1.9)*0.04,0,0);
+  if(atk==='bite'||V==='skeleton'||gg==='bone') ADD(b.jaw,0.17+Math.sin(t*1.9)*0.04,0,0);
+  if(b.nkL1){ for(const sd of [1,-1]){ const n=sd>0?'L':'R', o2=sd>0?0:2.1, f=Math.sin(t*1.25+o2), f2=Math.sin(t*0.8+o2*1.3);
+      ADD(b['nk'+n+'1'],-0.35+f*0.1,sd*(0.35+f2*0.12),sd*0.1); ADD(b['nk'+n+'2'],0.35+f2*0.15,sd*0.25*f,0); ADD(b['nk'+n+'3'],0.2+f*0.12,sd*-0.2*f2,0); ADD(b['hd'+n],0.25+f2*0.1,0,0); } }
   if(b.wingL){ const fl=mv>0.2?Math.sin(ph*2)*0.55*mv:Math.sin(t*1.4)*0.08; ADD(b.wingL,0,0.45,-0.5+fl); ADD(b.wingR,0,-0.45,0.5-fl); ADD(b.wing2L,0,0.25,-0.6-fl*0.5); ADD(b.wing2R,0,-0.25,0.6+fl*0.5); }
   for(let i=0;i<6;i++) ADD(b['tail'+i],(i===0?0.2:-0.05)+Math.sin(t*2.1-i*0.55)*0.04,Math.sin(t*1.8-i*0.7)*(0.14+0.06*i)-sw*0.1*mv,0);
   const u=S.atkU;
   if(u>=0&&u<1){ const c=attackCurve(u), a=c.wind, h=c.strike;
     if(atk==='bite'){ ADD(b.spine,-0.22*a+0.4*h,0,0); ADD(b.neck,-0.4*a+0.65*h,0,0); ADD(b.head,-0.25*a+0.2*h,0,0); ADD(b.jaw,0.75*a-0.1*h+0.35*h*(1-h),0,0);
-      ADD(b.armL,-0.5*a+0.3*h,0,0.2*a); ADD(b.armR,-0.5*a+0.3*h,0,-0.2*a); ADD(b.thighL,-0.3*h,0,0); OFF(b.root,0,0,1.0*h-0.4*a); OFF(b.pelvis,0,-0.3*h,0); }
+      if(b.armL){ ADD(b.armL,-0.5*a+0.3*h,0,0.2*a); ADD(b.armR,-0.5*a+0.3*h,0,-0.2*a); } if(b.nkL1) for(const n of ['L','R']){ ADD(b['nk'+n+'1'],-0.3*a+0.5*h,0,0); ADD(b['nk'+n+'2'],-0.2*a+0.55*h,0,0); ADD(b['nk'+n+'3'],0.35*h,0,0); } ADD(b.thighL,-0.3*h,0,0); OFF(b.root,0,0,1.0*h-0.4*a); OFF(b.pelvis,0,-0.3*h,0); }
     else if(atk==='club'){ ADD(b.armR,-2.75*a-0.75*h,0,-0.15*a); ADD(b.foreR,-0.5*a-0.1*h,0,0); ADD(b.armL,-0.9*a+0.2*h,0,0.3*a); ADD(b.spine,-0.28*a+0.45*h,0,0); ADD(b.chest,0,-0.4*a+0.5*h,0); ADD(b.head,-0.1*a+0.15*h,0,0); ADD(b.jaw,0.5*a,0,0);
       OFF(b.pelvis,0,-0.5*h,0); OFF(b.root,0,0,0.9*h-0.35*a); ADD(b.thighL,-0.5*h,0,0); ADD(b.shinL,0.5*h,0,0); }
     else if(atk==='wing'){ ADD(b.wingL,0,-0.45*a,1.7*a-1.1*h); ADD(b.wingR,0,0.45*a,-1.7*a+1.1*h); ADD(b.wing2L,0,-0.2*a,0.9*a-0.3*h); ADD(b.wing2R,0,0.2*a,-0.9*a+0.3*h); ADD(b.spine,-0.2*a+0.5*h,0,0); ADD(b.neck,-0.3*a+0.55*h,0,0); ADD(b.head,0.0,0,0);
