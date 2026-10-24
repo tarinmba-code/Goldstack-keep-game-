@@ -7,7 +7,7 @@
 'use strict';
 window.GK3D_WORLD=function(T,kit,opt){
 opt=opt||{};
-const {G_,Rig,toonMat,shade}=kit, TAU=Math.PI*2;
+const {G_,Rig,toonMat,shade,mergeRaw}=kit, TAU=Math.PI*2;
 const SPH=(rx,ry,rz,ws,hs)=>G_.sph(rx,ry,rz,ws||8,hs||6);   /* low-poly by default: the toon ramp hides facets */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, sm=t=>{ t=clamp(t,0,1); return t*t*(3-2*t); };
 const U={time:{value:0}};
@@ -39,8 +39,19 @@ const CACHE={};
 function model(kind){ const B=BUILD[kind]; if(!B) return null; const g=CACHE[kind]||(CACHE[kind]=bake(B.fn)); const grp=asGroup(g,B.o); grp.userData.h3d=B.h||3;
   if(B.sy) for(const c of grp.children) c.scale.y=B.sy;   /* taller walls and steeper roofs read better from the high camera */
   return grp; }
+/* v83: trees cast their shadow from a low-poly stand-in (an 80-triangle blob fitted to the crown) instead of the full
+   model. The shadow pass used to redraw every tree in full (about 68k triangles on Sakura Village); the stand-in
+   costs about 6k, is invisible in the colour pass and gives the same soft dappled shade. */
+const PROXY={}, PROXY_MAT=new T.MeshBasicMaterial({colorWrite:false,depthWrite:false});
+function shadowProxy(kind,g){ if(PROXY[kind]) return PROXY[kind]; const bb=g.toon.boundingBox||(g.toon.computeBoundingBox(),g.toon.boundingBox);
+  const h=bb.max.y-bb.min.y, cy=bb.min.y+h*0.62, rx=(bb.max.x-bb.min.x)*0.46, rz=(bb.max.z-bb.min.z)*0.46, ry=h*0.36;
+  const crown=new T.IcosahedronGeometry(1,1); crown.scale(rx,ry,rz); crown.translate((bb.max.x+bb.min.x)/2,cy,(bb.max.z+bb.min.z)/2);
+  const trunk=new T.CylinderGeometry(Math.min(rx,rz)*0.14,Math.min(rx,rz)*0.18,h*0.5,5,1,true); trunk.translate((bb.max.x+bb.min.x)/2,bb.min.y+h*0.25,(bb.max.z+bb.min.z)/2);
+  const m=mergeRaw([crown.toNonIndexed(),trunk.toNonIndexed()]); return (PROXY[kind]=m); }
 function instanced(kind,n,o){ const B=BUILD[kind]; const g=CACHE[kind]||(CACHE[kind]=bake(B.fn)); o=Object.assign({},B.o||{},o||{});
-  const out=[]; if(g.toon){ const m=new T.InstancedMesh(g.toon,o.sway?TOON_SWAY:TOON,n); m.castShadow=o.shadow!==false; m.receiveShadow=true; out.push(m); }
+  const proxy=o.shadowProxy!=null?o.shadowProxy:/^t_/.test(kind);
+  const out=[]; if(g.toon){ const m=new T.InstancedMesh(g.toon,o.sway?TOON_SWAY:TOON,n); m.castShadow=o.shadow!==false&&!proxy; m.receiveShadow=true; out.push(m);
+    if(proxy&&o.shadow!==false){ const pm=new T.InstancedMesh(shadowProxy(kind,g),PROXY_MAT,n); pm.castShadow=true; pm.renderOrder=-1; out.push(pm); } }
   if(g.ol&&o.outline!==false){ out.push(new T.InstancedMesh(g.ol,o.sway?OL_SWAY:OLS,n)); }
   if(g.glow){ out.push(new T.InstancedMesh(g.glow,GLOWM,n)); }
   for(const m of out) m.frustumCulled=false; return out; }

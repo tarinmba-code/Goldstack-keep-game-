@@ -20,19 +20,21 @@ const ANIME_PRESENCE=1.2;
 /* ================================================================ geometry kit
    Every helper returns a non-indexed BufferGeometry with position + normal only, so parts merge freely. */
 function ni(g){ let n=g.index?g.toNonIndexed():g; for(const k of Object.keys(n.attributes)) if(k!=='position'&&k!=='normal') n.deleteAttribute(k); if(!n.attributes.normal) n.computeVertexNormals(); return n; }
+/* v83: SEGK scales every curved part's segment count; troops are built at a fraction of hero detail */
+let SEGK=1; const sg=(n,min)=>Math.max(min,Math.round(n*SEGK));
 const G_={
-  sph:(rx,ry,rz,ws,hs)=>{ const m=Math.max(rx,ry==null?rx:ry,rz==null?rx:rz); if(ws==null){ ws=m<0.05?7:m<0.12?10:m<0.3?14:16; hs=m<0.05?5:m<0.12?7:m<0.3?10:12; } const g=new T.SphereGeometry(1,ws,hs);   /* fewer segments for small parts */ g.scale(rx,ry==null?rx:ry,rz==null?rx:rz); return ni(g); },
-  part:(rx,ry,rz,ps,pl,ts,tl,ws=18,hs=12)=>{ const g=new T.SphereGeometry(1,ws,hs,ps,pl,ts,tl); g.scale(rx,ry,rz); return ni(g); },
-  hemi:(rx,ry,rz,ws=16)=>{ const g=new T.SphereGeometry(1,ws,8,0,TAU,0,Math.PI/2); g.scale(rx,ry,rz); return ni(g); },
-  cap:(r,len,rs=10)=>ni(new T.CapsuleGeometry(r,Math.max(0.001,len),4,rs)),
-  cyl:(rt,rb,h,rs=12,open=false)=>ni(new T.CylinderGeometry(rt,rb,h,rs,1,open)),
-  cone:(r,h,rs=10)=>ni(new T.ConeGeometry(r,h,rs)),
+  sph:(rx,ry,rz,ws,hs)=>{ const m=Math.max(rx,ry==null?rx:ry,rz==null?rx:rz); if(ws==null){ ws=m<0.05?7:m<0.12?10:m<0.3?14:16; hs=m<0.05?5:m<0.12?7:m<0.3?10:12; } const g=new T.SphereGeometry(1,sg(ws,5),sg(hs,3));   /* fewer segments for small parts */ g.scale(rx,ry==null?rx:ry,rz==null?rx:rz); return ni(g); },
+  part:(rx,ry,rz,ps,pl,ts,tl,ws=18,hs=12)=>{ const g=new T.SphereGeometry(1,sg(ws,5),sg(hs,3),ps,pl,ts,tl); g.scale(rx,ry,rz); return ni(g); },
+  hemi:(rx,ry,rz,ws=16)=>{ const g=new T.SphereGeometry(1,sg(ws,5),sg(8,3),0,TAU,0,Math.PI/2); g.scale(rx,ry,rz); return ni(g); },
+  cap:(r,len,rs=10)=>ni(new T.CapsuleGeometry(r,Math.max(0.001,len),sg(4,1),sg(rs,4))),
+  cyl:(rt,rb,h,rs=12,open=false)=>ni(new T.CylinderGeometry(rt,rb,h,sg(rs,4),1,open)),
+  cone:(r,h,rs=10)=>ni(new T.ConeGeometry(r,h,sg(rs,4))),
   box:(w,h,d)=>ni(new T.BoxGeometry(w,h,d)),
-  tor:(R,r,rs=8,ts=24,arc=TAU)=>ni(new T.TorusGeometry(R,r,rs,ts,arc)),
+  tor:(R,r,rs=8,ts=24,arc=TAU)=>ni(new T.TorusGeometry(R,r,sg(rs,3),sg(ts,6),arc)),
   lathe:(pts,seg=16,phi0=0,phiL=TAU)=>{ const q=pts[0][1]>pts[pts.length-1][1]?pts.slice().reverse():pts;   /* profile must run bottom-up so faces point outward */
-    return ni(new T.LatheGeometry(q.map(p=>new T.Vector2(Math.max(0.0005,p[0]),p[1])),seg,phi0,phiL)); },
+    return ni(new T.LatheGeometry(q.map(p=>new T.Vector2(Math.max(0.0005,p[0]),p[1])),sg(seg,5),phi0,phiL)); },
   /* tapered tube along a smooth curve: radius goes r0 -> r1 */
-  tube:(pts,r0,r1,rs=7,seg=14)=>{ const curve=new T.CatmullRomCurve3(pts.map(p=>new T.Vector3(p[0],p[1],p[2])));
+  tube:(pts,r0,r1,rs=7,seg=14)=>{ rs=sg(rs,3); seg=sg(seg,4); const curve=new T.CatmullRomCurve3(pts.map(p=>new T.Vector3(p[0],p[1],p[2])));
     const g=new T.TubeGeometry(curve,seg,1,rs,false), pos=g.attributes.position, nrm=g.attributes.normal, P=new T.Vector3();
     for(let i=0;i<=seg;i++){ const t=i/seg, r=lerp(r0,r1,t), c=curve.getPointAt(t);
       for(let j=0;j<=rs;j++){ const k=i*(rs+1)+j; P.fromBufferAttribute(pos,k).sub(c).multiplyScalar(r).add(c); pos.setXYZ(k,P.x,P.y,P.z); } }
@@ -69,6 +71,7 @@ class Rig{
   build(){
     const groups={toon:[],ol:[],glow:[]};
     for(const pt of this.parts){
+      if(this.minPart){ const g=pt.geo; if(!g.boundingSphere) g.computeBoundingSphere(); if(g.boundingSphere.radius*Math.max(pt.s[0],pt.s[1],pt.s[2])<this.minPart&&!pt.glow) continue; }   /* v83: troops skip specks */
       const b=pt.bone, w=b.userData.world;
       _q.setFromEuler(_e.set(pt.r[0],pt.r[1],pt.r[2])); _s.set(pt.s[0],pt.s[1],pt.s[2]); _v.set(pt.p[0]+w.x,pt.p[1]+w.y,pt.p[2]+w.z);
       _m.compose(_v,_q,_s); _nm.getNormalMatrix(_m);
@@ -123,9 +126,14 @@ function toonMat(o){ o=Object.assign({flat:0.32,sat:1.2,fog:false,wcap:0.84,soft
    for the side facing away, and a lit-side rim. Brightness follows the scene's lights, so dusk and night
    stages still darken characters, but the shading shape no longer depends on light strength. */
 const CEL={step1:0.44, step2:0.16, feather:0.035, shade1:[0.80,0.74,0.92], shade2:[0.60,0.54,0.76], lit:1.03, rim:0.30, sat:1.16, wcap:0.84, dayRef:2.55};
-function celMat(){ const f=v=>(+v).toFixed(3), v3=a=>'vec3('+a.map(f).join(',')+')';
+/* v83 bone-texture skinning: many troops share one mesh; each instance reads its 22 bone matrices (3 rows each) from
+   a float texture row chosen by gl_InstanceID. Every part of a code-built character follows exactly one bone. */
+const BONE_GLSL='uniform highp sampler2D uBones;\nattribute float aBone;\nmat4 gkBoneM(){ int b=int(aBone+0.5)*3, r=gl_InstanceID; return transpose(mat4(texelFetch(uBones,ivec2(b,r),0),texelFetch(uBones,ivec2(b+1,r),0),texelFetch(uBones,ivec2(b+2,r),0),vec4(0.0,0.0,0.0,1.0))); }\n';
+function celMat(o){ o=o||{}; const f=v=>(+v).toFixed(3), v3=a=>'vec3('+a.map(f).join(',')+')';
   const m=new T.MeshToonMaterial({vertexColors:true,gradientMap:softGrad,color:0xFFFFFF,emissive:0x000000,fog:false});
   m.onBeforeCompile=sh=>{
+    if(o.bones){ sh.uniforms.uBones={value:o.bones};
+      sh.vertexShader=BONE_GLSL+sh.vertexShader.replace('#include <beginnormal_vertex>','mat4 gkM=gkBoneM();\nvec3 objectNormal=mat3(gkM)*vec3(normal);').replace('#include <begin_vertex>','vec3 transformed=(gkM*vec4(position,1.0)).xyz;'); }
     sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  { float L0=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)); if(L0>'+f(CEL.wcap)+') diffuseColor.rgb*='+f(CEL.wcap)+'/L0; }');
     sh.fragmentShader=sh.fragmentShader.replace('#include <opaque_fragment>',
     '{ vec3 W=vec3(0.299,0.587,0.114), N=normalize(normal), base=diffuseColor.rgb; float hl=0.72, env=1.0;\n'+
@@ -138,7 +146,14 @@ function celMat(){ const f=v=>(+v).toFixed(3), v3=a=>'vec3('+a.map(f).join(',')+
     '  float rim=1.0-max(dot(N,normalize(vViewPosition)),0.0);\n'+
     '  c+=base*smoothstep(0.58,1.0,rim)*'+f(CEL.rim)+'*(0.35+0.65*m1)+vec3(0.05)*smoothstep(0.8,1.0,rim);\n'+
     '  outgoingLight=clamp(c*env,0.0,1.0)+totalEmissiveRadiance; }\n#include <opaque_fragment>'); };
-  m.customProgramCacheKey=()=>'gk3d-cel1'; return m; }
+  m.customProgramCacheKey=()=>o.bones?'gk3d-cel1-bones':'gk3d-cel1'; return m; }
+/* ink outline for bone-texture troops: same screen-space width rules as the heroes' outline */
+function olBonesMat(tex){ const m=new T.MeshBasicMaterial({color:0x1A1422,side:T.BackSide,fog:false});
+  m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,OL_U); sh.uniforms.uBones={value:tex};
+    sh.vertexShader=BONE_GLSL+'uniform float uOut; uniform vec2 uRes; uniform float uMinPx; uniform float uMaxPx; uniform float uWorld;\n'+sh.vertexShader
+      .replace('#include <begin_vertex>','mat4 gkM=gkBoneM();\nvec3 transformed=(gkM*vec4(position,1.0)).xyz; vec3 gkN=normalize(mat3(instanceMatrix)*(mat3(gkM)*normal));')
+      .replace('#include <project_vertex>','#include <project_vertex>\n{ vec3 nV=normalize((viewMatrix*vec4(gkN,0.0)).xyz); vec2 d=(projectionMatrix*vec4(nV,0.0)).xy; float dl=length(d);\n  if(dl>1e-5){ float w=max(gl_Position.w,1e-3); float sc=length(instanceMatrix[0].xyz); float px=clamp(uWorld*sc*projectionMatrix[1][1]*0.5*uRes.y/w,uMinPx*0.85,uMaxPx)*uOut; gl_Position.xy+=(d/dl)*px*2.0/uRes*w; } }'); };
+  m.customProgramCacheKey=()=>'gk3d-ol-bones'; return m; }
 
 /* ================================================================ palette helpers */
 const shade=(c,f)=>{ _c.set(c); const r=Math.min(255,Math.round(_c.r*255*f)), g=Math.min(255,Math.round(_c.g*255*f)), b=Math.min(255,Math.round(_c.b*255*f)); return (r<<16)|(g<<8)|b; };
@@ -172,7 +187,7 @@ const BUILDS={
 const CHIBI_OF={heroic:'c_warrior',titan:'c_titan',divine:'c_divine'};
 const FEMALE=new Set(['kitsune','amaterasu','izanami','marishi','yukionna','hannya','jorogumo','ungai','orizuru','inari','mioya']);
 const YOUTH=new Set(['hero','samurai','onmyoji','ninja','kitsune','amaterasu']);
-function animeBuild(sp){ const b=sp.build||'normal', k=sp.key, fem=FEMALE.has(k);
+function animeBuild(sp){ if(sp.abuild) return sp.abuild; const b=sp.build||'normal', k=sp.key, fem=FEMALE.has(k);
   if(b==='round') return 'a_round'; if(b==='giant'||b==='titan') return 'a_titan'; if(b==='broad'||b==='heroic') return 'a_hero';
   return fem?'a_female':YOUTH.has(k)?'a_youth':'a_male'; }  /* serene gods: tall and elegant */
 
@@ -224,7 +239,7 @@ function hairFlow(R,H,hr,hy,cap,hk){
     R.add('head',G_.tube(pts,hr*0.16,hr*0.015,6,10),c,{grad:tip,gax:1.5}); }
   for(const sd of [1,-1]) for(let k=0;k<2;k++){ const o=k*hr*0.12;
     R.add('head',G_.tube([[sd*hr*0.82,hy+hr*0.45,hr*0.3+o],[sd*(hr*0.98+o),hy-hr*0.35,hr*0.45],[sd*(hr*0.9+o*1.5),hy-hr*(1.2+k*0.3),hr*0.55],[sd*(hr*0.98+o*2),hy-hr*(2.0+k*0.4),hr*0.5]],hr*(0.26-k*0.05),hr*0.03,7,14),k?root:c,{grad:tip}); }
-  const hb=p=>[p[0],p[1]-hr*0.9,p[2]+hr*0.4], n=H.strands||16;   /* back hair hangs from the swaying hair bone */
+  const hb=p=>[p[0],p[1]-hr*0.9,p[2]+hr*0.4], n=Math.max(4,Math.round((H.strands||16)*SEGK));   /* back hair hangs from the swaying hair bone */
   R.add('hair',G_.lathe([[hr*0.9,hy+hr*0.55],[hr*1.12,hy-hr*0.4],[hr*(1.25+fl*0.35),hy-L*0.5],[hr*(1.3+fl*0.75),hy-L*0.9],[hr*(1.1+fl*0.7),hy-L*0.97]],20),root,{p:hb([0,0,-hr*0.78]),s:[1,1,0.38],grad:tip,gax:1.2});
   for(let i=0;i<n;i++){ const u=i/(n-1)-0.5, a=u*2.3, au=Math.abs(u), w=Math.sin(i*1.7)*hr*0.18;
     const pts=[[Math.sin(a)*hr*0.85,hy+hr*0.5*Math.cos(u*1.3),-Math.cos(a)*hr*0.62-hr*0.08],
@@ -647,7 +662,8 @@ function outfitArmor(R,o,B,legL,spineH,chestH){
 /* robes and kimono: an outer layer (open-fronted for robes, wrapped for kimono) over a contrasting inner layer,
    layered collars, a hem trim, motifs, an obi with a front knot; monks add a kesa sash */
 function outfitLayered(R,o,B,legL,spineH,chestH,kind){
-  const oc=o.col||0x2F5DB8, inner=o.inner||o.col2||shade(oc,0.75), trim=o.trim||0xF5C542, len=legL*(o.short?0.68:0.98), fl=kind==='kimono'?1.22:1.5;
+  /* v83: anime-proportion kimono flare into an A-line (1.4 instead of 1.22) so a slim figure is not a straight tube from above */
+  const anime=B.head<0.25, oc=o.col||0x2F5DB8, inner=o.inner||o.col2||shade(oc,0.75), trim=o.trim||0xF5C542, len=legL*(o.short?0.68:0.98), fl=kind==='kimono'?(anime?1.4:1.22):1.5;
   const prof=[[B.w*1.0,0.06],[B.w*1.08,-len*0.25],[B.w*(0.95+fl*0.25),-len*0.7],[B.w*fl,-len],[B.w*fl*0.97,-len*1.01]];
   const rAt=y=>{ for(let i=0;i<prof.length-1;i++){ const a=prof[i],b=prof[i+1]; if(y<=a[1]&&y>=b[1]) return lerp(a[0],b[0],(a[1]-y)/(a[1]-b[1])); } return prof[prof.length-1][0]; };
   R.add('skirt',G_.lathe([[B.w*0.95,0.05],[B.w*1.0,-len*0.3],[B.w*(0.9+fl*0.22),-len*0.75],[B.w*fl*0.92,-len*1.03],[B.w*fl*0.88,-len*1.04]],20),inner,{grad:shade(inner,0.8)});
@@ -669,6 +685,11 @@ function outfitLayered(R,o,B,legL,spineH,chestH,kind){
   R.add('spine',G_.cyl(B.w*0.98,B.w*1.0,spineH*0.55,20),o.belt||trim,{p:[0,spineH*0.17,0],s:[1,1,0.77],grad:shade(o.belt||trim,0.8)});
   R.add('spine',G_.tor(B.w*1.0,0.012,4,24),o.cord||trim,{p:[0,spineH*0.17,0],r:[Math.PI/2,0,0],s:[1,0.77,1],ol:false});
   R.add('spine',G_.sph(0.07,0.05,0.04),o.cord||trim,{p:[0,spineH*0.17,B.w*0.79]});
+  if(kind==='kimono'){ /* v83: a big obi bow on the back - the kimono's signature shape from the top-down camera */
+    const oy=spineH*0.17, ob=o.belt||trim, bz=-B.w*0.8;
+    for(const sd of [1,-1]) R.add('spine',G_.sph(B.w*0.42,B.w*0.3,B.w*0.12),ob,{p:[sd*B.w*0.4,oy+B.w*0.06,bz-0.02],r:[0,0,sd*0.35],grad:shade(ob,0.75)});
+    R.add('spine',G_.sph(B.w*0.16,B.w*0.18,B.w*0.12),shade(ob,0.85),{p:[0,oy+B.w*0.04,bz-0.04]});
+    for(const sd of [1,-1]) R.add('skirt',G_.box(B.w*0.3,len*0.32,0.025),ob,{p:[sd*B.w*0.12,-len*0.12,bz*1.05-0.02],r:[0.12,0,sd*0.12],grad:shade(ob,0.7)}); }
   if(kind==='monk'){ R.add('chest',G_.box(B.w*0.5,chestH*1.4,0.035),o.kesa||trim,{p:[B.w*0.15,chestH*0.35,B.w*0.62],r:[0.1,0,-0.7],grad:shade(o.kesa||trim,0.8)});
     R.add('chest',G_.box(B.w*0.5,chestH*1.2,0.035),o.kesa||trim,{p:[B.w*0.05,chestH*0.3,-B.w*0.62],r:[-0.1,0,0.7]}); } }
 
@@ -790,7 +811,7 @@ function buildHair(R,sp,B,hr,hy){
     case 'long': case 'longflow': { const L=hr*Math.max(2.2,(H.len||3)*1.15)*(sp._hk||1);
       cap(); bangs(H.bangs||6,0.6,2.3); for(const sd of [1,-1]) strand([[sd*hr*0.8,hy+hr*0.5,hr*0.3],[sd*hr*1.02,hy-hr*0.2,hr*0.32],[sd*hr*1.2,hy-hr*0.95,hr*0.1],[sd*hr*1.35,hy-L*0.55,-hr*0.15]],hr*0.22,c,{seg:12});
       R.add('hair',G_.lathe([[hr*0.9,hy+hr*0.55],[hr*1.12,hy-hr*0.4],[hr*1.35,hy-L*0.5],[hr*1.5,hy-L*0.9],[hr*1.3,hy-L*0.97]],20),root,{p:[0,-hr*0.9,hr*0.4-hr*0.78],s:[1,1,0.38],grad:tip,gax:1.2});
-      back(H.strands||14,L,H.flare||0.9);
+      back(Math.max(4,Math.round((H.strands||14)*SEGK)),L,H.flare||0.9);
       if(H.ornament) for(const sd of [1,-1]) R.add('head',G_.star(hr*0.22,hr*0.09,5,0.02),H.ornament,{p:[sd*hr*0.78,hy+hr*0.6,hr*0.35],r:[0,sd*0.6,0]}); break; }
     case 'spiky': cap(); bangs(7,0.62,1.9);
       for(let i=0;i<13;i++){ const a=(i/12-0.5)*Math.PI*1.7, tier=i%2, len=hr*(1.0+tier*0.35+((i*7)%3)*0.12), sx=Math.sin(a), cz=Math.cos(a);
@@ -1274,11 +1295,15 @@ for(const k in OVR){ const d=DEFS[k], o=OVR[k]; if(!d) continue;
 
 /* ================================================================ instances, pool and animation */
 const BUILT={};   /* key -> {geos, kind, height, meta} shared geometry */
+/* v83: the heaviest characters are built at reduced curve detail so every hero stays inside the bible's budget
+   (35k triangles for heroes, 50k for multi-headed bosses, outline included) */
+const SEGK_OF={kuzuryu:0.42,orochi:0.48,kitsune:0.55,amaterasu:0.55,susanoo:0.75,saruta:0.75,orizuru:0.72,kane:0.75,raijin:0.8,mao:0.8,inari:0.8};
 function getBuilt(key){ if(BUILT[key]) return BUILT[key]; const sp=DEFS[key]; if(!sp) return null;
-  const b=sp.type==='quad'?buildQuad(sp):sp.type==='serpent'?buildSerpent(sp):sp.type==='spider'?buildSpider(sp):sp.type==='blob'?buildBlob(sp):sp.type==='fish'?buildFish(sp):buildHuman(sp);
+  const pK=SEGK; SEGK=SEGK_OF[key]||1; let b; try{ b=buildByType(sp); } finally{ SEGK=pK; }
   const geos=b.rig.build(); const bb=geos.toon.boundingBox; geos.height=bb.max.y-Math.min(0,bb.min.y);
   if(STYLE==='anime'&&b.kind==='human'){ const hw=b.rig.byName.head.userData.world.y, hr=b.B.head; geos.height=Math.min(geos.height,(hw+hr*2.15)*1.06); }
   return (BUILT[key]={sp,b,geos,height:geos.height,proto:b.rig}); }
+function buildByType(sp){ return sp.type==='quad'?buildQuad(sp):sp.type==='serpent'?buildSerpent(sp):sp.type==='spider'?buildSpider(sp):sp.type==='blob'?buildBlob(sp):sp.type==='fish'?buildFish(sp):buildHuman(sp); }
 function cloneRig(proto){ /* fresh bone hierarchy matching the prototype's bind pose */
   const map={}, bones=[];
   for(const b of proto.bones){ const n=new T.Bone(); n.name=b.name; n.position.copy(b.position); n.userData.rest=b.position.clone(); map[b.name]=n; bones.push(n);
@@ -1547,6 +1572,111 @@ function onScreen(x,y,z,r){ _vis.in=true; _vis.px=999; if(!CAM.ok) return _vis;
   const c=CAM.c; if(c.isPerspectiveCamera){ const d=Math.max(0.1,c.position.distanceTo(_sp.center)); _vis.px=r*(4/3)*c.projectionMatrix.elements[5]*0.5*OL_U.uRes.value.y/d; }   /* about the character's height in drawn pixels */
   return _vis; }
 
+/* ================================================================ v83 TROOPS: the squad in 3D, one draw per troop type
+   Each troop type is built once at a fraction of hero detail (SEGK) in the anime style, then drawn for every soldier
+   of that type in a single instanced draw (plus one outline draw). Each soldier still has its own skeleton, posed by
+   the same animation library as the heroes (run, seven attack styles, hits) on the 15 Hz anime beat; the poses are
+   written to a float texture that the GPU reads per instance. Troops without a design keep their painted sprite. */
+const TROOP_SEGK=0.22, TROOP_CAP=64, TROOP_MINPART=0.06;   /* parts smaller than this (model units) vanish at troop size */
+const TROOP_SPECS={
+  archer:  {base:'hero',abuild:'a_youth',o:{hair:{style:'short',col:0x3A2418,col2:0x4A2E1E},outfit:{col:0x2A2E3A,top:0x2F5DB8,collar:0x1E3A7A,trim:0x1E3A7A,lining:0x1E3A7A,mon:0x2F5DB8}}},
+  samurai: {base:'samurai',abuild:'a_male'},
+  onmyoji: {base:'onmyoji',abuild:'a_male'},
+  ninja:   {base:'ninja',abuild:'a_male'},
+  oniw:    {base:'brute',abuild:'a_hero',o:{build:'broad',skin:0x9B7FD6,hair:{col:0xF2F2F2,col2:0xDDD8E6}}},
+  yari:    {base:'samurai',abuild:'a_male',o:{hat:{kind:'kasa',col:0x3A3A30,col2:0x2A2A22},outfit:{col:0x5E7A3A,plate:0x3F5A2A,lace:0x8C6A3A,trim:0x8C6A3A,sleeve:0x4A3A2A,legs:0x4A3A2A},weapon:{kind:'spear',col:0xD8DEE6,col2:0x6B4A2A}}},
+  teppo:   {base:'hero',abuild:'a_male',o:{hat:{kind:'kasa',col:0xC8A060,col2:0xA88040},hair:{style:'short',col:0x3A2418},outfit:{col:0x2A2A30,top:0x8C2A2A,collar:0x5A1E1E,trim:0xC8A060,belt:0x2A2A30,lining:0x5A1E1E},weapon:{kind:'staff',col:0x5A3A22,col2:0x2A2A30},back:{kind:'bag',col:0x6B4A2A},extra:null}},
+  sohei:   {base:'benkei',abuild:'a_male',o:{build:'normal',outfit:{col:0x2A2A30,kesa:0xC8902A,inner:0x3A3A42},extra:null}},
+  miko:    {base:'onmyoji',abuild:'a_female',o:{hat:{kind:'none'},hair:{style:'long',col:0x1C1C22,col2:0x2A2A30,len:2.2},outfit:{kind:'hakama',col:0xC8342C,top:0xF4F1EA,collar:0xF4F1EA,trim:0xC8342C,belt:0xC8342C,lining:0xC8342C},weapon:{kind:'bellstaff',col:0xF5C542},back:null}},
+  tanuki:  {base:'hero',abuild:'a_round',o:{build:'round',skin:0x8C5A2E,hair:{style:'bald'},ears:'fox',earCol:0x6B4220,outfit:{kind:'bare',col2:0xD8C0A0},weapon:{kind:'orb',col:0x2A2A30},back:{kind:'bag',col:0xF4F1EA},hat:{kind:'leaves',col:0x6FB548,col2:0x3F7A3A},extra:null}},
+  sumo:    {base:'hero',abuild:'a_round',o:{build:'round',skin:0xF2C8A0,hair:{style:'topknot',col:0x1C1C22},outfit:{kind:'bare',col2:0xF4F1EA},weapon:{kind:'none'},back:null,extra:null}},
+  kabuki:  {base:'kitsune',abuild:'a_female',o:{ears:null,hair:{style:'bun',col:0x1C1C22,col2:0x2A2A30,tip:0x2A2A30},outfit:{kind:'kimono',col:0x1E1A22,inner:0xC8342C,trim:0xF5C542,belt:0xF5C542,pattern:0xF5C542},weapon:{kind:'fan',col:0xF5C542},back:null}},
+  falcon:  {base:'hero',abuild:'a_male',o:{hair:{style:'short',col:0x6B4A2A},outfit:{col:0x6E4A2A,top:0x8C6A3A,collar:0x3F6A2A,trim:0x3F6A2A,lining:0x3F6A2A,belt:0x3A2418},back:{kind:'cape',col:0x3F6A2A},extra:null}},
+  kusari:  {base:'ninja',abuild:'a_male',o:{hair:{style:'pony',col:0x22305E,col2:0x2E4280},outfit:{col:0x22305E,col2:0x1A2448,belt:0x8C8CA0},weapon:{kind:'sickle',col:0xE6ECF2,col2:0x3A2418}}},
+  komainu: {base:'raiju',o:{col:0xB8B8B0,col2:0x8C8C86,belly:0xD8D8D0,stripes:false,headKind:'lion',headCol:0xB8B8B0,mane:0x9A9A92,maneTip:0xD8D8D0,muzzle:0xD8D8D0,cheek:0xD8D8D0,tail:'fluffy',tailCol:0x9A9A92,eyeCol:0xF5C542,eyeGlow:false,legFire:null}},
+  shugen:  {base:'onmyoji',abuild:'a_youth',o:{hat:{kind:'tokin',col:0x1C1C22},hair:{style:'pony',col:0x6B4A2A},outfit:{kind:'robe',col:0xE8902A,inner:0xF4F1EA,trim:0xF4F1EA,belt:0xF4F1EA,pattern:0xF4F1EA},weapon:{kind:'bellstaff',col:0xF5C542},back:null}},
+  kunoichi:{base:'ninja',abuild:'a_female',o:{hair:{style:'pony',col:0xBFD8F0,col2:0x9FC0E0},outfit:{col:0x3E6EC8,col2:0x2A3A6E,belt:0x9FE6FF},scarf:0x9FE6FF,weapon:{kind:'dagger',col:0x9FE6FF,glow:true}}},
+  taiko:   {base:'hero',abuild:'a_youth',o:{hair:{style:'spiky',col:0x1C1C22,col2:0x2A2A30,tip:0x3A3A42},outfit:{col:0xF4F1EA,top:0x6E3FB0,collar:0xF5C542,trim:0xF5C542,lining:0x6E3FB0,belt:0xF5C542},weapon:{kind:'mallet',col:0xC8A060,s:0.6},back:null}},
+  naginata:{base:'kitsune',abuild:'a_female',o:{ears:null,hair:{style:'long',col:0x1C1C22,col2:0x2A2A30,tip:0x2A2A30,len:2.0},outfit:{kind:'kimono',col:0xF2A8C0,inner:0xC8342C,trim:0xC8342C,belt:0xC8342C,pattern:0xFFFFFF},weapon:{kind:'naginata',col:0xE6ECF2,col2:0x6B2A1E},back:null}},
+  tate:    {base:'samurai',abuild:'a_hero',o:{outfit:{col:0x2A3A6E,plate:0x1E2848,lace:0x3E5A9A,trim:0xF5C542,sleeve:0x1E2848,legs:0x1E2848},hat:{col:0x1E2848,col2:0xF5C542},weapon:{kind:'spear',col:0xD8DEE6,col2:0x3A2418},
+             extra:(R,B)=>{ R.add('elbowL',G_.box(0.5,0.72,0.08),0x6B4A2A,{p:[0.04,-0.22,0.16]}); R.add('elbowL',G_.cyl(0.12,0.12,0.03,10),0xF5C542,{p:[0.04,-0.2,0.21],r:[Math.PI/2,0,0]}); }}},
+  foxmage: {base:'kitsune',abuild:'a_female'}};
+function troopSpec(cls){ const t=TROOP_SPECS[cls], b=t&&DEFS[t.base]; if(!b) return null;
+  const sp=Object.assign({},b); for(const k in (t.o||{})){ const v=t.o[k]; sp[k]=(v&&typeof v==='object'&&!Array.isArray(v)&&b[k]&&typeof b[k]==='object')?Object.assign({},b[k],v):v; }
+  sp.key='tr_'+cls; if(t.abuild) sp.abuild=t.abuild; return sp; }
+const TROOP={};   /* cls -> {sp,b,proto,NB,height,tex,data,body,ol,n,bind} or null */
+function getTroop(cls){ if(cls in TROOP) return TROOP[cls]; const sp=troopSpec(cls); if(!sp) return (TROOP[cls]=null);
+  const pS=STYLE, pK=SEGK; let b; STYLE='anime'; SEGK=TROOP_SEGK; try{ b=buildByType(sp); } catch(err){ console.warn('troop build failed',cls,err&&err.message); } finally{ STYLE=pS; SEGK=pK; }
+  if(!b) return (TROOP[cls]=null);
+  b.rig.minPart=TROOP_MINPART; const g=b.rig.build(), parts=[g.toon,g.glow].filter(Boolean), geo=mergeRaw(parts);
+  /* colour and bone index per vertex; every part of a code-built character follows exactly one bone */
+  let n=0; for(const q of parts) n+=q.attributes.position.count; const Cc=new Float32Array(n*3), Bi=new Float32Array(n); let o=0;
+  for(const q of parts){ Cc.set(q.attributes.color.array,o*3); const si=q.attributes.skinIndex; for(let i=0;i<si.count;i++) Bi[o+i]=si.getX(i); o+=si.count; }
+  geo.setAttribute('color',new T.BufferAttribute(Cc,3)); geo.setAttribute('aBone',new T.BufferAttribute(Bi,1)); geo.computeBoundingSphere();
+  const bb=g.toon.boundingBox; let height=bb.max.y-Math.min(0,bb.min.y);
+  if(b.kind==='human'){ const hw=b.rig.byName.head.userData.world.y, hr=b.B.head; height=Math.min(height,(hw+hr*2.15)*1.06); }
+  const NB=b.rig.bones.length, data=new Float32Array(NB*3*TROOP_CAP*4), tex=new T.DataTexture(data,NB*3,TROOP_CAP,T.RGBAFormat,T.FloatType);
+  tex.minFilter=tex.magFilter=T.NearestFilter; tex.generateMipmaps=false; tex.needsUpdate=true;
+  const body=new T.InstancedMesh(geo,celMat({bones:tex}),TROOP_CAP), ol=new T.InstancedMesh(geo,olBonesMat(tex),TROOP_CAP);
+  for(const m of [body,ol]){ m.frustumCulled=false; m.count=0; m.visible=false; if(opt.scene) opt.scene.add(m); }
+  for(let i=0;i<TROOP_CAP;i++) body.setColorAt(i,WHITE);
+  ol.onBeforeRender=olBeforeRender;
+  const bind=b.rig.bones.map(bn=>bn.userData.world.clone());
+  return (TROOP[cls]={cls,sp,b,proto:b.rig,NB,height,tex,data,body,ol,slots:[],bind,tris:Math.round(geo.attributes.position.count/3)}); }
+const tLive=new Map(), tPool={};
+const _tm=new T.Matrix4(), _tw=new T.Matrix4(), _tq=new T.Quaternion(), _tv=new T.Vector3(), _ts=new T.Vector3(), _tc=new T.Color(), _ty=new T.Vector3(0,1,0), _t0=new T.Matrix4().makeScale(0,0,0);
+/* every live soldier owns a fixed row (slot) in its type's pose texture; rows stay packed at the front so one draw covers them */
+function tFree(I){ const K=I.K, last=K.slots.pop(); if(last!==I){ const from=last.slot; K.slots[I.slot]=last; last.slot=I.slot; last.dirty=true;
+    for(const m of [K.body,K.ol]){ m.getMatrixAt(from,_tw); m.setMatrixAt(last.slot,_tw); } K.body.getColorAt(from,_tc); K.body.setColorAt(last.slot,_tc); } I.slot=-1; tLive.delete(I.ent); (tPool[I.cls]=tPool[I.cls]||[]).push(I); }
+function tAcquire(ent,cls){ let I=tLive.get(ent); if(I&&I.cls===cls){ I.tag=frameTag; return I; } if(I) tFree(I);
+  const K=getTroop(cls); if(!K||K.slots.length>=TROOP_CAP) return null; const p=tPool[cls];
+  if(p&&p.length) I=p.pop(); else { const rig=cloneRig(K.proto), dg=new T.Group(); dg.add(rig.root); I={cls,K,b:rig.map,bones:rig.bones,dg,kind:K.b.kind,B:{height:K.height,b:K.b},sp:K.sp,mats:new Float32Array(K.NB*16)}; }
+  I.st={phase:Math.random()*TAU,move:0,atk:0,last:null,yaw:0,t:Math.random()*10,hit:0,cast:0,dash:0,lift:0,atkU:-1}; I.prev=null; I.rot=null; I.tag=frameTag; I.ent=ent;
+  I.slot=K.slots.length; K.slots.push(I); I.dirty=true; tLive.set(ent,I); return I; }
+/* pose -> per-bone skin matrices (posed bone times inverse bind), in the troop's own space */
+function tBake(I){ I.dg.updateMatrixWorld(true); const K=I.K;
+  for(let i=0;i<K.NB;i++){ const bn=I.bones[i], w=K.bind[i]; _tm.makeTranslation(-w.x,-w.y,-w.z); _tw.multiplyMatrices(bn.matrixWorld,_tm); _tw.toArray(I.mats,i*16); } I.dirty=true; }
+const TROOPS={
+  has:cls=>!!getTroop(cls),
+  keys:()=>Object.keys(TROOP_SPECS),
+  begin(){},
+  /* p: {x,y,z,rot,H,dt,moving,atk,style,flash,atkDur,tint} */
+  drive(ent,cls,p){ const I=tAcquire(ent,cls); if(!I) return false; const K=I.K, S=I.st, dt=Math.min(0.05,p.dt||0.016);
+    S.t+=dt; let spd=0; if(S.last){ spd=Math.hypot(p.x-S.last.x,p.z-S.last.z)/Math.max(dt,1e-4); } S.last={x:p.x,z:p.z};
+    const want=p.moving?clamp(spd/(p.H*2.2+0.01),0.35,1):0; S.move=lerp(S.move,want,1-Math.exp(-dt*10));
+    S.phase+=dt*(1.5+spd/Math.max(0.3,p.H*0.38))*(S.move>0.05?1:0.3);
+    const a=p.atk||0; if(a>(S.prevAtk||0)+0.2) S.atkU=0.18; S.prevAtk=a; if(S.atkU>=0){ S.atkU+=dt/(p.atkDur||0.4); if(S.atkU>=1) S.atkU=-1; }
+    S.hitT=Math.max((S.hitT||0)-dt*5,p.flash>0.5?1:0); S.hit+=(S.hitT-S.hit)*(1-Math.exp(-dt*(S.hitT>S.hit?30:9)));
+    const sc=(p.H||2)/K.height, vis=onScreen(p.x,(p.y||0)+(p.H||2)*0.5,p.z,(p.H||2)*0.75);
+    if(!vis.in){ LODN.off++; S.stepAcc=0; K.body.setMatrixAt(I.slot,_t0); K.ol.setMatrixAt(I.slot,_t0); I.shown=false; return true; }
+    const st=I.kind==='human'?styleOf(I.sp,p.style):'def', iu=IMPACT_U[st]||IMPACT_U.def;
+    if(S.atkU>=0&&S.prevU!=null&&S.prevU<iu&&S.atkU>=iu&&!S.frz){ S.frz=MOTION.impactFreeze; S.atkU=iu; }
+    S.prevU=S.atkU; if(S.frz>0){ S.frz-=dt; if(S.frz<=0) S.frz=0; else { if(S.atkU>=0) S.atkU=iu; S.t-=dt; } }
+    const hz=vis.px<MOTION.farPx?MOTION.farHz:MOTION.stepHz; S.stepAcc=(S.stepAcc||0)+dt;
+    const snap=S.atkU>=0&&S.atkU>iu-0.1&&S.atkU<iu+0.08?1:0;
+    if(!S.frz&&(S.stepAcc>=1/hz||!I.prev)){ const pdt=S.stepAcc; S.stepAcc=S.stepAcc%(1/hz);
+      POSE[I.kind](I,{style:p.style},pdt); smoothPose(I,pdt,snap); tBake(I); LODN.posed++; } else LODN.held++;
+    /* facing eases toward the travel direction; placement is updated every frame so movement stays smooth */
+    if(I.rot==null) I.rot=p.rot; let d=p.rot-I.rot; d=Math.atan2(Math.sin(d),Math.cos(d)); I.rot+=d*(1-Math.exp(-dt*14));
+    _tq.setFromAxisAngle(_ty,I.rot); _tv.set(p.x,p.y||0,p.z); _ts.setScalar(sc); _tw.compose(_tv,_tq,_ts);
+    K.body.setMatrixAt(I.slot,_tw); K.ol.setMatrixAt(I.slot,_tw); I.shown=true;
+    _tc.setRGB(1,1,1); if(p.tint!=null) _tc.set(p.tint).lerp(WHITE,0.55);
+    if(S.hit>0.02) _tc.setRGB(1+S.hit*0.9,1-S.hit*0.25,1-S.hit*0.3);
+    K.body.setColorAt(I.slot,_tc); return true; },
+  end(){ for(const I of [...tLive.values()]) if(I.tag!==frameTag) tFree(I);
+    for(const k in TROOP){ const K=TROOP[k]; if(!K) continue; const n=K.slots.length; K.body.count=K.ol.count=n; K.body.visible=K.ol.visible=n>0; if(!n) continue;
+      const D=K.data, RW=K.NB*12; let up=0;
+      for(const I of K.slots){ if(!I.dirty) continue; I.dirty=false; const row=I.slot*RW, M=I.mats;
+        for(let i=0;i<K.NB;i++){ const s0=i*16, o=row+i*12;   /* three rows of each affine bone matrix */
+          D[o]=M[s0]; D[o+1]=M[s0+4]; D[o+2]=M[s0+8]; D[o+3]=M[s0+12]; D[o+4]=M[s0+1]; D[o+5]=M[s0+5]; D[o+6]=M[s0+9]; D[o+7]=M[s0+13]; D[o+8]=M[s0+2]; D[o+9]=M[s0+6]; D[o+10]=M[s0+10]; D[o+11]=M[s0+14]; }
+        K.tex.addUpdateRange(row,RW); up++; }
+      if(up) K.tex.needsUpdate=true;
+      for(const m of [K.body,K.ol]){ m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.addUpdateRange(0,n*16); m.instanceMatrix.needsUpdate=true; }
+      K.body.instanceColor.clearUpdateRanges(); K.body.instanceColor.addUpdateRange(0,n*3); K.body.instanceColor.needsUpdate=true; } },
+  clear(){ for(const I of [...tLive.values()]) tFree(I); for(const k in TROOP){ const K=TROOP[k]; if(K){ K.body.visible=K.ol.visible=false; K.body.count=K.ol.count=0; } } },
+  stats:()=>({live:tLive.size,types:Object.keys(TROOP).filter(k=>TROOP[k]).map(k=>k+':'+TROOP[k].tris+'t/'+TROOP[k].NB+'b')}),
+  setOutline(on){ for(const k in TROOP) if(TROOP[k]) TROOP[k].ol.material.visible=!!on; } };
+
 /* ================================================================ public driver */
 const live=new Map(), pool={}; let frameTag=0;
 const _tint=new T.Color(), WHITE=new T.Color(1,1,1);
@@ -1557,6 +1687,7 @@ function acquire(ent,key){ let I=live.get(ent); if(I&&I.key===key){ I.tag=frameT
 function release(ent,I){ live.delete(ent); I.grp.visible=false; (pool[I.key]=pool[I.key]||[]).push(I); }
 const API={
   has:key=>!!DEFS[key],
+  troops:TROOPS,
   registerModel, models:()=>Object.fromEntries(Object.entries(IMPORTED).map(([k,v])=>[k,{status:v.status,error:v.error,bones:v.proto&&v.proto.map,height:v.proto&&v.proto.height}])), bones:GK_BONES, autoBoneMap,
   keys:()=>Object.keys(DEFS),
   prebuild:keys=>{ for(const k of keys) getBuilt(k); },

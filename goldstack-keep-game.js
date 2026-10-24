@@ -382,6 +382,10 @@ const RECRUITS = {
 };
 const UNIT_SPR={archer:'archer',samurai:'samurai',onmyoji:'onmyoji',ninja:'ninja',oniw:'oni',yari:'yari',teppo:'teppo',sohei:'sohei',miko:'miko',tanuki:'tanuki',sumo:'sumo',kabuki:'kabuki',falcon:'falcon',kusari:'kusari',komainu:'komainu',shugen:'shugen',kunoichi:'kunoichi',taiko:'taiko',naginata:'naginata',tate:'tate',foxmage:'foxmage'};
 const MELEE_CLS=['samurai','oniw','yari','sohei','sumo','kusari','komainu','kunoichi','naginata','tate'];
+/* v83 scenery budget: terrain grid sizes (ground, wide paint layer, detail layer; were 150, 110, 80) and the radius
+   around the castle inside which trees keep their ink outline */
+const TERRAIN_SEG=[112,80,56], TREE_OUTLINE_R=26;
+const MELEE_AGGRO=7.5, MELEE_LEASH=11, MELEE_CHARGE=2.0;   /* v83: how far melee troops look, how far they may stray from the hero, sprint multiplier */
 const ICONS = {acad_ground:'⚔️', acad_heavy:'👹', acad_mage:'⛩️', aup:'⬆️', sumopit:'🤼', kabukipit:'🎭', falconpit:'🦅', kusaripit:'⛓️', komainupit:'🦁', shugenpit:'🔥', kunoichipit:'❄️', taikopit:'🥁', naginatapit:'🗡️', tatepit:'🛡️', foxmagepit:'🦊', yaripit:'🔱', teppopit:'💥', soheipit:'🔔', mikopit:'🎐', tanukipit:'🧨', ctower:'💣', onipit:'👹', range:'🏹', dojo:'⚔️', shrine:'⛩️', ninja:'🥷', banner:'🎌', mine:'⛏️', forge:'🔥', armory:'🛡️', tower:'🗼', fence:'🪵', tup:'⬆️', lvl2:'⭐'};
 
 /* ================================================================ helpers */
@@ -608,7 +612,9 @@ function bBegin(b){ b.n=0; }
 function bYaw(b,x,y,z,yaw,sx,sy,sz,col){ if(b.n>=b.cap) return; _p.set(x,y,z); _q.setFromAxisAngle(_Y,yaw); _s.set(sx,sy,sz); _m4.compose(_p,_q,_s); b.m.setMatrixAt(b.n,_m4); b.m.setColorAt(b.n,col); b.n++; }
 function bEuler(b,x,y,z,rx,ry,rz,s,col){ if(b.n>=b.cap) return; _p.set(x,y,z); _e.set(rx,ry,rz); _q.setFromEuler(_e); _s.set(s,s,s); _m4.compose(_p,_q,_s); b.m.setMatrixAt(b.n,_m4); b.m.setColorAt(b.n,col); b.n++; }
 function bQuat(b,x,y,z,q,sx,sy,sz,col){ if(b.n>=b.cap) return; _p.set(x,y,z); _s.set(sx,sy,sz); _m4.compose(_p,q,_s); b.m.setMatrixAt(b.n,_m4); b.m.setColorAt(b.n,col); b.n++; }
-function bEnd(b){ b.m.count=b.n; b.m.instanceMatrix.needsUpdate=true; b.m.instanceColor.needsUpdate=true; }
+/* v83: an empty batch is hidden, so it costs no draw call and its texture is never uploaded to the GPU. Before, every
+   sprite kind (about 60) drew and kept its sheet in memory on every stage, even with nothing to show. */
+function bEnd(b){ b.m.count=b.n; b.m.visible=b.n>0&&!b.off; if(b.n){ b.m.instanceMatrix.needsUpdate=true; b.m.instanceColor.needsUpdate=true; } }
 
 const CH=340;
 const B={
@@ -670,6 +676,10 @@ const MODELS3D={};
    Each one plays the shared animation library through the canonical skeleton; until its file loads, or if it
    fails, the code-built character keeps drawing. Optional: yaw (radians), boneMap {gkBone:'ModelBoneName'}, cel:false, outline:false. */
 const CHAR_MODELS={};
+/* v83: in the anime style the squad is drawn as 3D anime troops (one draw per troop type); the chibi style keeps the
+   painted sprites. ?troops=sprite or ?troops=3d overrides it on this device. */
+const TROOPS_MODE=(()=>{ try{ const q=new URLSearchParams(location.search).get('troops'); if(q==='sprite'||q==='3d'||q==='auto'){ localStorage.setItem('gk-troops',q); return q; } return localStorage.getItem('gk-troops')||'auto'; }catch(e){ return 'auto'; } })();
+const troops3D=()=>{ const C=CH3(); if(!C||!C.troops||TROOPS_MODE==='sprite'||QL<=0.3) return null;   /* emergency quality step falls back to sprites */ return (TROOPS_MODE==='3d'||C.style()==='anime')?C.troops:null; };
 let _ch3d; const CH3=()=>_ch3d!==undefined?_ch3d:(_ch3d=(GFX==='3d'&&window.GK3D_CHARS)?(C=>{ for(const k in CHAR_MODELS) C.registerModel(k,CHAR_MODELS[k]).catch(()=>{}); return C; })(window.GK3D_CHARS(T,{gradTex,scene,camera,loadModel})):null);
 /* v68 Phase 1: 3D world (goldstack-3d-world.js) - terrain, trees, props, castle, buildings */
 let _w3d; const W3=()=>_w3d!==undefined?_w3d:(_w3d=(GFX==='3d'&&window.GK3D_WORLD&&CH3())?window.GK3D_WORLD(T,CH3().kit,{scene}):null);
@@ -837,7 +847,7 @@ function buildEnvironment(si){
   sun.color.setHex(0xFFEBD0); hemi.color.setHex(0xDCEFFF);
   hemi.intensity = (st.theme==='snow'?0.5:(st.theme==='cave'||st.theme==='eclipse')?0.72:0.62)*MOOD.hemi*LK; sun.intensity = (st.theme==='volcano'?0.62:0.7)*MOOD.sun*LK;
   const W=W3(); if(W) W.clearTickers();
-  const gg=W?new T.PlaneGeometry(240,240,150,150):new T.PlaneGeometry(240,240,48,48); gg.rotateX(-Math.PI/2);
+  const gg=W?new T.PlaneGeometry(240,240,TERRAIN_SEG[0],TERRAIN_SEG[0]):new T.PlaneGeometry(240,240,48,48); gg.rotateX(-Math.PI/2);
   const cols=[], base=new T.Color(th.ground);
   for(let i=0;i<gg.attributes.position.count;i++){ const v=0.9+R()*0.12; cols.push(v,v,v); }
   gg.setAttribute('color',new T.Float32BufferAttribute(cols,3));
@@ -865,9 +875,9 @@ function buildEnvironment(si){
     W.setupTerrain(LAYOUT,KEEP,si*7+MATCH%97,POND); W.shapeGround(gg,LROT); }
   const ground=new T.Mesh(gg,new T.MeshLambertMaterial({vertexColors:true,color:LANDMAP[1],map:tex(LANDMAP[0],14)})); ground.rotation.y=LROT; ground.receiveShadow=true; env.add(ground);
   { // a second, larger pass of the same painting breaks up any sense of repetition
-    const big=new T.Mesh(W?new T.PlaneGeometry(240,240,110,110):new T.PlaneGeometry(240,240),new T.MeshLambertMaterial({map:tex(LANDMAP[0],3.5),color:LANDMAP[1],transparent:true,opacity:0.45,depthWrite:false,polygonOffset:!!W,polygonOffsetFactor:-1,polygonOffsetUnits:-2}));
+    const big=new T.Mesh(W?new T.PlaneGeometry(240,240,TERRAIN_SEG[1],TERRAIN_SEG[1]):new T.PlaneGeometry(240,240),new T.MeshLambertMaterial({map:tex(LANDMAP[0],3.5),color:LANDMAP[1],transparent:true,opacity:0.45,depthWrite:false,polygonOffset:!!W,polygonOffsetFactor:-1,polygonOffsetUnits:-2}));
     if(W){ big.geometry.rotateX(-Math.PI/2); big.rotation.y=LROT+Math.PI/4; W.shapeGround(big.geometry,LROT+Math.PI/4); } else { big.rotation.x=-Math.PI/2; big.rotation.z=LROT+Math.PI/4; } big.position.y=0.008; env.add(big);
-    const detail=new T.Mesh(W?new T.PlaneGeometry(170,170,80,80):new T.PlaneGeometry(170,170),new T.MeshLambertMaterial({map:tex({forest:'g_mist',ember:'g_volcano',temple:'g_grave',moon:'g_snow'}[st.theme]||('g_'+st.theme),26),transparent:true,opacity:0.28,depthWrite:false}));
+    const detail=new T.Mesh(W?new T.PlaneGeometry(170,170,TERRAIN_SEG[2],TERRAIN_SEG[2]):new T.PlaneGeometry(170,170),new T.MeshLambertMaterial({map:tex({forest:'g_mist',ember:'g_volcano',temple:'g_grave',moon:'g_snow'}[st.theme]||('g_'+st.theme),26),transparent:true,opacity:0.28,depthWrite:false}));
     if(W){ detail.geometry.rotateX(-Math.PI/2); W.shapeGround(detail.geometry,0); detail.material.polygonOffset=true; detail.material.polygonOffsetFactor=-2; detail.material.polygonOffsetUnits=-4; } else detail.rotation.x=-Math.PI/2;
     detail.position.y=0.014; env.add(detail); }
   if(W&&POND){ const pm=W.pondMesh(POND); pm.position.y=-0.16; env.add(pm);
@@ -954,7 +964,11 @@ function buildEnvironment(si){
     const SECOND={sakura:'t_pine',maple:'t_cedar',willow:'t_bamboo',cedar:'t_pine',bamboo:'t_cedar',spooky:'t_dead',crystal:'t_crystal',snowpine:'t_snowpine',coastpine:'t_coastpine',stormpine:'t_snowpine',dead:'t_ashtree',ashtree:'t_dead'};
     const t3=T3[th.tree];
     if(W&&t3){ const sec=SECOND[th.tree]||t3, main=spots.filter((t,i)=>i%5!==4), alt=spots.filter((t,i)=>i%5===4);
-      for(const [kind,list] of [[t3,main],[sec,alt]]){ if(!list.length) continue; const ms=W.instanced(kind,list.length), mh=W.heightOf(kind), kh=kind==='t_crystal'?3.4:kind==='t_bamboo'?5.6:kind==='t_cedar'?5.6:th0;
+      /* v83: trees near the battlefield keep their ink outline; trees out at the map edge drop it (about 300
+         triangles saved per tree, and at that distance the outline was barely a pixel anyway) */
+      const nearK=t=>Math.hypot(t.x-KEEP.x,t.z-KEEP.z)<TREE_OUTLINE_R, groups=[];
+      for(const [kind,list] of [[t3,main],[sec,alt]]){ groups.push([kind,list.filter(nearK),true],[kind,list.filter(t=>!nearK(t)),false]); }
+      for(const [kind,list,ol] of groups){ if(!list.length) continue; const ms=W.instanced(kind,list.length,ol?null:{outline:false}), mh=W.heightOf(kind), kh=kind==='t_crystal'?3.4:kind==='t_bamboo'?5.6:kind==='t_cedar'?5.6:th0;
         list.forEach((t,i)=>{ _p.set(t.x,TH(t.x,t.z)-0.05,t.z); _q.setFromAxisAngle(_Y,t.r); _s.setScalar(t.s*kh/mh); _m4.compose(_p,_q,_s); for(const m of ms) m.setMatrixAt(i,_m4); });
         env.add(...ms); }
       /* drifting air: petals, leaves, snow, embers, ash, wisps, fireflies, crystal sparkles */
@@ -2423,7 +2437,7 @@ function fxUpdate(dt){
       else { _q.copy(camBill); _fxq.setFromAxisAngle(_fxax,o.rot); _q.multiply(_fxq); }
       _m4.compose(_p,_q,_s); ms.setMatrixAt(n,_m4);
       _fxcol.setHex(o.col).multiplyScalar((0.35+0.65*a)*(o.dim||1)); ms.setColorAt(n,_fxcol); n++; }
-    ms.count=n; ms.instanceMatrix.needsUpdate=true; if(ms.instanceColor) ms.instanceColor.needsUpdate=true; }
+    ms.count=n; ms.visible=n>0; if(n){ ms.instanceMatrix.needsUpdate=true; if(ms.instanceColor) ms.instanceColor.needsUpdate=true; } }
 }
 
 /* ================================================================ battle cards
@@ -3131,8 +3145,14 @@ function update(dt){
     u.flash=Math.max(0,u.flash-dt*8); u.atk=Math.max(0,(u.atk||0)-dt*2.4); u.cd-=dt; u.hp=Math.min(u.max,u.hp+dt*1.5);
     let mx=tx-u.x, mz=tz-u.z, speed=MOD('squadSpd')*D.speed*SQUAD_SPEED, chase=null;
     if(MELEE_CLS.includes(u.cls)){
-      u.rt-=dt; if(u.rt<=0){ u.rt=0.25; const e=nearestEnemy(u.x,u.z,4.5); u.target=(e&&Math.hypot(e.x-cx,e.z-cz)<7.5)?e:null; }
+      /* v83: melee troops CHARGE. They spot foes up to MELEE_AGGRO away (was 4.5), may leave the hero by up to
+         MELEE_LEASH (was 7.5), sprint at double speed with a dust trail until in reach, lunge into every blow
+         with a slash arc, then jog back to their slot once the foe falls. */
+      u.rt-=dt; if(u.rt<=0){ u.rt=0.2; const keep=u.target&&!u.target.dead&&Math.hypot(u.target.x-cx,u.target.z-cz)<MELEE_LEASH?u.target:null;
+        const e=keep||nearestEnemy(u.x,u.z,MELEE_AGGRO), nt=(e&&Math.hypot(e.x-cx,e.z-cz)<MELEE_LEASH)?e:null;
+        if(nt&&nt!==u.target&&Math.hypot(nt.x-u.x,nt.z-u.z)>D.range+1.2) u.charge=1; u.target=nt; }
       if(u.target&&!u.target.dead){ chase=u.target; mx=chase.x-u.x; mz=chase.z-u.z; const d=Math.hypot(mx,mz)-chase.rad*0.6;
+        if(d>D.range+0.4&&u.charge){ speed*=MELEE_CHARGE; u.dustT=(u.dustT||0)-dt; if(u.dustT<=0){ u.dustT=0.11; spawnParticles(u.x,0.15,u.z,1,0xD9CBA8,1.2,0.35,0.9,0.6); } } else if(d<=D.range) u.charge=0;
         if(d<=D.range){ mx=mz=0; u.rot=lerpAngle(u.rot,Math.atan2(chase.x-u.x,chase.z-u.z),0.4);
           if(u.cd<=0){ u.cd=MOD('squadCd')*D.cd; u.atk=1; const dmg=D.dmg*rankMul*(1+0.15*(G.gear[u.cls]||0))*(u.rally>0?1.25:1)*(u.cls==='yari'?1.1:1)*troopMul(u.cls); if(D.knock&&chase.cls!=='boss'){ const dx=chase.x-u.x,dz=chase.z-u.z,dd=Math.hypot(dx,dz)||1; chase.x+=dx/dd*D.knock; chase.z+=dz/dd*D.knock; chase.stunT=Math.max(chase.stunT,0.5); }
             if(D.pull&&chase.cls!=='boss'){ const dx=u.x-chase.x,dz=u.z-chase.z,dd=Math.hypot(dx,dz)||1; chase.x+=dx/dd*1.6; chase.z+=dz/dd*1.6; chase.slowT=Math.max(chase.slowT,1.2); chase.slowF=Math.max(chase.slowF,0.4); }
@@ -3140,6 +3160,9 @@ function update(dt){
               hitEnemy(chase,dm,u,D.el||arrowEl()); if(TTYPE[u.cls]==='oni'&&U('oni2')) oniQuake(chase,dm,u);
               if(D.cleave){ let n=0; eachEnemyNear(chase.x,chase.z,3,o2=>{ if(n>=D.cleave||o2===chase||o2.dead||Math.hypot(o2.x-chase.x,o2.z-chase.z)>2.4) return; hitEnemy(o2,dm*0.8,u,null,1); n++; });
                 fx('fx_slash',chase.x,1.1,chase.z,4.2,0.25,0xFFFFFF,{rot:-Math.atan2(chase.x-u.x,chase.z-u.z)+Math.PI/2,grow:0.6}); } } sfx('slash');
+            { const dx=chase.x-u.x, dz=chase.z-u.z, dd=Math.hypot(dx,dz)||1, room=dd-chase.rad*0.6-0.35;   /* lunge into the blow and show the cut */
+              if(room>0){ const l=Math.min(0.32,room); u.x+=dx/dd*l; u.z+=dz/dd*l; }
+              if(!D.cleave) fx('fx_slash',u.x+dx/dd*0.9,1.0,u.z+dz/dd*0.9,1.7,0.18,TTYPE[u.cls]==='oni'?0xFFB37A:0xFFFFFF,{rot:-Math.atan2(dx,dz)+Math.PI/2,grow:0.5}); }
             spawnParticles(chase.x,1,chase.z,4,D.el==='ice'?0xBFEFFF:0xFFFFFF,4,0.2,0.9,0);
             if(U('blade2')&&TTYPE[u.cls]==='sword'){ let n=0; for(const o2 of G.enemies){ if(n>=2) break; if(o2.dead||o2===chase) continue; if(Math.hypot(o2.x-chase.x,o2.z-chase.z)<1.8){ hitEnemy(o2,dmg*0.7,u,null,1); n++; } } } } } }
     } else if(u.cls==='ninja'){
@@ -3601,10 +3624,17 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   if(h.alive){ const hx=0.7*G.heroDef.h*(HERO_UP[G.heroDef.sprite]||1)/SPR_H[G.heroDef.sprite];
     if(!draw3D(h,G.heroDef.sprite,h.x,0,h.z,h.rot,{H:sprH(G.heroDef.sprite,hx)*0.92,moving:h.moving,atk:h.atk||0,flash:h.flash,style:HSTYLE[G.heroDef.attack],atkDur:Math.min(0.5,Math.max(0.24,(G.heroDef.cd||0.6)*0.9)),wide:0.5}))
       drawSprite(G.heroDef.sprite,h,h.x,0,h.z,h.rot,h.flash,h.moving,0,false,h.atk||0,hx,false); }
-  for(const u of G.units){ const H=drawSprite(UNIT_SPR[u.cls],u,u.x,0,u.z,u.rot,u.flash,u.moving,u.seed,false,u.atk,1,false);
+  const TR=troops3D(), tdt=Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1);
+  /* troop ink outlines are the first thing trimmed: on at full quality for a squad up to about two dozen
+     (with a little hysteresis so they do not flicker), off for bigger armies or a struggling device */
+  if(TR){ const nU=G.units.length; G._tol=G._tol==null?true:G._tol?(nU<=28&&QL>=0.8):(nU<=20&&QL>=0.9); TR.setOutline(G._tol); }
+  const drawTroop=(u,cls,x,y,z,sc)=>{ const k=UNIT_SPR[cls]||cls, H=sprH(k,sc)*0.92, ty=y+TH(x,z);
+    if(!TR||!TR.has(cls)||!TR.drive(u,cls,{x,y:ty,z,rot:u.rot,H,dt:tdt,moving:u.moving,atk:u.atk||0,flash:u.flash||0,atkDur:Math.min(0.5,Math.max(0.26,(CLS[cls]&&CLS[cls].cd||0.8)*0.6))})) return drawSprite(k,u,x,y,z,u.rot,u.flash,u.moving,u.seed||0,false,u.atk||0,sc,false);
+    const W=H*0.5; bYaw(BLOB,x,0.04+ty,z,0,W*1.1,1,W*0.65,WHITE); return H; };
+  for(const u of G.units){ const H=drawTroop(u,u.cls,u.x,0,u.z,1);
     if(u.cls==='oniw') bYaw(B.badge,u.x,H+0.12,u.z,t*2,1.3,1.3,1.3,C(0x5AD843));
     if(u.rank>0) bYaw(B.badge,u.x,H+0.25+Math.sin(t*3+u.seed)*0.05,u.z,t*2,1,1,1,RANKCOL[u.rank]); }
-  for(const a of G.towerArchers){ if(a.hidden) continue; const tw=a.tower, ax=tw?tw.x+(a.x-tw.x)*0.72:a.x, az=tw?tw.z+(a.z-tw.z)*0.72:a.z; drawSprite('archer',a,ax,a.y,az,a.rot,0,false,a.seed||0,false,a.atk||0,0.74,false); }
+  for(const a of G.towerArchers){ if(a.hidden) continue; const tw=a.tower, ax=tw?tw.x+(a.x-tw.x)*0.72:a.x, az=tw?tw.z+(a.z-tw.z)*0.72:a.z; drawTroop(a,'archer',ax,a.y,az,0.74); }
   for(const e of G.enemies){
     if(e.cls==='boss'){
       let sc=1, y=0;
@@ -3628,7 +3658,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
     if(e.burrow) continue;
     drawSprite(e.cls,e,e.x,(EN[e.cls]&&EN[e.cls].flier)?1.7+Math.sin(TIME*3+e.seed)*0.25:0,e.z,e.rot,Math.max(e.flash,e.mut?0.42+Math.sin(TIME*4+e.seed)*0.12:0),e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,e.mut?1.18:1,e.burnT>0);
   }
-  if(CH3()) CH3().end();
+  if(CH3()){ CH3().troops.end(); CH3().end(); }
   Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
 
   bBegin(B.coin); bBegin(B.ingot);

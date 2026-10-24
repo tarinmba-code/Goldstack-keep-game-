@@ -53,18 +53,18 @@ const camera = new T.PerspectiveCamera(35, 1, 0.1, 400);
 const C = window.GK3D_CHARS(T, { scene, style: q.get('style') === 'chibi' ? 'chibi' : (q.get('style') || undefined) });
 if (q.get('style') === 'anime' || q.get('style') === 'chibi') C.setStyle(q.get('style'));
 C.setCamera(camera);
-const keys = C.keys().sort();
+const keys = C.keys().sort().concat(C.troops.keys().map(k => 'T:' + k));   /* T: = a squad of that troop type */
 const sel = document.getElementById('key');
 for (const k of keys) { const o = document.createElement('option'); o.value = o.textContent = k; sel.appendChild(o); }
 let key = keys.includes(q.get('k')) ? q.get('k') : (keys.includes('hero') ? 'hero' : keys[0]); sel.value = key;
 let act = q.get('a') || 'idle', camMode = q.get('cam') || 'close', spin = q.get('spin') === '1', t = 0, yaw = q.get('yaw') != null ? +q.get('yaw') : 0.5;
-const H = () => { if (q.get('h')) return +q.get('h'); const d = C.DEFS[key] || {}; return d.type && d.type !== 'human' ? 4.6 : /giant|titan|broad/.test(d.build || '') ? 4.2 : 2.2; };
-const ent = { id: 1 };
+const H = () => { if (q.get('h')) return +q.get('h'); if (key.startsWith('T:')) return 2.0; const d = C.DEFS[key] || {}; return d.type && d.type !== 'human' ? 4.6 : /giant|titan|broad/.test(d.build || '') ? 4.2 : 2.2; };
+const ent = { id: 1 }, squad = [0, 1, 2, 3, 4].map(i => ({ id: 100 + i }));
 let x = 0, atkT = 0, castU = 0;
 function setAct(a) { act = a; atkT = 0; castU = 0; for (const b of document.querySelectorAll('[data-a]')) b.classList.toggle('on', b.dataset.a === a); }
 for (const b of document.querySelectorAll('[data-a]')) b.onclick = () => setAct(b.dataset.a);
 setAct(act);
-sel.onchange = () => { C.clear(); key = sel.value; };
+sel.onchange = () => { C.clear(); C.troops.clear(); key = sel.value; };
 document.getElementById('sty').onclick = () => { C.setStyle(C.style() === 'anime' ? 'chibi' : 'anime'); };
 document.getElementById('cam').onclick = () => { camMode = camMode === 'close' ? 'game' : 'close'; };
 document.getElementById('spin').onclick = () => { spin = !spin; };
@@ -74,7 +74,7 @@ function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.asp
 addEventListener('resize', resize); resize();
 const info = document.getElementById('info');
 let last = performance.now(), fixedDt = q.get('dt') ? +q.get('dt') : 0;
-window.__LAB = { C, renderer, scene, camera, inst: () => C.instance(ent), setKey: k => { C.clear(); key = k; sel.value = k; }, setAct, setCam: m => camMode = m, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); }, get t() { return t; } };
+window.__LAB = { C, renderer, scene, camera, inst: () => C.instance(ent), setKey: k => { C.clear(); C.troops.clear(); key = k; sel.value = k; }, setAct, setCam: m => camMode = m, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); }, get t() { return t; } };
 function tick(dt) {
   t += dt; const h = H();
   let moving = false, atk = 0, flash = 0, cast = false;
@@ -84,16 +84,22 @@ function tick(dt) {
   if (act === 'hit') { atkT += dt; if (atkT > 1.0) atkT = 0; flash = atkT < 0.12 ? 1 : 0; }
   if (act === 'cast') { castU = (castU + dt / 1.4) % 1; cast = true; }
   C.begin();
+  if (key.startsWith('T:')) { const cls = key.slice(2);
+    for (let i = 0; i < 5; i++) { const e = squad[i]; const sx = (i - 2) * 1.3 + (act === 'run' ? x : 0) * 0;
+      C.troops.drive(e, cls, { x: sx, y: 0, z: (i % 2) * 0.8, rot: act === 'run' ? Math.PI / 2 : 0, H: h, dt, moving, atk: act === 'atk' ? (((atkT + i * 0.13) % 1.1) < 0.05 ? 0.9 : 0) : 0, flash, style: undefined }); }
+    C.troops.end(); C.end(); }
+  else {
   C.drive(ent, key, { x: act === 'run' ? 0 : x, y: 0, z: 0, rot: (act === 'run' ? Math.PI / 2 : 0), H: h, dt, moving, atk, flash, cast, castKind: 'summon', castU, style: undefined });
   if (act === 'run') { const I = C.instance(ent); if (I) { I.st.last = { x: I.st.last.x - dt * h * 1.6, z: 0 }; } }
-  C.end();
+  C.troops.end(); C.end(); }
   if (spin) yaw += dt * 0.6;
-  const d = camMode === 'game' ? 40 : h * 2.6, pitch = camMode === 'game' ? 55 * Math.PI / 180 : 0.22;
+  const d = camMode === 'game' ? 40 : h * (key.startsWith('T:') ? 4.4 : 2.6), pitch = camMode === 'game' ? 55 * Math.PI / 180 : 0.22;
   const cx = Math.sin(yaw) * Math.cos(pitch) * d, cz = Math.cos(yaw) * Math.cos(pitch) * d, cy = Math.sin(pitch) * d + h * 0.5;
   camera.position.set(cx, cy, cz); camera.lookAt(0, h * 0.5, 0);
   renderer.render(scene, camera);
   const I = C.instance(ent);
   let tri = 0, bones = 0; if (I) I.grp.traverse(m => { if (m.isMesh && m.visible) { const g = m.geometry; tri += g.index ? g.index.count / 3 : g.attributes.position.count / 3; if (m.isSkinnedMesh) bones = Math.max(bones, m.skeleton.bones.length); } });
+  if (key.startsWith('T:')) { info.textContent = `${key} squad  ${act}  cam ${camMode}\n${C.troops.stats().types.join('  ')}  draws ${renderer.info.render.calls}`; return; }
   info.textContent = `${key}${I && I.imported ? ' (imported model)' : ''}  style ${C.style()}  ${act}  cam ${camMode}\nheight ${h.toFixed(2)}  tris ${Math.round(tri)}  bones ${bones}  draws ${renderer.info.render.calls}`;
 }
 function frame(now) { requestAnimationFrame(frame); const dt = fixedDt || Math.min(0.05, (now - last) / 1000); last = now; if (!window.__LAB_PAUSE) tick(dt); }
