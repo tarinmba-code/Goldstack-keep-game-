@@ -1889,7 +1889,7 @@ function spawnParticles(x,y,z,n,color,spd=4,life=0.5,size=1,grav=-9){ if(QL<1&&!
 }
 function pushPart(q){ const o=newPart(); Object.assign(o,q); }
 function spawnLoot(x,z,n,kind='gold'){ for(let i=0;i<n;i++){ const a=rand(0,Math.PI*2), s=rand(1.5,3.2); G.coins.push({kind,st:0,x,y:0.9,z,vx:Math.cos(a)*s,vy:rand(4.5,6.5),vz:Math.sin(a)*s,t:0,bounces:0,spin:rand(0,6)}); } }
-function stackTop(kind){ const h=G.hero; if(kind==='ingot') return {x:h.x+RIGHT.x*0.62,y:1.55+G.ingots*CFG.ingotStep,z:h.z+RIGHT.z*0.62}; return {x:h.x,y:G.heroDef.h+0.2+Math.min(G.stack,CFG.stackCap)*CFG.coinStep,z:h.z}; }
+function stackTop(kind){ const h=G.hero; if(kind==='ingot') return {x:h.x+RIGHT.x*0.62,y:1.55+G.ingots*CFG.ingotStep,z:h.z+RIGHT.z*0.62}; return {x:h.x,y:heroTop()+0.2+Math.min(G.stack,CFG.stackCap)*CFG.coinStep,z:h.z}; }
 function payFx(n,tx,tz,kind){ for(let i=0;i<Math.min(n,18);i++){ const top=stackTop(kind); G.coins.push({kind,st:2,x:top.x,y:top.y,z:top.z,sx:top.x,sy:top.y+i*0.05,sz:top.z,tx:tx+rand(-0.5,0.5),tz:tz+rand(-0.5,0.5),t:-i*0.03,dur:0.32,spin:0}); } }
 
 /* ================================================================ combat */
@@ -3397,7 +3397,11 @@ function update(dt){
 }
 const st_amb_size=()=>G.st.theme==='snow'?0.7:0.55;
 /* v69: the squad forms rings that start outside the hero's own footprint, so the hero always stands clear in the middle */
-function heroClear(){ const H=(G&&G.heroDef&&G.heroDef.h)||2.2; return clamp(0.3*H+0.85,1.6,3.1); }
+function heroClear(){ const H=((G&&G.heroDef&&G.heroDef.h)||2.2)*((G&&G._heroK)||1); return clamp(0.3*H+0.85,1.6,3.1); }   /* v84: a bigger hero keeps the squad a step further out */
+/* v84: the typical soldier's drawn height (median over all troop types) and how many times taller the hero stands */
+const HERO_TROOP_X=2; let _tref=0;
+const troopRefH=()=>_tref||(_tref=(()=>{ const a=Object.keys(CLS).map(c=>sprH(UNIT_SPR[c]||c)).sort((x,y)=>x-y); return a[a.length>>1]||1.7; })());
+const heroTop=()=>Math.max(G.heroDef.h,(G._hvis||0)*0.95);   /* where the coin stack and health bar sit above the hero */
 function slotOffset(i){ const sp=0.9, r0=heroClear(); let k=0,start=0,cap=Math.max(6,Math.floor(Math.PI*2*r0/sp));
   while(i>=start+cap){ start+=cap; k++; cap=Math.max(6,Math.floor(Math.PI*2*(r0+k*sp)/sp)); }
   const r=r0+k*sp, a=((i-start)/cap)*Math.PI*2+k*0.5; return {x:Math.cos(a)*r,z:Math.sin(a)*r,ring:k+1,r}; }
@@ -3621,8 +3625,11 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   Object.values(SB).forEach(bBegin); bBegin(B.badge); bBegin(BLOB); G._rdt=dt; if(CH3()) CH3().begin(); if(_w3d) _w3d.tick(dt);
   if(G.ally){ const a=G.ally, grow=Math.min(1,a.t/0.35), fade=Math.min(1,(a.dur-a.t)/0.4), aH=sprH(a.sprite,(5.4*(DIV_UP[a.sprite]||1)/(SPR_H[a.sprite]||6))*grow*Math.max(0.2,fade));
     if(!draw3D(a,a.sprite,a.x,0.25+Math.sin(TIME*2)*0.15,a.z,a.rot,{H:aH*0.92,moving:a.moving,atk:a.atk,style:HSTYLE[(HEROES[a.id]||{}).attack],wide:0.55})) drawSprite(a.sprite,a,a.x,0.25+Math.sin(TIME*2)*0.15,a.z,a.rot,0,a.moving,a.seed,false,a.atk,(5.4*(DIV_UP[a.sprite]||1)/(SPR_H[a.sprite]||6))*grow*Math.max(0.2,fade),false); }
-  if(h.alive){ const hx=0.7*G.heroDef.h*(HERO_UP[G.heroDef.sprite]||1)/SPR_H[G.heroDef.sprite];
-    if(!draw3D(h,G.heroDef.sprite,h.x,0,h.z,h.rot,{H:sprH(G.heroDef.sprite,hx)*0.92,moving:h.moving,atk:h.atk||0,flash:h.flash,style:HSTYLE[G.heroDef.attack],atkDur:Math.min(0.5,Math.max(0.24,(G.heroDef.cd||0.6)*0.9)),wide:0.5}))
+  if(h.alive){ let hx=0.7*G.heroDef.h*(HERO_UP[G.heroDef.sprite]||1)/SPR_H[G.heroDef.sprite];
+    /* v84: in the chibi and classic looks the hero stands at least HERO_TROOP_X times as tall as a typical soldier,
+       so you can always pick out your hero in the crowd (anime style keeps its own 1.2x presence) */
+    const anime=!!(CH3()&&CH3().style()==='anime'), k=anime?1:Math.max(1,HERO_TROOP_X*troopRefH()/sprH(G.heroDef.sprite,hx)); hx*=k; G._heroK=k; G._hvis=sprH(G.heroDef.sprite,hx);
+    if(!draw3D(h,G.heroDef.sprite,h.x,0,h.z,h.rot,{H:sprH(G.heroDef.sprite,hx)*(anime?0.92:1),moving:h.moving,atk:h.atk||0,flash:h.flash,style:HSTYLE[G.heroDef.attack],atkDur:Math.min(0.5,Math.max(0.24,(G.heroDef.cd||0.6)*0.9)),wide:0.5}))
       drawSprite(G.heroDef.sprite,h,h.x,0,h.z,h.rot,h.flash,h.moving,0,false,h.atk||0,hx,false); }
   const TR=troops3D(), tdt=Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1);
   /* troop ink outlines are the first thing trimmed: on at full quality for a squad up to about two dozen
@@ -3666,7 +3673,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
     if(c.kind==='ingot') bEuler(B.ingot,c.x,c.y,c.z,c.st?c.spin*0.4:0,c.spin,0,1,C(0x4A9BE6));
     else bEuler(B.coin,c.x,c.y+(c.st===0&&c.vy===0?Math.sin(t*3+c.spin)*0.05:0),c.z,c.st===0?0:c.spin*0.5,c.spin,c.st===2?0.4:0,1,C(0xF5B820)); }
   if(h.alive){
-    const cnt=Math.min(G.stack,CFG.stackShow), H=cnt*CFG.coinStep, Hc=Math.min(H,28), baseY=G.heroDef.h+0.2+bob;
+    const cnt=Math.min(G.stack,CFG.stackShow), H=cnt*CFG.coinStep, Hc=Math.min(H,28), baseY=heroTop()+0.2+bob;
     for(let i=0;i<cnt;i++){ const hh=i*CFG.coinStep, u=H>0?hh/H:0, bend=(G.lean.x+G.wob.x*Math.sin(u*5-t*9)*0.6)*u*u*Hc*0.34;
       bEuler(B.coin,h.x+RIGHT.x*bend,baseY+hh,h.z+RIGHT.z*bend,0,i*0.35,0,1,C(0xF5B820)); }
     const Hi=G.ingots*CFG.ingotStep;
@@ -3708,7 +3715,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   const hpCol=f=>f>0.6?C(0x5CE04A):f>0.3?C(0xFFC928):C(0xFF4436);
   for(const t of (G.etowers||[])){ if(t.hp<t.max) bar(t.x,3.9,t.z,1.4,t.hp/t.max,C(0x5CE04A)); }
   for(const e of G.enemies){ if(e.burrow) continue; if(!e.dead&&e.hp<e.max&&e!==G.boss){ const f=e.hp/e.max; bar(e.x,e.cls==='boss'?BOSSES[e.kind].h+0.4:(e.cls==='oni'?2.95:e.cls==='eshield'?4.6:e.cls==='egolem'?4.6:e.cls==='eronin'?3.6:e.cls==='epriest'?3.7:e.cls==='eshaman'?4.0:e.cls==='earcher'?3.7:e.cls==='espear'?2.9:2.3),e.z,e.cls==='boss'?2.6:(e.cls==='oni'||e.cls==='eshield'||e.cls==='egolem'?1.6:1.35),f,hpCol(f)); } }
-  if(h.alive&&h.hp<h.max) bar(h.x,2.6,h.z,1.1,h.hp/h.max,C(0x5AD843));
+  if(h.alive&&h.hp<h.max) bar(h.x,Math.max(2.6,(G._hvis||0)+0.35),h.z,1.1,h.hp/h.max,C(0x5AD843));
   for(const u of G.units) if(u.hp<u.max*0.98&&MELEE_CLS.includes(u.cls)) bar(u.x,1.95,u.z,0.7,u.hp/u.max,C(0x5AD843));
   for(const k2 in G.fences){ const f=G.fences[k2]; if(f.built&&f.hp<f.max) bar(f.mid[0],2.2,f.mid[1],2,f.hp/f.max,C(0x5AD843)); }
   bEnd(B.hpBg); bEnd(B.hpFg);
