@@ -725,6 +725,11 @@ let _ch3d; const CH3=()=>_ch3d!==undefined?_ch3d:(_ch3d=(GFX==='3d'&&window.GK3D
 let _w3d; const W3=()=>_w3d!==undefined?_w3d:(_w3d=(GFX==='3d'&&window.GK3D_WORLD&&CH3())?window.GK3D_WORLD(T,CH3().kit,{scene}):null);
 const TH=(x,z)=>_w3d?_w3d.terrainHeight(x,z):0;
 const HSTYLE={arrow:'arrow',wind:'wind',orb:'orb',fox:'orb',melee:'melee',blade:'blade',ice:'ice',bolt:'bolt',flame:'flame'};
+/* v90: bosses listed in PAINTED_BOSSES draw their painted sheet (same hand-painted anime look as the troops) instead of the code-built 3D body.
+   ?boss=painted or ?boss=3d overrides it on this device. Add a key once its sheet has 5 frames (idle, step, attack, step, cast). */
+const BOSS_ART=(()=>{ try{ const q=new URLSearchParams(location.search).get('boss'); if(q==='painted'||q==='3d'){ localStorage.setItem('gk-boss',q); return q; } return localStorage.getItem('gk-boss')||'painted'; }catch(e){ return 'painted'; } })();
+const PAINTED_BOSSES=new Set(['kane']);
+const paintedBoss=k=>BOSS_ART==='painted'&&PAINTED_BOSSES.has(k)&&!!ANIM[k]&&FRAMES(k)>=5;
 const sprH=(k,extra)=>(SPR_H[k]||2.2)*(extra||1)*((ANIM_META[k]&&ANIM_META[k].hs)||1);
 function draw3D(ent,key,x,y,z,rot,o){ const C=CH3(); if(!C||!C.has(key)) return false;
   const ty=TH(x,z); const ok=C.drive(ent,key,Object.assign({x,y:y+ty,z,rot,dt:Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1)},o));   /* v82: characters share the global hit-stop */ if(!ok) return false;
@@ -2229,7 +2234,7 @@ function killEnemy(e,src){
     spawnLoot(e.x,e.z,big?irand(45,60):irand(28,36)); spawnLoot(e.x,e.z,big?4:2,'ingot');
     spawnParticles(e.x,1.5,e.z,50,0xFFFFFF,7,0.9,1.6,-10); spawnParticles(e.x,1.5,e.z,24,0xFF7A2A,6,0.8,1.4,-10);
     G.shake=0.7; G.hitStop=0.12; sfx('slam'); toast(big?`${BOSSES[e.kind].name} defeated!`:(e.kind==='brute'?'Brute defeated':'Mini-boss defeated'));
-    if(CH3()&&CH3().has(e.kind)){ (G.ghosts=G.ghosts||[]).push({e,t:0,y:0}); }   /* v85: the 3D boss burns away over 0.9 s instead of vanishing */
+    if(CH3()&&CH3().has(e.kind)&&!paintedBoss(e.kind)){ (G.ghosts=G.ghosts||[]).push({e,t:0,y:0}); }   /* v85: the 3D boss burns away over 0.9 s instead of vanishing */
     dyn.remove(e.g); G.tgs=G.tgs.filter(t=>t.owner!==e);
     if(G.boss===e){ G.boss=null; $('bossbar').style.display='none'; G.bossBounty=50*(G.si+1); }
   } else { { let n=irand(...EN[e.cls].loot); n=Math.round(n*MOD('kill')); if(e.mut) n*=2; if(LV('r_loot')) n=Math.round(n*(1+0.15*LV('r_loot'))); if(PASS('kitsune')) n=Math.floor(n*1.25+Math.random()); if(PASS('hannya')) n=Math.floor(n*1.4+Math.random()); if(PASS('izanami')) n=Math.floor(n*1.6+Math.random()); if(MOD('ingot')>1) n=Math.floor(n*MOD('ingot')+Math.random()); if(PASS('nurari')) n=Math.floor(n*1.35+Math.random()); if(PG('gold',0)) n=Math.floor(n*PG('gold')+Math.random()); if(G.tod&&todState(G.tod.t).n>0.5) n=Math.floor(n*1.2+Math.random()); spawnLoot(e.x,e.z,n); if(e.mut) spawnLoot(e.x,e.z,1,'ingot'); if(e.cls==='oni'&&G.si>=2&&Math.random()<0.25+0.03*G.si) spawnLoot(e.x,e.z,1,'ingot'); } spawnParticles(e.x,0.8,e.z,10,0xF2F2F2,4,0.45,1,-8); spawnParticles(e.x,0.8,e.z,5,e.cls==='oni'?0x7C6BD6:0xD7393A,3.5,0.4,1,-8); }
@@ -3733,7 +3738,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
       const bf=SUP?(e.st==='cast'?4:(e.st==='dash'||(e.st==='recover'&&(e.timer||0)>0.45))?2:null)
                  :((e.st==='cast'||e.st==='dash'||(e.st==='recover'&&(e.timer||0)>0.45))?((ANIM_META[e.kind]||{}).atkF??2):null);
       { const rec=e.st==='recover', ck=e.st==='dash'?'dash':e.castKind;
-        if(!draw3D(e,e.kind,e.x,y,e.z,e.rot,{H:sprH(e.kind,sc)*0.92,scale:1,moving:e.moving,flash:e.flash,frozen:e.slowT>0.8||e.freezeT>0,burn:e.burnT>0,stun:e.stunT>0,
+        if(paintedBoss(e.kind)||!draw3D(e,e.kind,e.x,y,e.z,e.rot,{H:sprH(e.kind,sc)*0.92,scale:1,moving:e.moving,flash:e.flash,frozen:e.slowT>0.8||e.freezeT>0,burn:e.burnT>0,stun:e.stunT>0,
             cast:e.st==='cast'||e.st==='dash',castKind:ck,castU:e.st==='cast'?Math.min(1,(e.castT||0)/(e.castDur||1)):1,atk:Math.max(e.atk||0,rec?0.9*Math.max(0,Math.min(1,(e.timer||0)/0.8)):0),atkDur:0.6,style:null,wide:0.6}))
           drawSprite(e.kind,e,e.x,y,e.z,e.rot,e.flash,e.moving,e.seed,e.slowT>0.8,0,sc,e.burnT>0,bf); }
       if(e.kind==='shogun'&&Math.random()<dt*10) spawnParticles(e.x+rand(-1,1),5.2,e.z,1,0xFF7A2A,1,0.6,1,3);
