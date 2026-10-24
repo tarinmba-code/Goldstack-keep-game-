@@ -58,7 +58,7 @@ const sel = document.getElementById('key');
 for (const k of keys) { const o = document.createElement('option'); o.value = o.textContent = k; sel.appendChild(o); }
 let key = keys.includes(q.get('k')) ? q.get('k') : (keys.includes('hero') ? 'hero' : keys[0]); sel.value = key;
 let act = q.get('a') || 'idle', camMode = q.get('cam') || 'close', spin = q.get('spin') === '1', t = 0, yaw = q.get('yaw') != null ? +q.get('yaw') : 0.5;
-const H = () => { if (q.get('h')) return +q.get('h'); if (key.startsWith('T:')) return 2.0; const d = C.DEFS[key] || {}; return d.type && d.type !== 'human' ? 4.6 : /giant|titan|broad/.test(d.build || '') ? 4.2 : 2.2; };
+const H = () => { if (window.__LABH) return window.__LABH; if (q.get('h')) return +q.get('h'); if (key.startsWith('T:')) return 2.0; const d = C.DEFS[key] || {}; return d.type && d.type !== 'human' ? 4.6 : /giant|titan|broad/.test(d.build || '') ? 4.2 : 2.2; };
 const ent = { id: 1 }, squad = [0, 1, 2, 3, 4].map(i => ({ id: 100 + i }));
 let x = 0, atkT = 0, castU = 0;
 function setAct(a) { act = a; atkT = 0; castU = 0; for (const b of document.querySelectorAll('[data-a]')) b.classList.toggle('on', b.dataset.a === a); }
@@ -74,7 +74,7 @@ function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.asp
 addEventListener('resize', resize); resize();
 const info = document.getElementById('info');
 let last = performance.now(), fixedDt = q.get('dt') ? +q.get('dt') : 0;
-window.__LAB = { C, renderer, scene, camera, inst: () => C.instance(ent), setKey: k => { C.clear(); C.troops.clear(); key = k; sel.value = k; }, setAct, setCam: m => camMode = m, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); }, get t() { return t; } };
+window.__LAB = { C, renderer, scene, camera, inst: () => C.instance(ent), setKey: k => { C.clear(); C.troops.clear(); key = k; sel.value = k; }, setAct, setCam: m => camMode = m, setYaw: v => yaw = v, hideGround: () => { ground.visible = false; }, setBg: c => { scene.background = new T.Color(c); }, canvas: cv, setD: v => { window.__LABD = v; }, setH: v => { window.__LABH = v; }, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); }, get t() { return t; } };
 function tick(dt) {
   t += dt; const h = H();
   let moving = false, atk = 0, flash = 0, cast = false;
@@ -93,7 +93,7 @@ function tick(dt) {
   if (act === 'run') { const I = C.instance(ent); if (I) { I.st.last = { x: I.st.last.x - dt * h * 1.6, z: 0 }; } }
   C.troops.end(); C.end(); }
   if (spin) yaw += dt * 0.6;
-  const d = camMode === 'game' ? 40 : h * (key.startsWith('T:') ? 4.4 : 2.6), pitch = camMode === 'game' ? 55 * Math.PI / 180 : 0.22;
+  const d = camMode === 'game' ? 40 : h * (key.startsWith('T:') ? 4.4 : (window.__LABD || 2.6)), pitch = camMode === 'game' ? 55 * Math.PI / 180 : (window.__LABPITCH != null ? window.__LABPITCH : 0.22);
   const cx = Math.sin(yaw) * Math.cos(pitch) * d, cz = Math.cos(yaw) * Math.cos(pitch) * d, cy = Math.sin(pitch) * d + h * 0.5;
   camera.position.set(cx, cy, cz); camera.lookAt(0, h * 0.5, 0);
   renderer.render(scene, camera);

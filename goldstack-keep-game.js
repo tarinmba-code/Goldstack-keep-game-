@@ -121,6 +121,16 @@ const BOSSES = {
   kotoryu:{name:'Koto-no-Ryu, the Zither Dragon', hp:4700000, speed:2.10, rad:2.4, h:7.05, slamR:8.0, super:true, patterns:["line", "dash", "volley", "summon", "donut", "line"], summon:["oni", 27]},
   tsukumo:{name:'Tsukumo-no-Kami, Lord of a Hundred Objects', hp:5200000, speed:1.90, rad:2.6, h:8.2, slamR:8.15, super:true, patterns:["line", "slam", "dash", "donut", "summon", "volley", "blink", "slam", "line"], summon:["oni", 30]},
   ryugu:{name:'Ryugu-O, Emperor of the Dragon Palace', hp:2700000, speed:1.85, rad:2.3, h:9.45, slamR:6.8, super:true, patterns:['line','volley','blink','donut','summon','slam','line','dash','volley'], summon:['oni',24]},
+  gokaryu:{name:"Gokaryu, the Ember Saurian", hp:6200000, speed:1.70, rad:3.4, h:15, slamR:10.5, super:true, kaiju:true, patterns:['line', 'slam', 'volley', 'line', 'donut', 'summon', 'slam'], summon:['oni', 28]},
+  heikegani:{name:"Heike-Gani, Crab of the Drowned Fleet", hp:6500000, speed:1.50, rad:3.9, h:13, slamR:11.5, super:true, kaiju:true, patterns:['slam', 'donut', 'volley', 'slam', 'summon', 'dash', 'donut'], summon:['bandit', 36]},
+  genbu:{name:"Genbu, the Mountain That Walks", hp:8200000, speed:1.20, rad:4.2, h:16, slamR:12.5, super:true, kaiju:true, patterns:['slam', 'donut', 'summon', 'slam', 'line', 'donut'], summon:['oni', 30]},
+  omukade:{name:"Omukade, the Seven-Coil Centipede", hp:6800000, speed:2.40, rad:3.2, h:17, slamR:10.0, super:true, kaiju:true, patterns:['dash', 'line', 'dash', 'volley', 'summon', 'dash', 'slam'], summon:['bandit', 38]},
+  otori:{name:"Otori, the Storm Roc", hp:7000000, speed:2.30, rad:3.4, h:19, slamR:11.0, super:true, kaiju:true, patterns:['blink', 'volley', 'dash', 'line', 'donut', 'summon', 'blink'], summon:['oni', 30]},
+  hitotsume:{name:"Hitotsume-Daibo, the One-Eyed Colossus", hp:9000000, speed:1.80, rad:3.8, h:20, slamR:12.5, super:true, kaiju:true, patterns:['slam', 'slam', 'donut', 'dash', 'summon', 'line', 'slam'], summon:['oni', 34]},
+  odokuro:{name:"Odokuro, the Famine Skeleton", hp:8600000, speed:1.60, rad:3.4, h:22, slamR:12.0, super:true, kaiju:true, patterns:['summon', 'line', 'slam', 'volley', 'summon', 'donut', 'line'], summon:['bandit', 44]},
+  wanyudo:{name:"Wanyudo, the Burning Wheel", hp:8800000, speed:2.60, rad:3.4, h:18, slamR:11.5, super:true, kaiju:true, patterns:['dash', 'volley', 'dash', 'line', 'blink', 'donut', 'dash'], summon:['oni', 30]},
+  okubi:{name:"Okubi, the Floating Face", hp:9400000, speed:2.00, rad:3.6, h:17, slamR:12.0, super:true, kaiju:true, patterns:['blink', 'volley', 'line', 'summon', 'blink', 'donut', 'volley'], summon:['oni', 34]},
+  oshiro:{name:"Oshiro, the Walking Castle", hp:14000000, speed:1.40, rad:4.6, h:22, slamR:14.0, super:true, kaiju:true, patterns:['slam', 'line', 'donut', 'volley', 'summon', 'slam', 'dash', 'line', 'donut'], summon:['oni', 40]},
 };
 const STAGES = [
   {name:'Sakura Village', blurb:'Bandits raid the blossom valley', theme:'sakura',  lanes:[-38,36],            enemies:['bandit'],       mini:false, boss:'akaoni',  waves:12, hp:1.0},
@@ -188,6 +198,16 @@ const STAGES = [
   {name:'Noh Theatre of Ghosts', blurb:'The masks dance after the audience leaves', theme:'grave', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'okina', waves:15, hp:640, tod:'night'},
   {name:'Koto Strait', blurb:'A dragon of strings rises from the ice', theme:'snow', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'kotoryu', waves:15, hp:670, tod:'dawn'},
   {name:'Storehouse of a Hundred Years', blurb:'Everything you ever threw away remembers', theme:'volcano', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'tsukumo', waves:15, hp:700, tod:'dusk'},
+  {name:"Ashfall Coast", blurb:"A saurian the size of a castle wades ashore", theme:'volcano', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'gokaryu', waves:15, hp:730, tod:'dusk'},
+  {name:"Dan-no-ura Shallows", blurb:"The drowned fleet rides on a crab", theme:'coast', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'heikegani', waves:15, hp:760, tod:'day'},
+  {name:"The Mountain That Walks", blurb:"The mountain stands up and takes a step", theme:'bamboo', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'genbu', waves:15, hp:790, tod:'day'},
+  {name:"Mikami Trench", blurb:"Seven coils around a sleeping peak", theme:'swamp', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'omukade', waves:15, hp:820, tod:'night'},
+  {name:"Storm Roc Cliffs", blurb:"Wings that darken three provinces", theme:'storm', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'otori', waves:15, hp:850, tod:'dawn'},
+  {name:"Giant's Pass", blurb:"One eye, one club, one very bad mood", theme:'snow', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'hitotsume', waves:15, hp:880, tod:'day'},
+  {name:"Field of Ten Thousand Graves", blurb:"The famine that walks remembers every hunger", theme:'grave', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'odokuro', waves:15, hp:910, tod:'night'},
+  {name:"Burning Wheel Road", blurb:"It has never stopped rolling", theme:'autumn', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'wanyudo', waves:15, hp:940, tod:'dusk'},
+  {name:"Hall of the Floating Face", blurb:"A smile as wide as the gate", theme:'mist', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'okubi', waves:15, hp:970, tod:'night'},
+  {name:"Siege of the Walking Castle", blurb:"The last castle marches on yours", theme:'sakura', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'oshiro', waves:16, hp:1000, tod:'dawn'},
 ];
 const THEMES = {
   sakura: {sky:0xCFE9F5, ground:0x78C35A, path:0xD8B784, court:0xCBAA72, hemiG:0x4E8A30, cliff:0x777C86, cap:0x6FB548, tree:'sakura',  amb:0xF7B6D2, stageCol:'#E86FA0'},
@@ -356,6 +376,16 @@ const HEROES = {
   okina:{name:'Okina-no-Men', sprite:'okina', rarity:'Divine', price:274000, jade:4090, req:62, hp:6800, speed:7.8, h:5.74, attack:'orb', dmg:780, cd:0.45, range:13.0, desc:'A smiling mask; four more behind it.', passive:'Hero and squad +130% damage, +100% gold', pass:{dmg: 2.3, gold: 2.0}},
   kotoryu:{name:'Koto-no-Ryu', sprite:'kotoryu', rarity:'Divine', price:286000, jade:4260, req:63, hp:7000, speed:8.2, h:6.38, attack:'ice', dmg:800, cd:0.55, range:3.4, desc:'Thirteen strings, thirteen frozen notes.', passive:'Hero and squad +135% damage, foes near you are slowed', pass:{dmg: 2.35, slow: 0.35}},
   tsukumo:{name:'Tsukumo-no-Kami', sprite:'tsukumo', rarity:'Divine', price:298000, jade:4430, req:64, hp:8400, speed:8.0, h:6.95, attack:'melee', dmg:900, cd:0.5, range:3.6, desc:'An empty armour, filled by a hundred years of waiting.', passive:'Hero and squad +150% damage, +100% gold, squad heals 26 HP/s', pass:{dmg: 2.5, gold: 2.0, heal: 26}},
+  gokaryu:{name:"Gokaryu", sprite:'gokaryu', rarity:'Divine', price:310000, jade:4600, req:65, hp:9000, speed:7.6, h:9.2, attack:'flame', dmg:950, cd:0.45, range:7.5, desc:"Ember breath that turns a whole road to glass.", passive:"Hero and squad +160% damage, foes burn longer", pass:{dmg:2.6}},
+  heikegani:{name:"Heike-Gani", sprite:'heikegani', rarity:'Divine', price:325000, jade:4800, req:66, hp:12000, speed:7.2, h:8.2, attack:'melee', dmg:980, cd:0.55, range:6.4, desc:"A claw that cuts the sea in two.", passive:"Castle +150% health, squad +50% health", pass:{castle:2.5,squadHp:1.5}},
+  genbu:{name:"Genbu", sprite:'genbu', rarity:'Divine', price:340000, jade:5000, req:67, hp:14000, speed:6.0, h:9.0, attack:'orb', dmg:900, cd:0.50, range:13.0, desc:"The mountain exhales and the wounded stand.", passive:"Squad heals 32 HP/s and +60% health", pass:{heal:32,squadHp:1.6}},
+  omukade:{name:"Omukade", sprite:'omukade', rarity:'Divine', price:355000, jade:5200, req:68, hp:9800, speed:9.2, h:9.4, attack:'blade', dmg:1000, cd:0.30, range:7.0, desc:"Seven coils and a thousand legs, all of them cutting.", passive:"Foes near you are slowed, +60% damage", pass:{slow:1,dmg:1.6}},
+  otori:{name:"Otori", sprite:'otori', rarity:'Divine', price:370000, jade:5400, req:69, hp:9200, speed:9.0, h:9.6, attack:'bolt', dmg:1020, cd:0.32, range:13.5, desc:"Thunder rides in on its wings.", passive:"Hero and squad +140% damage, +120% gold", pass:{dmg:2.4,gold:2.2}},
+  hitotsume:{name:"Hitotsume-Daibo", sprite:'hitotsume', rarity:'Divine', price:390000, jade:5600, req:70, hp:13000, speed:7.8, h:9.4, attack:'melee', dmg:1250, cd:0.60, range:6.2, desc:"One eye, one club: the pass is closed.", passive:"Towers +80% damage, squad +40% health", pass:{tower:1.8,squadHp:1.4}},
+  odokuro:{name:"Odokuro", sprite:'odokuro', rarity:'Divine', price:410000, jade:5800, req:71, hp:11000, speed:7.4, h:10.0, attack:'orb', dmg:1050, cd:0.45, range:13.0, desc:"It eats the hunger of every army that falls.", passive:"Hero and squad +80% damage, squad heals 34 HP/s", pass:{dmg:1.8,heal:34}},
+  wanyudo:{name:"Wanyudo", sprite:'wanyudo', rarity:'Divine', price:430000, jade:6000, req:72, hp:10000, speed:9.4, h:8.8, attack:'flame', dmg:1100, cd:0.35, range:6.0, desc:"A wheel of hell fire that never stops turning.", passive:"Hero and squad +170% damage", pass:{dmg:2.7}},
+  okubi:{name:"Okubi", sprite:'okubi', rarity:'Divine', price:450000, jade:6300, req:73, hp:10500, speed:8.2, h:8.6, attack:'wind', dmg:1080, cd:0.40, range:12.5, desc:"A grin that chills the air in front of it.", passive:"Foes near you are slowed, +90% damage", pass:{slow:1,dmg:1.9}},
+  oshiro:{name:"Oshiro", sprite:'oshiro', rarity:'Divine', price:520000, jade:7500, req:74, hp:18000, speed:6.6, h:10.4, attack:'melee', dmg:1400, cd:0.60, range:6.5, desc:"A whole castle falls on whatever stands before it.", passive:"Castle +300% health, squad +80% health", pass:{castle:4,squadHp:1.8}},
 };
 const RECRUITS = {
   archer: {name:'Archer',        sprite:'archer',  price:0,   jade:0, starter:true, desc:'Steady ranged damage. Trained at the Archery Range.'},
@@ -656,10 +686,10 @@ function texBlank(){ if(!_blank){ const c=document.createElement('canvas'); c.wi
 function tex(k,rep){ if(!SPR[k]&&!ANIM[k]) return texBlank(); const key=k+(rep?':'+rep:''); if(TEX[key]) return TEX[key]; const t=texLoader.load(SPR[k]||ANIM[k]); t.anisotropy=renderer.capabilities.getMaxAnisotropy?Math.min(8,renderer.capabilities.getMaxAnisotropy()):4;
   if(rep){ t.wrapS=t.wrapT=T.RepeatWrapping; t.repeat.set(rep,rep); } return (TEX[key]=t); }
 /* Divine heroes stand 1.5x the size of a typical Mythic hero (visible height ~3.9, i.e. 1.5x the bigger Mythic heroes (~2.6)) */
-const HERO_UP={takemika:1.35,hachiman:1.31,bishamon:1.31,inari:1.39,saruta:1.28,minaka:1.33,kunitoko:1.25,yatono:1.31,marishi:1.3,mioya:1.26,wata:1.62,oyama:1.62,kurao:2.17,magatsu:1.62,ryugu:1.62,chochin:1,kane:1,karakasa:1,ungai:1,orizuru:1,daruma:1,biwa:1,okina:1,kotoryu:1,tsukumo:1};
-const DIV_UP={wata:1.5,oyama:1.5,kurao:1.5,magatsu:1.5,ryugu:1.5};
-const CROP={wata:1,oyama:1,kurao:1,magatsu:1,ryugu:1,chochin:1,kane:1,karakasa:1,ungai:1,orizuru:1,daruma:1,biwa:1,okina:1,kotoryu:1,tsukumo:1};
-const SPR_H={chochin:9.94,kane:10.71,karakasa:10.82,ungai:9.91,orizuru:9.58,daruma:13.67,biwa:12.1,okina:8.87,kotoryu:9.85,tsukumo:12.47,naginata:2.1,tate:1.8,foxmage:1.75,wata:12.15,oyama:11.7,kurao:11.1,magatsu:13.8,ryugu:12.6,eronin:3.2,egolem:4.2,epriest:3.3,shugen:1.7,kunoichi:1.6,taiko:1.65,esapper:1.8,eflier:2.2,etunnel:2.0,etreasure:2.2,takemika:6.2,hachiman:6.3,bishamon:6.3,inari:6.1,saruta:6.5,minaka:6.4,kunitoko:6.7,yatono:6.4,marishi:6.4,mioya:6.8,espear:2.3,earcher:3.3,eshaman:3.6,eshield:4.2,fujin:5.8,yukionna:5.8,benkei:6.0,kagutsuchi:5.8,izanagi:6.2,sumo:1.75,kabuki:1.7,falcon:1.65,kusari:1.65,komainu:1.45,raiju:5.4,baku:5.2,onryo:5.6,shachi:5.4,amaterasu:5.8,jorogumo:5.6,karura:5.8,kuzuryu:6.2,izanami:6.0,tsukuyomi:6.4,ushioni:5.8,shuten:6.4,kirin:5.6,enma:6.2,susanoo:6.6,umibozu:6.0,kamaitachi:4.6,daidara:7.2,hannya:5.4,mikaboshi:6.6,yari:1.65,teppo:1.6,sohei:1.7,miko:1.6,tanuki:1.55,nue:5.0,ryujin:5.8,tsuchi:4.8,nurari:4.8,orochi:6.2,namazu:5.4,mao:6.4,kappa:5.1,gasha:6.9,raijin:6.2,hero:2.15,archer:1.6,samurai:1.7,onmyoji:1.65,ninja:1.35,bandit:1.6,oni:2.35,brute:3.7,akaoni:4.9,tengu:4.5,kitsune:4.4,yuki:4.9,shogun:6.0};
+const HERO_UP={takemika:1.35,hachiman:1.31,bishamon:1.31,inari:1.39,saruta:1.28,minaka:1.33,kunitoko:1.25,yatono:1.31,marishi:1.3,mioya:1.26,wata:1.62,oyama:1.62,kurao:2.17,magatsu:1.62,ryugu:1.62,chochin:1,kane:1,karakasa:1,ungai:1,orizuru:1,daruma:1,biwa:1,okina:1,kotoryu:1,tsukumo:1,gokaryu:1.4,heikegani:1.4,genbu:1.4,omukade:1.4,otori:1.4,hitotsume:1.4,odokuro:1.4,wanyudo:1.4,okubi:1.4,oshiro:1.4,gokaryu:1.4,heikegani:1.4,genbu:1.4,omukade:1.4,otori:1.4,hitotsume:1.4,odokuro:1.4,wanyudo:1.4,okubi:1.4,oshiro:1.4};
+const DIV_UP={wata:1.5,oyama:1.5,kurao:1.5,magatsu:1.5,ryugu:1.5,gokaryu:1.5,heikegani:1.5,genbu:1.5,omukade:1.5,otori:1.5,hitotsume:1.5,odokuro:1.5,wanyudo:1.5,okubi:1.5,oshiro:1.5};
+const CROP={wata:1,oyama:1,kurao:1,magatsu:1,ryugu:1,chochin:1,kane:1,karakasa:1,ungai:1,orizuru:1,daruma:1,biwa:1,okina:1,kotoryu:1,tsukumo:1,gokaryu:1,heikegani:1,genbu:1,omukade:1,otori:1,hitotsume:1,odokuro:1,wanyudo:1,okubi:1,oshiro:1};
+const SPR_H={chochin:9.94,kane:10.71,karakasa:10.82,ungai:9.91,orizuru:9.58,daruma:13.67,biwa:12.1,okina:8.87,kotoryu:9.85,tsukumo:12.47,naginata:2.1,tate:1.8,foxmage:1.75,wata:12.15,oyama:11.7,kurao:11.1,magatsu:13.8,ryugu:12.6,eronin:3.2,egolem:4.2,epriest:3.3,shugen:1.7,kunoichi:1.6,taiko:1.65,esapper:1.8,eflier:2.2,etunnel:2.0,etreasure:2.2,takemika:6.2,hachiman:6.3,bishamon:6.3,inari:6.1,saruta:6.5,minaka:6.4,kunitoko:6.7,yatono:6.4,marishi:6.4,mioya:6.8,espear:2.3,earcher:3.3,eshaman:3.6,eshield:4.2,fujin:5.8,yukionna:5.8,benkei:6.0,kagutsuchi:5.8,izanagi:6.2,sumo:1.75,kabuki:1.7,falcon:1.65,kusari:1.65,komainu:1.45,raiju:5.4,baku:5.2,onryo:5.6,shachi:5.4,amaterasu:5.8,jorogumo:5.6,karura:5.8,kuzuryu:6.2,izanami:6.0,tsukuyomi:6.4,ushioni:5.8,shuten:6.4,kirin:5.6,enma:6.2,susanoo:6.6,umibozu:6.0,kamaitachi:4.6,daidara:7.2,hannya:5.4,mikaboshi:6.6,yari:1.65,teppo:1.6,sohei:1.7,miko:1.6,tanuki:1.55,nue:5.0,ryujin:5.8,tsuchi:4.8,nurari:4.8,orochi:6.2,namazu:5.4,mao:6.4,kappa:5.1,gasha:6.9,raijin:6.2,hero:2.15,archer:1.6,samurai:1.7,onmyoji:1.65,ninja:1.35,bandit:1.6,oni:2.35,brute:3.7,akaoni:4.9,tengu:4.5,kitsune:4.4,yuki:4.9,shogun:6.0,gokaryu:17,heikegani:11,genbu:12,omukade:16,otori:17,hitotsume:17,odokuro:18,wanyudo:14,okubi:13,oshiro:19};
 const sprGeo=new T.PlaneGeometry(1,1); sprGeo.translate(0,0.5,0);
 const sprMat=k=>new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide});
 const FRAMES=k=>((ANIM_META[k]&&ANIM_META[k].n)||3);
@@ -2048,7 +2078,7 @@ const BTRAIT={brute:'colossus',akaoni:'colossus',tengu:'swift',kitsune:'spellwar
   tsukuyomi:'spellward',raiju:'tempest',baku:'undying',onryo:'spellward',shachi:'arrowward',amaterasu:'fireproof',fujin:'swift',yukionna:'frostborn',benkei:'arrowward',kagutsuchi:'fireproof',
   izanagi:'hydra',takemika:'tempest',hachiman:'arrowward',bishamon:'colossus',inari:'spellward',saruta:'colossus',minaka:'undying',kunitoko:'colossus',yatono:'hydra',marishi:'fireproof',
   mioya:'tempest',wata:'frostborn',oyama:'colossus',kurao:'frostborn',magatsu:'fireproof',ryugu:'hydra',chochin:'fireproof',kane:'colossus',karakasa:'warlord',ungai:'spellward',
-  orizuru:'swift',daruma:'colossus',biwa:'spellward',okina:'undying',kotoryu:'hydra',tsukumo:'warlord'};
+  orizuru:'swift',daruma:'colossus',biwa:'spellward',okina:'undying',kotoryu:'hydra',tsukumo:'warlord',gokaryu:'fireproof',heikegani:'colossus',genbu:'colossus',omukade:'swift',otori:'tempest',hitotsume:'warlord',odokuro:'undying',wanyudo:'fireproof',okubi:'spellward',oshiro:'warlord'};
 const TRAIT_CYCLE=Object.keys(TRAITS);
 const traitOf=k=>BTRAIT[k]||TRAIT_CYCLE[[...String(k)].reduce((a,c)=>a+c.charCodeAt(0),0)%TRAIT_CYCLE.length];
 const PHASE_AT=[0.66,0.33];
@@ -2961,7 +2991,7 @@ const ULT_MAX=26;
 const ULT_SHAPE={ fire:'nova', flame:'nova', inferno:'nova', frost:'ring', ice:'ring', storm:'bolts', bolt:'bolts',
   slash:'cross', blade:'cross', shadow:'cross', wave:'wave', splash:'wave', quake:'wave', arrows:'rain', stars:'rain',
   spirits:'orbit', seal:'orbit', web:'orbit', venom:'spiral', gale:'spiral', void:'spiral' };
-const ULT_FX={chochin:'inferno',kane:'quake',karakasa:'frost',ungai:'stars',orizuru:'gale',daruma:'inferno',biwa:'storm',okina:'spirits',kotoryu:'frost',tsukumo:'inferno',takemika:'storm',hachiman:'arrows',bishamon:'slash',inari:'inferno',saruta:'quake',minaka:'seal',kunitoko:'quake',yatono:'venom',marishi:'stars',mioya:'stars',wata:'wave',oyama:'quake',kurao:'frost',magatsu:'inferno',ryugu:'wave',fujin:'gale',yukionna:'frost',benkei:'slash',kagutsuchi:'inferno',izanagi:'stars',raiju:'storm',baku:'spirits',onryo:'shadow',shachi:'wave',amaterasu:'stars',ronin:'arrows',samurai:'slash',onmyoji:'seal',ninja:'shadow',tengu:'gale',kitsune:'inferno',yuki:'frost',shogun:'inferno',kappa:'wave',gasha:'quake',raijin:'storm',nue:'slash',ryujin:'wave',tsuchi:'web',nurari:'spirits',orochi:'venom',namazu:'quake',mao:'void',umibozu:'wave',kamaitachi:'gale',daidara:'quake',hannya:'spirits',mikaboshi:'stars',akaoni:'quake',brute:'quake',ushioni:'slash',shuten:'inferno',kirin:'storm',enma:'spirits',susanoo:'storm',jorogumo:'web',karura:'inferno',kuzuryu:'wave',izanami:'spirits',tsukuyomi:'stars'};
+const ULT_FX={gokaryu:'inferno',heikegani:'wave',genbu:'quake',omukade:'venom',otori:'storm',hitotsume:'quake',odokuro:'spirits',wanyudo:'inferno',okubi:'shadow',oshiro:'arrows',chochin:'inferno',kane:'quake',karakasa:'frost',ungai:'stars',orizuru:'gale',daruma:'inferno',biwa:'storm',okina:'spirits',kotoryu:'frost',tsukumo:'inferno',takemika:'storm',hachiman:'arrows',bishamon:'slash',inari:'inferno',saruta:'quake',minaka:'seal',kunitoko:'quake',yatono:'venom',marishi:'stars',mioya:'stars',wata:'wave',oyama:'quake',kurao:'frost',magatsu:'inferno',ryugu:'wave',fujin:'gale',yukionna:'frost',benkei:'slash',kagutsuchi:'inferno',izanagi:'stars',raiju:'storm',baku:'spirits',onryo:'shadow',shachi:'wave',amaterasu:'stars',ronin:'arrows',samurai:'slash',onmyoji:'seal',ninja:'shadow',tengu:'gale',kitsune:'inferno',yuki:'frost',shogun:'inferno',kappa:'wave',gasha:'quake',raijin:'storm',nue:'slash',ryujin:'wave',tsuchi:'web',nurari:'spirits',orochi:'venom',namazu:'quake',mao:'void',umibozu:'wave',kamaitachi:'gale',daidara:'quake',hannya:'spirits',mikaboshi:'stars',akaoni:'quake',brute:'quake',ushioni:'slash',shuten:'inferno',kirin:'storm',enma:'spirits',susanoo:'storm',jorogumo:'web',karura:'inferno',kuzuryu:'wave',izanami:'spirits',tsukuyomi:'stars'};
 const ULTS={
   takemika:{name:'Divine Thunderblade',col:0xFFF27A,r:12.2,mult:38,chain:true,stun:3.0,hits:2},
   hachiman:{name:'Hundred War Arrows',col:0xFFD34D,r:12.4,mult:37,hits:3,knock:4},
@@ -2988,6 +3018,16 @@ const ULTS={
   okina:{name:'Dance of the Old Man',col:0xA8E4FF,r:14.6,mult:48,freeze:3.0,slow:0.8,stun:2.6},
   kotoryu:{name:'Thirteen-String Torrent',col:0x7FE8FF,r:14.8,mult:48,freeze:3.2,slow:0.9,knock:6},
   tsukumo:{name:'Night of a Hundred Objects',col:0xFF3A1A,r:15.2,mult:50,burn:120,stun:3.4,hits:2,knock:8},
+  gokaryu:{name:'Ember Breath of Gokaryu',col:0xFF6A1F,r:15.6,mult:52,burn:140,stun:3.2,hits:2,knock:8},
+  heikegani:{name:'Tide of the Drowned Fleet',col:0x6FB0FF,r:15.6,mult:52,chain:true,knock:9,slow:0.8,stun:3.4},
+  genbu:{name:'The Mountain Stands',col:0x8BC34A,r:16,mult:53,knock:10,stun:3.8,repair:1.0},
+  omukade:{name:'Seven Coils of Mikami',col:0x9BF542,r:15.8,mult:53,chain:true,slow:0.85,stun:3.2,burn:100},
+  otori:{name:'Thunder Roc Descent',col:0xFFF27A,r:16.2,mult:54,chain:true,stun:3.4,knock:8,hits:2},
+  hitotsume:{name:'Kanabo of the One-Eyed',col:0x7FA8E8,r:16,mult:54,knock:11,stun:4.0},
+  odokuro:{name:'Hunger of the Ten Thousand',col:0xB070FF,r:16.4,mult:54,chain:true,heal:1.0,stun:3.2,burn:90},
+  wanyudo:{name:'Cartwheel of Hell',col:0xFF8A2A,r:16.4,mult:55,burn:160,stun:3.0,hits:3,knock:6},
+  okubi:{name:'Laughing Tide of Hair',col:0xC8B8FF,r:16.6,mult:55,chain:true,freeze:2.6,slow:0.9,stun:3.6},
+  oshiro:{name:'Siege of the Walking Castle',col:0xFFD23C,r:17.4,mult:60,stun:4.2,knock:10,hits:3,repair:1.0,heal:1.0},
   fujin:{name:'Tempest Unleashed',col:0x9FF0C8,r:11.0,mult:28,knock:7,hits:2,slow:0.6},
   yukionna:{name:'Endless Blizzard',col:0xCFF2FF,r:11.0,mult:28,slow:0.85,stun:3.0},
   benkei:{name:'Thousand Blades',col:0xE8E0D0,r:10.6,mult:32,hits:3,knock:5},
@@ -3641,9 +3681,11 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   const h=G.hero, t=TIME;
   const CN=G.cine&&G.cine.tx!=null?G.cine:null;
   const tx=CN?CN.tx:(h.alive?h.x+h.vx*0.16:0), tz=CN?CN.tz:(h.alive?h.z+h.vz*0.16:6), k=1-Math.exp(-dt*(CN?5:8));
-  G.focus.x+=(tx-G.focus.x)*k; G.focus.z+=(tz-G.focus.z)*k;
+  /* v88: a kaiju is taller than the screen, so the camera leans toward it and pulls back while it is near */
+  const KJ=G.enemies.find(e=>e.cls==='boss'&&!e.dead&&BOSSES[e.kind]&&BOSSES[e.kind].kaiju&&Math.hypot(e.x-G.focus.x,e.z-G.focus.z)<28);
+  G.focus.x+=(tx+(KJ?(KJ.x-tx)*0.32:0)-G.focus.x)*k; G.focus.z+=(tz+(KJ?(KJ.z-tz)*0.32:0)-G.focus.z)*k;
   const bossNear=G.enemies.some(e=>e.cls==='boss'&&Math.hypot(e.x-G.focus.x,e.z-G.focus.z)<15);
-  G.zoom=lerp(G.zoom,(1+0.12*Math.min(1,G.units.length/30))*(bossNear?1.14:1),1-Math.exp(-dt*2));
+  G.zoom=lerp(G.zoom,(1+0.12*Math.min(1,G.units.length/30))*(KJ?1.5:bossNear?1.14:1),1-Math.exp(-dt*2));
   if(G.camPunch===undefined) G.camPunch=0; G.camPunch+=(0-G.camPunch)*(1-Math.exp(-dt*3.2));
   const uz=userZoom; const d=camDist*G.zoom*uz*(window.__zoomMul||1)*(1-(G.camPunch||0))*cineZoom();
   if(G.shadowZ!==uz){ G.shadowZ=uz; const ss=30*Math.max(1,uz*1.05); Object.assign(sun.shadow.camera,{left:-ss,right:ss,top:ss,bottom:-ss,far:90*Math.max(1,uz)}); sun.shadow.camera.updateProjectionMatrix(); scene.fog.near=70*Math.max(1,uz); scene.fog.far=150*Math.max(1,uz); } G.shake=Math.max(0,G.shake-dt*1.6); const sh=G.shake*G.shake*0.9;
