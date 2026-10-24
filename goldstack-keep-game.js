@@ -1059,12 +1059,24 @@ function genLayout(si){
     for(let k=0;k<400;k++){ const x=rand(-14,14), z=rand(KEEP.z+3,KEEP.z+21); if(inCamp(x,z)&&okPad(x,z,2.6,1.2)){ p.x=x; p.z=z; return true; } } return false; };
   pads.pop(); const range1=P('range1','acad_ground',0,0,0); place(range1);
   const towers=[];
+  /* v86 even towers: pick, for every lane, whether its tower sits just left or just right of the lane so the gaps between neighbouring
+     towers are as even as possible. The old fixed +/-0.5 rad offsets stacked towers together in the middle and left a 116 degree gap
+     (top left of the camp on the 7-lane stages) with none. */
+  let towerSide=0; { const nl=lanes.length, MAG=0.3; let best=-1e9; for(let m=0;m<(1<<nl);m++){ const as=[]; for(let i=0;i<nl;i++) as.push(crossA[i]+(((m>>i)&1)?1:-1)*MAG); as.sort((a,b)=>a-b);
+      let mn=1e9, mx=0; for(let i=1;i<nl;i++){ const g=as[i]-as[i-1]; mn=Math.min(mn,g); mx=Math.max(mx,g); } if(nl<2){ mn=0; }
+      const sc=mn-mx*0.5-Math.abs(as[0]+as[nl-1])*0.02; if(sc>best){ best=sc; towerSide=m; } } }
+  const ctJobs=[];   /* bomb-tower pads are placed after every watchtower, so they can never push a watchtower out of its best spot */
   order.forEach((li,k)=>{
-    const ca=crossA[li]; let spot=null;
-    for(const [da,r] of [[0.5,9.5],[-0.5,9.5],[0.68,10.4],[-0.68,10.4],[0.5,11.6],[-0.5,11.6],[0.9,9.2],[-0.9,9.2],[0.34,12.4],[-0.34,12.4]]){ const [x,z]=polar(ca+da,r); if(okPad(x,z,5.2,2.2)){ spot=[x,z,ca+da,da>0?1:-1]; break; } }
+    const ca=crossA[li]; let spot=null; const sd=((towerSide>>li)&1)?1:-1;
+    /* v86: first try the side that keeps the towers evenly spread round the keep (a quarter-turn offset never reaches the next lane) */
+    { const cand=[]; for(const mag of [0.22,0.26,0.3,0.34,0.38,0.42,0.47,0.52,0.58]) for(const sg of [sd,-sd]) for(const r of [9.5,10.4,9.0,11.0,11.8]) cand.push([sg*mag,r,Math.abs(sg*mag-sd*0.3)*(sg===sd?1:2)+Math.abs(r-10)*0.03]);
+      cand.sort((a,b)=>a[2]-b[2]);
+      for(const [da,r] of cand){ const [x,z]=polar(ca+da,r); if(okPad(x,z,5.2,2.1)){ spot=[x,z,ca+da,da>0?1:-1]; break; } } }
+    if(!spot) for(const [da,r] of [[0.5,9.5],[-0.5,9.5],[0.68,10.4],[-0.68,10.4],[0.5,11.6],[-0.5,11.6],[0.9,9.2],[-0.9,9.2],[0.34,12.4],[-0.34,12.4]]){ const [x,z]=polar(ca+da,r); if(okPad(x,z,5.2,2.2)){ spot=[x,z,ca+da,da>0?1:-1]; break; } }
     if(!spot){ const [x,z]=polar(ca+0.5,9.5); spot=[x,z,ca+0.5,1]; }
     const req = k<2?['range1']:['tower_'+order[k-2]];
     const t=P('tower_'+li,'tower',12,spot[0],spot[1],{req, lane:li, ang:spot[2]}); towers.push(t);
+    ctJobs.push(()=>{
     let cspot=null;   /* bomb tower: every lane gets one; relax the spacing step by step until a spot is found */
     const ctry=[[-spot[3]*0.55,10.8],[spot[3]*0.95,9.0],[-spot[3]*0.95,9.0],[spot[3]*0.55,12.0],[-spot[3]*0.55,12.0],[0,13.4],[spot[3]*0.3,14.4],[-spot[3]*0.3,14.4],[0,15.6]];
     for(const [pc,rc] of [[5.0,2.2],[4.2,1.8],[3.5,1.4],[2.9,1.0],[2.5,0.7]]){
@@ -1073,7 +1085,9 @@ function genLayout(si){
         if(Math.hypot(x2-KEEP.x,z2-KEEP.z)>6&&okPad(x2,z2,pc,rc)){ cspot=[x2,z2]; break; } }
       if(cspot) break; }
     if(cspot){ const c=P('ctower_'+li,'ctower',13,cspot[0],cspot[1],{req:['tower_'+li], lane:li}); towers.push(c); }
+    });
   });
+  ctJobs.forEach(f=>f());
   lanes.forEach((pts,i)=>{ const [x,z]=polar(crossA[i],9.6); P('fence_'+i,'fence',17,x,z,{req:['tower_'+i], fence:i}); });
   const basePad=(id,kind,cost,req,extra={})=>{ const p=P(id,kind,cost,0,0,Object.assign({req},extra)); if(!place(p)) pads.splice(pads.indexOf(p),1); return p; };
   if(ACAD.acad_heavy.order.some(hasSq)) basePad('acad_heavy','acad_heavy',30,['range1']);
