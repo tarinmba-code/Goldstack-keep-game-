@@ -89,7 +89,7 @@ function tick(dt) {
       C.troops.drive(e, cls, { x: sx, y: 0, z: (i % 2) * 0.8, rot: act === 'run' ? Math.PI / 2 : 0, H: h, dt, moving, atk: act === 'atk' ? (((atkT + i * 0.13) % 1.1) < 0.05 ? 0.9 : 0) : 0, flash, style: undefined }); }
     C.troops.end(); C.end(); }
   else {
-  C.drive(ent, key, { x: act === 'run' ? 0 : x, y: 0, z: 0, rot: (act === 'run' ? Math.PI / 2 : 0), H: h, dt, moving, atk, flash, cast, castKind: 'summon', castU, style: undefined });
+  C.drive(ent, key, { x: act === 'run' ? 0 : x, y: 0, z: 0, rot: (act === 'run' ? Math.PI / 2 : 0), H: h, dt, moving, atk, flash, cast, castKind: 'summon', castU, style: undefined, dissolve: window.__LAB_DIS != null ? window.__LAB_DIS : (q.get('dis') ? +q.get('dis') : 0) });
   if (act === 'run') { const I = C.instance(ent); if (I) { I.st.last = { x: I.st.last.x - dt * h * 1.6, z: 0 }; } }
   C.troops.end(); C.end(); }
   if (spin) yaw += dt * 0.6;

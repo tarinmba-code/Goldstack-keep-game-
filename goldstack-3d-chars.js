@@ -102,17 +102,33 @@ class Rig{
 const OUTLINE={world:0.022, minPx:1.35, maxPx:4};
 const OL_U={uOut:{value:1}, uRes:{value:new T.Vector2(1280,720)}, uMinPx:{value:OUTLINE.minPx}, uMaxPx:{value:OUTLINE.maxPx}, uWorld:{value:OUTLINE.world}};
 const _rv=new T.Vector2();
-const OL_MAT=new T.MeshBasicMaterial({color:0x1A1422,side:T.BackSide,fog:false});
-OL_MAT.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,OL_U); OL_MAT.userData.sh=sh;
-  sh.vertexShader='uniform float uOut; uniform vec2 uRes; uniform float uMinPx; uniform float uMaxPx; uniform float uWorld;\n'+sh.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\n'+
-  '#ifdef USE_SKINNING\n{ vec3 nV=normalize(normalMatrix*objectNormal); vec2 d=(projectionMatrix*vec4(nV,0.0)).xy; float dl=length(d);\n'+
-  '  if(dl>1e-5){ float sc=length(modelMatrix[0].xyz); float w=max(gl_Position.w,1e-3);\n'+
-  '    float px=clamp(uWorld*sc*projectionMatrix[1][1]*0.5*uRes.y/w, uMinPx, uMaxPx)*uOut;\n'+
-  '    gl_Position.xy += (d/dl)*px*2.0/uRes*w; } }\n#endif'); };
-OL_MAT.customProgramCacheKey=()=>'gk3d-outline-ss2';
+/* v85 death dissolve: a noisy cut-off that eats the character from the head down; the cut edge burns gold to crimson.
+   Every character has its own material, so the amount is a per-material uniform. */
+const GK_DIS_GLSL='float gkHash(vec3 p){ return fract(sin(dot(p,vec3(12.9898,78.233,37.719)))*43758.5453); }\nfloat gkDis(vec3 p){ return gkHash(floor(p*17.0))*0.55+(1.0-clamp(p.y/4.0,0.0,1.0))*0.45; }\n';
+/* ink outline. tint=true (code-built heroes, bosses and troops) darkens each part's own colour into the line, so skin gets a warm
+   brown line and a red oni a deep crimson one instead of one flat black; imported models keep plain ink. */
+function olMake(tint,own){ const m=new T.MeshBasicMaterial({color:tint?0xFFFFFF:0x1A1422,side:T.BackSide,fog:false,vertexColors:!!tint});
+  m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,OL_U); if(own) sh.uniforms.uDis=own; else sh.uniforms.uDis={value:0}; if(!tint) m.userData.sh=sh;
+    sh.vertexShader='uniform float uOut; uniform vec2 uRes; uniform float uMinPx; uniform float uMaxPx; uniform float uWorld;\nvarying vec3 vGkP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGkP=position;').replace('#include <project_vertex>','#include <project_vertex>\n'+
+    '#ifdef USE_SKINNING\n{ vec3 nV=normalize(normalMatrix*objectNormal); vec2 d=(projectionMatrix*vec4(nV,0.0)).xy; float dl=length(d);\n'+
+    '  if(dl>1e-5){ float sc=length(modelMatrix[0].xyz); float w=max(gl_Position.w,1e-3);\n'+
+    '    float px=clamp(uWorld*sc*projectionMatrix[1][1]*0.5*uRes.y/w, uMinPx, uMaxPx)*uOut;\n'+
+    '    gl_Position.xy += (d/dl)*px*2.0/uRes*w; } }\n#endif');
+    sh.fragmentShader='uniform float uDis; varying vec3 vGkP;\n'+GK_DIS_GLSL+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  if(uDis>0.001&&gkDis(vGkP)<uDis*1.12+0.1) discard;'+(tint?'\n  diffuseColor.rgb=mix(vec3(0.102,0.078,0.133),diffuseColor.rgb*0.30,0.55);':'')); };
+  m.customProgramCacheKey=()=>'gk3d-outline-v85'+(tint?'c':'p'); return m; }
+const OL_MAT=olMake(false), OL_MATC=olMake(true);
 /* keeps the screen size and pixel ratio current for the outline; costs a few uniform writes per character */
 function olBeforeRender(r){ r.getDrawingBufferSize(_rv); OL_U.uRes.value.copy(_rv); const pr=r.getPixelRatio(); OL_U.uMinPx.value=OUTLINE.minPx*pr; OL_U.uMaxPx.value=OUTLINE.maxPx*pr; }
+/* glow layer: breathes slowly so magic reads as alive; a second, additive shell (the halo) fakes bloom without a post pass */
+const GK_T={value:0};
 const GLOW_MAT=new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,fog:false});
+GLOW_MAT.onBeforeCompile=sh=>{ sh.uniforms.uGt=GK_T; sh.fragmentShader='uniform float uGt;\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  diffuseColor.rgb*=0.93+0.17*sin(uGt*4.4);'); };
+GLOW_MAT.customProgramCacheKey=()=>'gk3d-glow-v85';
+const HALO_MAT=new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,fog:false,transparent:true,opacity:0.34,blending:T.AdditiveBlending,depthWrite:false});
+HALO_MAT.onBeforeCompile=sh=>{ sh.uniforms.uGt=GK_T;
+  sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed=position+normal*0.055;');
+  sh.fragmentShader='uniform float uGt;\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  diffuseColor.a*=0.7+0.3*sin(uGt*4.4+1.2);'); };
+HALO_MAT.customProgramCacheKey=()=>'gk3d-halo-v85';
 /* heroes and bosses must read as clearly as the painted troops: no fog, and half of their colour is unlit so night
    and dusk lighting never wash them out; a touch of extra saturation keeps them vivid next to the sprites */
 const softGrad=(()=>{ const t=new T.DataTexture(new Uint8Array([168,168,168,255,222,222,222,255,255,255,255,255]),3,1,T.RGBAFormat); t.minFilter=t.magFilter=T.NearestFilter; t.generateMipmaps=false; t.needsUpdate=true; return t; })();
@@ -125,35 +141,42 @@ function toonMat(o){ o=Object.assign({flat:0.32,sat:1.2,fog:false,wcap:0.84,soft
    a crisp light/shadow line from the sun's direction, a cool violet first shade, a deeper second shade
    for the side facing away, and a lit-side rim. Brightness follows the scene's lights, so dusk and night
    stages still darken characters, but the shading shape no longer depends on light strength. */
-const CEL={step1:0.44, step2:0.16, feather:0.035, shade1:[0.80,0.74,0.92], shade2:[0.60,0.54,0.76], lit:1.03, rim:0.30, sat:1.16, wcap:0.84, dayRef:2.55};
+const CEL={step1:0.44, step2:0.16, feather:0.024, keyTint:0.5, fillTint:0.55, ring:0.9, ringLo:0.42, ringHi:0.62, shade1:[0.80,0.74,0.92], shade2:[0.60,0.54,0.76], lit:1.03, rim:0.30, sat:1.16, wcap:0.84, dayRef:2.55};
 /* v83 bone-texture skinning: many troops share one mesh; each instance reads its 22 bone matrices (3 rows each) from
    a float texture row chosen by gl_InstanceID. Every part of a code-built character follows exactly one bone. */
 const BONE_GLSL='uniform highp sampler2D uBones;\nattribute float aBone;\nmat4 gkBoneM(){ int b=int(aBone+0.5)*3, r=gl_InstanceID; return transpose(mat4(texelFetch(uBones,ivec2(b,r),0),texelFetch(uBones,ivec2(b+1,r),0),texelFetch(uBones,ivec2(b+2,r),0),vec4(0.0,0.0,0.0,1.0))); }\n';
 function celMat(o){ o=o||{}; const f=v=>(+v).toFixed(3), v3=a=>'vec3('+a.map(f).join(',')+')';
-  const m=new T.MeshToonMaterial({vertexColors:true,gradientMap:softGrad,color:0xFFFFFF,emissive:0x000000,fog:false});
-  m.onBeforeCompile=sh=>{
+  const m=new T.MeshToonMaterial({vertexColors:true,gradientMap:softGrad,color:0xFFFFFF,emissive:0x000000,fog:false}), U={value:0}; m.userData.dis=U;
+  m.onBeforeCompile=sh=>{ sh.uniforms.uDis=U;
     if(o.bones){ sh.uniforms.uBones={value:o.bones};
       sh.vertexShader=BONE_GLSL+sh.vertexShader.replace('#include <beginnormal_vertex>','mat4 gkM=gkBoneM();\nvec3 objectNormal=mat3(gkM)*vec3(normal);').replace('#include <begin_vertex>','vec3 transformed=(gkM*vec4(position,1.0)).xyz;'); }
-    sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  { float L0=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)); if(L0>'+f(CEL.wcap)+') diffuseColor.rgb*='+f(CEL.wcap)+'/L0; }');
+    sh.vertexShader='varying vec3 vGkP;\n'+sh.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvGkP=position;');
+    sh.fragmentShader='uniform float uDis; varying vec3 vGkP;\n'+GK_DIS_GLSL+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  float gkEdge=0.0; if(uDis>0.001){ float dd=gkDis(vGkP), cut=uDis*1.12-0.06; if(dd<cut) discard; gkEdge=1.0-smoothstep(0.0,0.085,dd-cut); }\n  { float L0=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114)); if(L0>'+f(CEL.wcap)+') diffuseColor.rgb*='+f(CEL.wcap)+'/L0; }');
     sh.fragmentShader=sh.fragmentShader.replace('#include <opaque_fragment>',
-    '{ vec3 W=vec3(0.299,0.587,0.114), N=normalize(normal), base=diffuseColor.rgb; float hl=0.72, env=1.0;\n'+
-    '#if NUM_DIR_LIGHTS > 0\n  hl=dot(N,directionalLights[0].direction)*0.5+0.5; env=dot(directionalLights[0].color,W)*0.6;\n#endif\n'+
-    '#if NUM_HEMI_LIGHTS > 0\n  env+=dot(hemisphereLights[0].skyColor+hemisphereLights[0].groundColor,W)*0.5;\n#endif\n'+
+    '{ vec3 W=vec3(0.299,0.587,0.114), N=normalize(normal), base=diffuseColor.rgb; float hl=0.72, env=1.0; vec3 keyC=vec3(1.0), fillC=vec3(1.0);\n'+
+    '#if NUM_DIR_LIGHTS > 0\n  hl=dot(N,directionalLights[0].direction)*0.5+0.5; env=dot(directionalLights[0].color,W)*0.6; keyC=directionalLights[0].color/max(max(directionalLights[0].color.r,directionalLights[0].color.g),max(directionalLights[0].color.b,1e-3));\n#endif\n'+
+    '#if NUM_HEMI_LIGHTS > 0\n  env+=dot(hemisphereLights[0].skyColor+hemisphereLights[0].groundColor,W)*0.5; fillC=hemisphereLights[0].skyColor/max(max(hemisphereLights[0].skyColor.r,hemisphereLights[0].skyColor.g),max(hemisphereLights[0].skyColor.b,1e-3));\n#endif\n'+
     '  env=clamp(env/'+f(CEL.dayRef)+',0.5,1.12);\n'+
     '  float m1=smoothstep('+f(CEL.step1-CEL.feather)+','+f(CEL.step1+CEL.feather)+',hl), m2=smoothstep('+f(CEL.step2-CEL.feather*1.5)+','+f(CEL.step2+CEL.feather*1.5)+',hl);\n'+
     '  vec3 tone=mix('+v3(CEL.shade2)+',mix('+v3(CEL.shade1)+',vec3('+f(CEL.lit)+'),m1),m2);\n'+
     '  vec3 c=base*tone; float l=dot(c,W); c=mix(vec3(l),c,'+f(CEL.sat)+'+0.12*(1.0-m1));\n'+
+    /* v85 light colour: the lit side takes the key light\'s warmth, the shadow side the sky fill's cool, so dusk and night stages colour the characters too */
+    '  c*=mix(vec3(1.0),keyC,'+f(CEL.keyTint)+'*m1); c*=mix(vec3(1.0),fillC*1.04,'+f(CEL.fillTint)+'*(1.0-m1));\n'+
+    /* v85 hair/armour sheen: a hard-edged highlight band on dark surfaces, the anime "angel ring" */
+    '  float bl=dot(base,W), ring=smoothstep('+f(CEL.ringLo)+','+f(CEL.ringLo+0.03)+',N.y)*(1.0-smoothstep('+f(CEL.ringHi)+','+f(CEL.ringHi+0.03)+',N.y));\n'+
+    '  c+=(base*1.9+vec3(0.07,0.08,0.14))*ring*smoothstep(0.36,0.12,bl)*m1*'+f(CEL.ring)+';\n'+
     '  float rim=1.0-max(dot(N,normalize(vViewPosition)),0.0);\n'+
     '  c+=base*smoothstep(0.58,1.0,rim)*'+f(CEL.rim)+'*(0.35+0.65*m1)+vec3(0.05)*smoothstep(0.8,1.0,rim);\n'+
-    '  outgoingLight=clamp(c*env,0.0,1.0)+totalEmissiveRadiance; }\n#include <opaque_fragment>'); };
-  m.customProgramCacheKey=()=>o.bones?'gk3d-cel1-bones':'gk3d-cel1'; return m; }
+    '  outgoingLight=clamp(c*env,0.0,1.0)+totalEmissiveRadiance; outgoingLight=mix(outgoingLight,mix(vec3(1.0,0.78,0.3),vec3(1.0,0.28,0.12),clamp(vGkP.y*0.4,0.0,1.0)),gkEdge*step(0.001,uDis)); }\n#include <opaque_fragment>'); };
+  m.customProgramCacheKey=()=>o.bones?'gk3d-cel2-bones':'gk3d-cel2'; return m; }
 /* ink outline for bone-texture troops: same screen-space width rules as the heroes' outline */
-function olBonesMat(tex){ const m=new T.MeshBasicMaterial({color:0x1A1422,side:T.BackSide,fog:false});
+function olBonesMat(tex){ const m=new T.MeshBasicMaterial({color:0xFFFFFF,side:T.BackSide,fog:false,vertexColors:true});
   m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,OL_U); sh.uniforms.uBones={value:tex};
     sh.vertexShader=BONE_GLSL+'uniform float uOut; uniform vec2 uRes; uniform float uMinPx; uniform float uMaxPx; uniform float uWorld;\n'+sh.vertexShader
       .replace('#include <begin_vertex>','mat4 gkM=gkBoneM();\nvec3 transformed=(gkM*vec4(position,1.0)).xyz; vec3 gkN=normalize(mat3(instanceMatrix)*(mat3(gkM)*normal));')
-      .replace('#include <project_vertex>','#include <project_vertex>\n{ vec3 nV=normalize((viewMatrix*vec4(gkN,0.0)).xyz); vec2 d=(projectionMatrix*vec4(nV,0.0)).xy; float dl=length(d);\n  if(dl>1e-5){ float w=max(gl_Position.w,1e-3); float sc=length(instanceMatrix[0].xyz); float px=clamp(uWorld*sc*projectionMatrix[1][1]*0.5*uRes.y/w,uMinPx*0.85,uMaxPx)*uOut; gl_Position.xy+=(d/dl)*px*2.0/uRes*w; } }'); };
-  m.customProgramCacheKey=()=>'gk3d-ol-bones'; return m; }
+      .replace('#include <project_vertex>','#include <project_vertex>\n{ vec3 nV=normalize((viewMatrix*vec4(gkN,0.0)).xyz); vec2 d=(projectionMatrix*vec4(nV,0.0)).xy; float dl=length(d);\n  if(dl>1e-5){ float w=max(gl_Position.w,1e-3); float sc=length(instanceMatrix[0].xyz); float px=clamp(uWorld*sc*projectionMatrix[1][1]*0.5*uRes.y/w,uMinPx*0.85,uMaxPx)*uOut; gl_Position.xy+=(d/dl)*px*2.0/uRes*w; } }');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n  diffuseColor.rgb=mix(vec3(0.102,0.078,0.133),diffuseColor.rgb*0.30,0.55);'); };
+  m.customProgramCacheKey=()=>'gk3d-ol-bones2'; return m; }
 
 /* ================================================================ palette helpers */
 const shade=(c,f)=>{ _c.set(c); const r=Math.min(255,Math.round(_c.r*255*f)), g=Math.min(255,Math.round(_c.g*255*f)), b=Math.min(255,Math.round(_c.b*255*f)); return (r<<16)|(g<<8)|b; };
@@ -1313,9 +1336,10 @@ function makeInstance(key){ if(IMPORTED[key]&&IMPORTED[key].status==='ready'&&_s
   const grp=new T.Group(), rig=cloneRig(B.proto); grp.add(rig.root); grp.updateMatrixWorld(true);
   const skel=new T.Skeleton(rig.bones);
   const mat=celMat(), body=new T.SkinnedMesh(B.geos.toon,mat); body.bind(skel); body.frustumCulled=false; grp.add(body);
-  let ol=null; if(B.geos.ol){ ol=new T.SkinnedMesh(B.geos.ol,OL_MAT); ol.bind(skel); ol.frustumCulled=false; ol.onBeforeRender=olBeforeRender; grp.add(ol); }
-  let gl=null; if(B.geos.glow){ gl=new T.SkinnedMesh(B.geos.glow,GLOW_MAT); gl.bind(skel); gl.frustumCulled=false; grp.add(gl); }
-  return {key,grp,b:rig.map,body,ol,gl,mat,kind:B.b.kind,B,sp:B.sp,
+  let ol=null; if(B.geos.ol){ ol=new T.SkinnedMesh(B.geos.ol,OL_MATC); ol.bind(skel); ol.frustumCulled=false; ol.onBeforeRender=olBeforeRender; grp.add(ol); }
+  let gl=null, hl=null; if(B.geos.glow){ gl=new T.SkinnedMesh(B.geos.glow,GLOW_MAT); gl.bind(skel); gl.frustumCulled=false; grp.add(gl);
+    hl=new T.SkinnedMesh(B.geos.glow,HALO_MAT); hl.bind(skel); hl.frustumCulled=false; hl.renderOrder=3; grp.add(hl); }
+  return {key,grp,b:rig.map,body,ol,gl,hl,mat,kind:B.b.kind,B,sp:B.sp,
     st:{phase:Math.random()*TAU,move:0,atk:0,last:null,yaw:0,t:Math.random()*10,hit:0,cast:0,dash:0,lift:0}}; }
 
 /* --- pose helpers */
@@ -1698,7 +1722,7 @@ const API={
     for(const k in pool){ for(const I of pool[k]) if(I.grp.parent) I.grp.parent.remove(I.grp); delete pool[k]; }
     for(const k in BUILT){ const g=BUILT[k].geos; for(const n of ['toon','ol','glow']) if(g[n]) g[n].dispose(); delete BUILT[k]; }
     return STYLE; },
-  begin(){ frameTag++; LODN.off=LODN.posed=LODN.held=LODN.frozen=0; if(CAM.c){ const c=CAM.c; c.updateMatrixWorld(); _pm.multiplyMatrices(c.projectionMatrix,c.matrixWorldInverse); _fr.setFromProjectionMatrix(_pm); CAM.ok=true; } },
+  begin(){ frameTag++; GK_T.value=(performance.now()%100000)/1000; LODN.off=LODN.posed=LODN.held=LODN.frozen=0; if(CAM.c){ const c=CAM.c; c.updateMatrixWorld(); _pm.multiplyMatrices(c.projectionMatrix,c.matrixWorldInverse); _fr.setFromProjectionMatrix(_pm); CAM.ok=true; } },
   setCamera(c){ CAM.c=c||null; CAM.ok=false; },
   motion:MOTION, cel:CEL, outline:OUTLINE, lod:()=>Object.assign({},LODN),
   /* p: {x,y,z,rot,H,dt,moving,atk,style,flash,frozen,burn,cast,castKind,castU,stun,scale,tint} */
@@ -1736,6 +1760,11 @@ const API={
     /* status tints and hit flash */
     _tint.copy(WHITE); if(p.tint!=null) _tint.set(p.tint).lerp(WHITE,0.55); if(p.frozen) _tint.setRGB(0.65,0.9,1.0); if(p.burn) _tint.setRGB(1,0.82,0.7);
     for(const m of (I.mats||[I.mat])){ m.color.copy(m.userData.base||WHITE).multiply(_tint); m.emissive.setRGB(S.hit*0.55,S.hit*0.12,S.hit*0.1); }
+    /* v85 death dissolve (p.dissolve 0..1): body, ink line and glow all burn away together */
+    const dis=p.dissolve||0;
+    if(dis>0||I.dis){ I.dis=dis; for(const m of (I.mats||[I.mat])) if(m.userData.dis) m.userData.dis.value=dis;
+      if(I.ol){ if(dis>0){ if(!I.olD){ I.olU={value:0}; I.olD=olMake(true,I.olU); } I.olU.value=dis; I.ol.material=I.olD; } else I.ol.material=OL_MATC; }
+      if(I.gl) I.gl.visible=dis<0.02; if(I.hl) I.hl.visible=dis<0.02; }
     return true; },
   end(){ for(const [ent,I] of [...live]) if(I.tag!==frameTag) release(ent,I); },
   clear(){ for(const [ent,I] of [...live]) release(ent,I); },
