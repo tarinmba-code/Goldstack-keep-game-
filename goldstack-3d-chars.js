@@ -30,6 +30,11 @@ const G_={
   cyl:(rt,rb,h,rs=12,open=false)=>ni(new T.CylinderGeometry(rt,rb,h,sg(rs,4),1,open)),
   cone:(r,h,rs=10)=>ni(new T.ConeGeometry(r,h,sg(rs,4))),
   box:(w,h,d)=>ni(new T.BoxGeometry(w,h,d)),
+  /* v90 rounded box: a superellipsoid (pillow-soft edges), analytic normals so the toon shading stays smooth */
+  rbox:(w,h,d,e=0.5)=>{ const rx=w/2, ry=h/2, rz=d/2, g=new T.SphereGeometry(1,sg(18,8),sg(12,6)), p=g.attributes.position, N=new Float32Array(p.count*3), sp=(v,k)=>Math.sign(v)*Math.pow(Math.abs(v),k);
+    for(let i=0;i<p.count;i++){ const x=p.getX(i), y=p.getY(i), z=p.getZ(i); p.setXYZ(i,sp(x,e)*rx,sp(y,e)*ry,sp(z,e)*rz);
+      let nx=sp(x,1-e)/rx, ny=sp(y,1-e)/ry, nz=sp(z,1-e)/rz; const l=Math.hypot(nx,ny,nz)||1; N[i*3]=nx/l; N[i*3+1]=ny/l; N[i*3+2]=nz/l; }
+    g.setAttribute('normal',new T.BufferAttribute(N,3)); return ni(g); },
   tor:(R,r,rs=8,ts=24,arc=TAU)=>ni(new T.TorusGeometry(R,r,sg(rs,3),sg(ts,6),arc)),
   lathe:(pts,seg=16,phi0=0,phiL=TAU)=>{ const q=pts[0][1]>pts[pts.length-1][1]?pts.slice().reverse():pts;   /* profile must run bottom-up so faces point outward */
     return ni(new T.LatheGeometry(q.map(p=>new T.Vector2(Math.max(0.0005,p[0]),p[1])),sg(seg,5),phi0,phiL)); },
@@ -1337,7 +1342,7 @@ def('odokuro',  {type:'kaiju',v:'gz',g:'bone',atk:'bite'});
 def('mekaryu',  {type:'kaiju',v:'gz',g:'mecha',atk:'slam'});
 def('shishi',   {type:'quad',key:'shishi',len:4.4,height:1.9,w:1.9,leg:0.85,headR:1.9,col:0x8C9098,col2:0x5E626C,belly:0xC8CCD4,headKind:'lion',headCol:0x9CA0AA,muzzle:0xB4B8C2,mane:0x2E8C78,maneTip:0xBFF5DC,eyeCol:0xFFB03A,eyeGlow:true,fangs:true,tail:'fluffy',tailLen:2.0,tailCol:0x2E8C78,tailTip:0xBFF5DC,extra:shishiExtra});
 def('oshiro',   {type:'kaiju',v:'gz',g:'castle',atk:'slam'});
-const SEGK_OF={gokaryu:0.42,mizuchi:0.42,genbu:0.42,yamata:0.4,otori:0.42,hitotsume:0.45,odokuro:0.42,mekaryu:0.5,shishi:0.42,oshiro:0.42,kuzuryu:0.42,orochi:0.48,kitsune:0.55,amaterasu:0.55,susanoo:0.75,saruta:0.75,orizuru:0.72,kane:0.75,raijin:0.8,mao:0.8,inari:0.8};
+const SEGK_OF={gokaryu:0.65,mizuchi:0.65,genbu:0.65,yamata:0.65,otori:0.65,hitotsume:0.65,odokuro:0.65,mekaryu:0.65,shishi:0.65,oshiro:0.65,kuzuryu:0.42,orochi:0.48,kitsune:0.55,amaterasu:0.55,susanoo:0.75,saruta:0.75,orizuru:0.72,kane:0.75,raijin:0.8,mao:0.8,inari:0.8};
 function getBuilt(key){ if(BUILT[key]) return BUILT[key]; const sp=DEFS[key]; if(!sp) return null;
   const pK=SEGK; SEGK=SEGK_OF[key]||1; let b; try{ b=buildByType(sp); } finally{ SEGK=pK; }
   const geos=b.rig.build(); const bb=geos.toon.boundingBox; geos.height=bb.max.y-Math.min(0,bb.min.y);
@@ -1347,8 +1352,8 @@ function getBuilt(key){ if(BUILT[key]) return BUILT[key]; const sp=DEFS[key]; if
       for(let i=0;i<ps.count;i+=3){ v.fromBufferAttribute(ps,i).multiply(sc3).applyQuaternion(qq).add(new T.Vector3(pt.p[0],pt.p[1],pt.p[2])); const d=v.lengthSq(); if(d>best){ best=d; tip=v.clone(); } } }
     if(tip&&best<0.09) tip=null; }catch(err){ tip=null; }   /* v86: weapon tip in hand space, for the swing trail */
   return (BUILT[key]={sp,b,geos,height:geos.height,proto:b.rig,tip}); }
-function kBuild(sp){ const o=KJV[sp.v](sp); o.rig.minPart=0.1; o.rig.minPartOl=0.35; o.rig.facet=true; return o; }
-function kQuad(sp){ const o=buildQuad(sp); o.rig.minPart=0.07; o.rig.minPartOl=0.22; o.rig.facet=true; return o; }
+function kBuild(sp){ const o=KJV[sp.v](sp); o.rig.minPart=0.1; o.rig.minPartOl=0.35; return o; }
+function kQuad(sp){ const o=buildQuad(sp); o.rig.minPart=0.07; o.rig.minPartOl=0.22; return o; }
 function buildByType(sp){ return sp.type==='quad'?(sp.key==='genbu'||sp.key==='shishi'?kQuad(sp):buildQuad(sp)):sp.type==='serpent'?buildSerpent(sp):sp.type==='spider'?buildSpider(sp):sp.type==='blob'?buildBlob(sp):sp.type==='kaiju'?kBuild(sp):sp.type==='fish'?buildFish(sp):buildHuman(sp); }
 function cloneRig(proto){ /* fresh bone hierarchy matching the prototype's bind pose */
   const map={}, bones=[];
@@ -1534,21 +1539,21 @@ function kBipedBones(R,o){
 function kLegs(R,o){ const c=o.col;
   for(const sd of [1,-1]){ const n=sd>0?'L':'R';
     R.add('thigh'+n,G_.sph(o.thR*1.2,o.thR*1.1,o.thR*1.2),c,{});
-    R.add('thigh'+n,G_.cap(o.thR,Math.max(0.1,o.L1-o.thR*1.6),10),c,{p:[0,-o.L1*0.5,0],grad:o.belly,gax:1.5});
+    R.add('thigh'+n,G_.cap(o.thR,Math.max(0.1,o.L1-o.thR*1.6),10),c,{p:[0,-o.L1*0.5,0],grad:o.flat?null:o.belly,gax:1.5});
     R.add('shin'+n,G_.sph(o.shR*1.15,o.shR*1.1,o.shR*1.15),c,{});
-    R.add('shin'+n,G_.cap(o.shR,Math.max(0.1,o.L2-o.shR*1.6),10),c,{p:[0,-o.L2*0.5,0],grad:o.belly});
+    R.add('shin'+n,G_.cap(o.shR,Math.max(0.1,o.L2-o.shR*1.6),10),c,{p:[0,-o.L2*0.5,0],grad:o.flat?null:o.belly});
     const fl=o.fl||1.1, fr=o.fr||0.5;
     R.add('foot'+n,G_.sph(fr*0.95,fr*0.5,fl*0.62),o.foot||c,{p:[0,-0.12,fl*0.35]});
     for(let k=-1;k<=1;k++) R.add('foot'+n,G_.cone(fr*0.2,fl*0.55,5),o.claw||0xF2EAD8,{p:[k*fr*0.55,-0.14,fl*0.98],r:[Math.PI/2,0,0]}); } }
 function kArms(R,o,claws){ const c=o.col, r=o.arR;
   for(const sd of [1,-1]){ const n=sd>0?'L':'R';
     R.add('arm'+n,G_.sph(r*1.4,r*1.3,r*1.4),c,{});
-    R.add('arm'+n,G_.cap(r,Math.max(0.1,o.aU-r*1.6),9),c,{p:[0,-o.aU*0.5,0],grad:o.belly,gax:1.5});
+    R.add('arm'+n,G_.cap(r,Math.max(0.1,o.aU-r*1.6),9),c,{p:[0,-o.aU*0.5,0],grad:o.flat?null:o.belly,gax:1.5});
     R.add('fore'+n,G_.sph(r*1.1,r*1.05,r*1.1),c,{});
     R.add('fore'+n,G_.cap(r*0.92,Math.max(0.1,o.aF-r*1.6),9),c,{p:[0,-o.aF*0.5,0]});
     R.add('hand'+n,G_.sph(r*1.25,r*1.1,r*1.15),o.hand||c,{p:[0,-r*0.5,0.05]});
     if(claws!==false) for(let k=-1;k<=1;k++) R.add('hand'+n,G_.cone(r*0.2,r*1.5,5),o.claw||0xF2EAD8,{p:[k*r*0.55,-r*1.45,r*0.5],r:[Math.PI-0.7,0,0]}); } }
-function kTail(R,o,c,grad,n0){ for(let i=0;i<6;i++){ const r=o.tr*(1-i*0.15); R.add('tail'+i,G_.sph(r,r*0.95,o.tl*0.62,12,8),c,{p:[0,0,-o.tl*0.5],grad:i>2?grad:null}); } }
+function kTail(R,o,c,grad,n0){ for(let i=0;i<6;i++){ const r=o.tr*(1-i*0.15); R.add('tail'+i,G_.sph(r,r*0.95,o.tl*0.62,12,8),c,{p:[0,0,-o.tl*0.5],grad:(i>2&&!o.flat)?grad:null}); } }
 function kEyeGlow(R,bone,x,y,z,r,col,tilt){ R.add(bone,G_.sph(r*1.1,r*0.55,r*0.4,10,8),col,{p:[x,y,z],r:[0,0,tilt||0],glow:true,ol:false,grad:0xFFFFFF}); }
 function kTeeth(R,bone,n,x0,x1,z0,z1,y,sz,col,up){ for(let i=0;i<n;i++){ const t=n>1?i/(n-1):0.5, z=z0+(z1-z0)*t, x=x0+(x1-x0)*t;
     for(const sd of [1,-1]) R.add(bone,G_.cone(sz*0.5,sz*(1.1-0.4*Math.abs(t-0.4)),4),col,{p:[sd*x,y,z],r:[up?0:Math.PI,0,0],ol:false}); } }
@@ -1927,26 +1932,27 @@ const GZ={
   mecha :{hide:0x262A34,hide2:0x434A5A,belly:0x1A1D26,plate:0x2E3340,hot:0x59E6FF,hot2:0xFFFFFF,eye:0x59E6FF,claw:0xD8A82A},
   castle:{hide:0x3C5448,hide2:0x6A8C70,belly:0xC8BE98,plate:0x7C8290,hot:0xFFB03A,hot2:0xFFE79A,eye:0xFFE27A,claw:0xF5C542}};
 /* a flat diamond dorsal plate standing in the body's mid-plane; its tip leans back */
-function gzPlate(R,bone,x,y,z,s,col,hot,lean){ const a=G_.shape([[-0.62,0],[-0.22,0.95],[0,1.55],[0.22,0.95],[0.62,0]],0.2,0);
-  R.add(bone,a,col,{p:[x,y,z],r:[-(lean==null?0.5:lean),Math.PI/2,0],s:[s,s,s]});
-  if(hot) R.add(bone,G_.shape([[-0.2,0.9],[0,1.6],[0.2,0.9]],0.24,0),hot,{p:[x,y,z],r:[-(lean==null?0.5:lean),Math.PI/2,0],s:[s,s,s],glow:true,ol:false}); }
+function gzPlate(R,bone,x,y,z,s,col,hot,lean){ const ls=-(lean==null?0.5:lean);
+  const fin=G_.cone(0.62,1.55,10); fin.translate(0,0.775,0);
+  R.add(bone,fin,col,{p:[x,y,z],r:[ls,0,0],s:[s*0.34,s,s*0.9],grad:shade(col,0.7),gax:1.4});
+  if(hot){ const c2=G_.cone(0.3,1.1,8); c2.translate(0,0.55,0); R.add(bone,c2,hot,{p:[x,y+0.04*s,z],r:[ls,0,0],s:[s*0.5,s,s*0.9],glow:true,ol:false}); } }
 /* long-necked head (one of three on the hydra) */
 function gzHead(R,bone,jawBone,hr,P,g){
   const mech=g==='mecha', skull=g==='bone';
   if(mech){
-    R.add(bone,G_.box(hr*1.5,hr*1.1,hr*1.7),P.hide,{p:[0,0,hr*0.2],grad:P.hide2});
-    R.add(bone,G_.box(hr*1.2,hr*0.38,hr*0.5),P.hide2,{p:[0,-hr*0.05,hr*1.15]});
-    R.add(bone,G_.box(hr*1.3,hr*0.2,hr*0.35),P.hot,{p:[0,hr*0.12,hr*1.08],glow:true,ol:false,grad:P.hot2});
-    for(const sd of [1,-1]){ R.add(bone,G_.box(hr*0.25,hr*0.9,hr*1.0),P.plate,{p:[sd*hr*0.82,-hr*0.1,hr*0.1]});
+    R.add(bone,G_.rbox(hr*1.5,hr*1.1,hr*1.7),P.hide,{p:[0,0,hr*0.2],grad:P.hide2});
+    R.add(bone,G_.rbox(hr*1.2,hr*0.38,hr*0.5),P.hide2,{p:[0,-hr*0.05,hr*1.15]});
+    R.add(bone,G_.rbox(hr*1.3,hr*0.2,hr*0.35),P.hot,{p:[0,hr*0.12,hr*1.08],glow:true,ol:false,grad:P.hot2});
+    for(const sd of [1,-1]){ R.add(bone,G_.rbox(hr*0.25,hr*0.9,hr*1.0),P.plate,{p:[sd*hr*0.82,-hr*0.1,hr*0.1]});
       R.add(bone,G_.cone(hr*0.22,hr*1.6,4),P.claw,{p:[sd*hr*0.9,hr*0.85,-hr*0.2],r:[-0.5,0,sd*-0.7],grad:0x9A7418}); }
     R.add(bone,G_.shape([[-0.2,0],[0.2,0],[0.12,1.9],[0,2.4],[-0.12,1.9]],0.12,0),P.claw,{p:[0,hr*0.55,hr*0.55],r:[-0.3,0,0],s:[hr*0.8,hr*0.8,hr*0.8]});
-    R.add(jawBone||bone,G_.box(hr*1.1,hr*0.38,hr*1.2),P.hide2,{p:[0,-hr*0.5,hr*0.75]});
+    R.add(jawBone||bone,G_.rbox(hr*1.1,hr*0.38,hr*1.2),P.hide2,{p:[0,-hr*0.5,hr*0.75]});
     return; }
   const hc=skull?P.hide:P.hide, hc2=P.hide2;
   R.add(bone,G_.sph(hr*0.95,hr*0.8,hr*1.1,18,14),hc,{p:[0,0.05,0.1],grad:hc2,gax:1.5});
   R.add(bone,G_.sph(hr*(skull?0.55:0.72),hr*(skull?0.38:0.48),hr*(g==='wyvern'?1.25:1.05),16,12),hc,{p:[0,-hr*0.12,hr*1.15]});
   for(const sd of [1,-1]){
-    R.add(bone,G_.box(hr*0.55,hr*0.14,hr*0.7),shade(hc,0.55),{p:[sd*hr*0.46,hr*0.5,hr*0.78],r:[0.35,sd*-0.2,sd*-0.5]});   /* angry brow wedge */
+    R.add(bone,G_.rbox(hr*0.55,hr*0.14,hr*0.7),shade(hc,0.55),{p:[sd*hr*0.46,hr*0.5,hr*0.78],r:[0.35,sd*-0.2,sd*-0.5]});   /* angry brow wedge */
     kEyeGlow(R,bone,sd*hr*0.46,hr*(skull?0.18:0.3),hr*1.0,hr*(skull?0.34:0.26),P.eye,sd*-0.5);
     R.add(bone,G_.sph(hr*0.07,hr*0.06,hr*0.08,5,4),0x120E14,{p:[sd*hr*0.2,hr*0.02,hr*2.05],ol:false}); }
   /* species crests and horns */
@@ -1961,7 +1967,7 @@ function gzHead(R,bone,jawBone,hr,P,g){
       R.add(bone,G_.cone(hr*0.12,hr*0.9,4),0xFFF4D0,{p:[sd*hr*0.85,hr*0.1,hr*0.1],r:[-0.3,0,sd*-1.35]}); }
     R.add(bone,G_.shape([[-0.2,0],[0,1.4],[0.2,0]],0.16,0),P.plate,{p:[0,hr*0.75,-hr*0.1],r:[-0.4,Math.PI/2,0],s:[hr*0.9,hr*0.9,hr*0.9]}); }
   if(skull) for(const sd of [1,-1]) R.add(bone,G_.cone(hr*0.16,hr*1.0,4),P.hide2,{p:[sd*hr*0.55,hr*0.85,-hr*0.2],r:[-0.7,0,sd*-0.45]});
-  if(g==='castle') for(const sd of [1,-1]){ R.add(bone,G_.cone(hr*0.24,hr*1.8,4),P.claw,{p:[sd*hr*0.6,hr*0.85,-hr*0.2],r:[-0.55,0,sd*-0.6],grad:0xB88810}); R.add(bone,G_.box(hr*0.5,hr*0.14,hr*0.7),0xC8241E,{p:[sd*hr*0.46,hr*0.62,hr*0.75],r:[0.35,sd*-0.2,sd*-0.5]}); }
+  if(g==='castle') for(const sd of [1,-1]){ R.add(bone,G_.cone(hr*0.24,hr*1.8,4),P.claw,{p:[sd*hr*0.6,hr*0.85,-hr*0.2],r:[-0.55,0,sd*-0.6],grad:0xB88810}); R.add(bone,G_.rbox(hr*0.5,hr*0.14,hr*0.7),0xC8241E,{p:[sd*hr*0.46,hr*0.62,hr*0.75],r:[0.35,sd*-0.2,sd*-0.5]}); }
   /* mouth: dark gap, glow, teeth, jaw */
   R.add(bone,G_.sph(hr*0.55,hr*0.14,hr*1.0),skull?0x14101E:P.hot,{p:[0,-hr*0.52,hr*1.0],glow:!skull,ol:false,grad:P.hot2});
   kTeeth(R,bone,6,hr*0.5,hr*0.36,hr*0.5,hr*(g==='wyvern'?1.9:1.7),-hr*0.5,hr*(skull?0.4:0.32),0xFFFFFF,false);
@@ -1980,7 +1986,7 @@ function gzWings(R,P,W1,W2,L,span){ const mem=P.plate, fing=P.hide;
     kSpike(R,'wing2'+n,0.22,1.3,P.claw,[sd*W2,-0.3,-0.2],0,sd*-1.57); } }
 KJV.gz=function(sp){
   const g=sp.g, P=GZ[g], R=new Rig(), mech=g==='mecha', skel=g==='bone', hyd=g==='hydra', wyv=g==='wyvern', cas=g==='castle', tide=g==='tide';
-  const o={L1:2.3,L2:2.1,ft:0.35,tH:3.7,hw:1.45,cw:2.2,nk:1.1,hr:1.8,aU:1.2,aF:1.1,tl:1.55,tr:1.65,thR:1.4,shR:0.95,arR:0.5,fl:2.0,fr:0.85,col:P.hide,belly:P.belly,foot:P.hide,claw:P.claw,neckZ:0.55,headZ:0.5};
+  const o={L1:2.3,L2:2.1,ft:0.35,tH:3.7,hw:1.45,cw:2.2,nk:1.1,hr:1.8,aU:1.2,aF:1.1,tl:1.55,tr:1.65,thR:1.4,shR:0.95,arR:0.5,fl:2.0,fr:0.85,col:P.hide,belly:P.belly,foot:P.hide,claw:P.claw,neckZ:0.55,headZ:0.5,flat:true};
   if(tide) Object.assign(o,{thR:1.2,shR:0.8,aU:1.5,aF:1.4,arR:0.45,fr:0.95,tr:1.4});
   if(wyv) Object.assign(o,{thR:1.1,shR:0.75,L1:2.6,L2:2.6,nk:1.7,hr:1.55,aU:0,tl:1.7,tr:1.1,neckZ:0.9,fl:2.2,fr:0.7});
   if(hyd) Object.assign(o,{nk:2.4,hr:1.4,aU:0,thR:1.3,tl:1.8,tr:1.4,neckZ:0.7});
@@ -1988,17 +1994,17 @@ KJV.gz=function(sp){
   if(mech) Object.assign(o,{thR:1.55,shR:1.15,arR:0.8,aU:1.9,aF:1.8,cw:2.8,tr:1.25,hr:1.5,fl:2.3,fr:1.15});
   if(cas) Object.assign(o,{thR:1.9,shR:1.25,tH:4.0,cw:3.0,hw:1.9,arR:0.75,aU:1.6,aF:1.5,hr:2.0,tr:2.1,tl:1.9,fl:2.5,fr:1.2});
   kBipedBones(R,o);
-  const blob=(rx,ry,rz,ws,hs)=>mech?G_.box(rx*1.9,ry*1.9,rz*1.9):G_.sph(rx,ry,rz,ws,hs);
+  const blob=(rx,ry,rz,ws,hs)=>mech?G_.rbox(rx*1.9,ry*1.9,rz*1.9):G_.sph(rx,ry,rz,ws,hs);
   /* legs, arms, tail */
   if(mech){ for(const sd of [1,-1]){ const n=sd>0?'L':'R';
-      R.add('thigh'+n,G_.box(o.thR*1.9,o.L1*0.95,o.thR*1.9),P.hide,{p:[0,-o.L1*0.5,0],grad:P.hide2}); R.add('thigh'+n,G_.box(o.thR*2.1,0.25,o.thR*2.1),P.claw,{p:[0,-0.1,0],ol:false});
-      R.add('shin'+n,G_.box(o.shR*1.9,o.L2*0.95,o.shR*1.9),P.hide,{p:[0,-o.L2*0.5,0]}); R.add('shin'+n,G_.box(o.shR*2.0,0.5,o.shR*2.0),P.hide2,{p:[0,0.0,0.1]});
-      R.add('foot'+n,G_.box(o.fr*2.2,0.7,o.fl*1.35),P.hide2,{p:[0,-0.2,o.fl*0.35]});
+      R.add('thigh'+n,G_.rbox(o.thR*1.9,o.L1*0.95,o.thR*1.9),P.hide,{p:[0,-o.L1*0.5,0],grad:P.hide2}); R.add('thigh'+n,G_.rbox(o.thR*2.1,0.25,o.thR*2.1),P.claw,{p:[0,-0.1,0],ol:false});
+      R.add('shin'+n,G_.rbox(o.shR*1.9,o.L2*0.95,o.shR*1.9),P.hide,{p:[0,-o.L2*0.5,0]}); R.add('shin'+n,G_.rbox(o.shR*2.0,0.5,o.shR*2.0),P.hide2,{p:[0,0.0,0.1]});
+      R.add('foot'+n,G_.rbox(o.fr*2.2,0.7,o.fl*1.35),P.hide2,{p:[0,-0.2,o.fl*0.35]});
       for(let k=-1;k<=1;k++) R.add('foot'+n,G_.cone(o.fr*0.25,o.fl*0.5,4),P.claw,{p:[k*o.fr*0.6,-0.2,o.fl*0.98],r:[Math.PI/2,0,0]});
-      R.add('arm'+n,G_.box(o.arR*2.2,o.arR*2.2,o.arR*2.2),P.hide2,{p:[sd*0.3,0.1,0]}); R.add('arm'+n,G_.box(o.arR*1.7,o.aU,o.arR*1.7),P.hide,{p:[0,-o.aU*0.5,0]});
-      R.add('fore'+n,G_.box(o.arR*1.9,o.aF,o.arR*1.9),P.hide2,{p:[0,-o.aF*0.5,0]}); R.add('hand'+n,G_.box(o.arR*2.2,o.arR*1.6,o.arR*2.0),P.hide,{p:[0,-o.arR*0.5,0.05]});
+      R.add('arm'+n,G_.rbox(o.arR*2.2,o.arR*2.2,o.arR*2.2),P.hide2,{p:[sd*0.3,0.1,0]}); R.add('arm'+n,G_.rbox(o.arR*1.7,o.aU,o.arR*1.7),P.hide,{p:[0,-o.aU*0.5,0]});
+      R.add('fore'+n,G_.rbox(o.arR*1.9,o.aF,o.arR*1.9),P.hide2,{p:[0,-o.aF*0.5,0]}); R.add('hand'+n,G_.rbox(o.arR*2.2,o.arR*1.6,o.arR*2.0),P.hide,{p:[0,-o.arR*0.5,0.05]});
       for(let k=-1;k<=1;k++) R.add('hand'+n,G_.cone(o.arR*0.22,o.arR*1.5,4),P.claw,{p:[k*o.arR*0.6,-o.arR*1.4,o.arR*0.5],r:[Math.PI-0.7,0,0]}); }
-    for(let i=0;i<6;i++){ const r=o.tr*(1-i*0.13); R.add('tail'+i,G_.box(r*1.8,r*1.5,o.tl*0.95),i%2?P.hide2:P.hide,{p:[0,0,-o.tl*0.5]}); } }
+    for(let i=0;i<6;i++){ const r=o.tr*(1-i*0.13); R.add('tail'+i,G_.rbox(r*1.8,r*1.5,o.tl*0.95),i%2?P.hide2:P.hide,{p:[0,0,-o.tl*0.5]}); } }
   else { kLegs(R,o); if(o.aU) kArms(R,o); kTail(R,o,P.hide,P.hide2); if(skel) for(let i=0;i<6;i++) R.add('tail'+i,G_.sph(o.tr*(1-i*0.12)*0.75,o.tr*0.6,0.2),P.hide2,{p:[0,0.05,-o.tl*0.3]}); }
   /* torso */
   R.add('pelvis',blob(1.8,1.5,2.0,12,8),P.hide,{grad:P.belly,gax:2.4});
@@ -2008,7 +2014,7 @@ KJV.gz=function(sp){
     for(const [bn,y] of [['pelvis',0.2],['spine',0.5],['spine',-0.6],['chest',1.1],['chest',0.2],['chest',-0.7]]) R.add(bn,G_.sph(0.55,0.5,0.55,6,4),P.hide2,{p:[0,y,-1.3]});
     R.add('chest',G_.sph(0.9,1.0,0.8,8,5),P.hot,{p:[0,0.0,0.2],glow:true,ol:false,grad:P.hot2}); }
   else { R.add('spine',blob(2.0,1.8,1.95,12,8),P.hide,{grad:P.belly,gax:2.2}); R.add('chest',blob(2.5,2.1,2.15,12,8),P.hide,{grad:P.belly,gax:2.2});
-    for(let i=0;i<5;i++){ const y=1.0-i*0.5; R.add('chest',mech?G_.box(1.9,0.12,0.2):G_.sph(1.1-Math.abs(y)*0.2,0.14,0.3,8,4),shade(P.belly,1.15),{p:[0,y,2.05*Math.sqrt(Math.max(0.05,1-(y/2.1)**2))],ol:false}); } }
+    for(let i=0;i<5;i++){ const y=1.0-i*0.5; R.add('chest',mech?G_.rbox(1.9,0.12,0.2):G_.sph(1.1-Math.abs(y)*0.2,0.14,0.3,8,4),shade(P.belly,1.15),{p:[0,y,2.05*Math.sqrt(Math.max(0.05,1-(y/2.1)**2))],ol:false}); } }
   /* species dorsal armour */
   if(!skel&&!wyv){ const sp0=tide?1.7:cas?0.8:mech?1.2:hyd?1.1:1.5, col=P.plate, hot=(g==='ember'||g==='tide'||mech)?P.hot:null;
     gzPlate(R,'chest',0,1.2,-1.76,sp0*0.95,col,hot); gzPlate(R,'chest',0,0.2,-2.12,sp0*1.2,col,hot); gzPlate(R,'chest',0,-0.8,-1.98,sp0*1.1,col,hot);
@@ -2021,19 +2027,19 @@ KJV.gz=function(sp){
     kTube(R,'thigh'+(sd>0?'L':'R'),[[sd*0.2,-0.2,1.0],[sd*0.45,-0.9,0.95],[sd*0.3,-1.6,0.85]],0.08,0.04,P.hot,{glow:true,ol:false,rs:4,seg:6}); }
   if(mech){ R.add('chest',G_.sph(0.95,0.95,0.5,10,6),P.hot,{p:[0,0.45,2.12],glow:true,ol:false,grad:P.hot2}); R.add('chest',G_.tor(1.15,0.16,4,12),P.claw,{p:[0,0.45,2.1]});
     for(const sd of [1,-1]){ R.add('chest',G_.cyl(0.55,0.65,2.2,6),P.hide2,{p:[sd*2.4,1.9,-0.3],r:[Math.PI/2-0.3,0,0]}); R.add('chest',G_.sph(0.4,0.4,0.4,6,4),P.hot,{p:[sd*2.4,2.5,1.0],glow:true,ol:false});
-      R.add('chest',G_.box(1.1,1.6,2.2),P.plate,{p:[sd*2.5,0.6,0.2]}); for(let k=0;k<3;k++) R.add('chest',G_.box(0.2,0.1,0.3),P.hot,{p:[sd*2.62,0.2+k*0.3,1.35],glow:true,ol:false}); }
-    for(let i=0;i<6;i++) R.add('tail'+i,G_.box(0.15,0.12,0.5),P.hot,{p:[0,o.tr*0.8*(1-i*0.13),-0.3],glow:true,ol:false}); }
+      R.add('chest',G_.rbox(1.1,1.6,2.2),P.plate,{p:[sd*2.5,0.6,0.2]}); for(let k=0;k<3;k++) R.add('chest',G_.rbox(0.2,0.1,0.3),P.hot,{p:[sd*2.62,0.2+k*0.3,1.35],glow:true,ol:false}); }
+    for(let i=0;i<6;i++) R.add('tail'+i,G_.rbox(0.15,0.12,0.5),P.hot,{p:[0,o.tr*0.8*(1-i*0.13),-0.3],glow:true,ol:false}); }
   if(cas){ /* the castle riding its back: three tiers of white plaster under dark tiled roofs, burning windows, a golden shachi crown */
     const plaster=0xF2EEE2, tile=0x2F3C4E, gold=0xF5C542, red=0xC8241E, roof=(w,d,y)=>{ R.add('chest',G_.cyl(w*0.45,w*1.0,0.9,4),tile,{p:[0,y,-1.2],r:[0,Math.PI/4,0],s:[1,1,d/w],grad:shade(tile,1.6),gax:1.4});
       for(const sd of [1,-1]){ kSpike(R,'chest',0.16,0.9,tile,[sd*w*0.74,y-0.2,-1.2],0,sd*-1.0,{ol:false}); R.add('chest',G_.cone(0.2,0.7,4),gold,{p:[sd*w*0.42,y+0.75,-1.2],r:[0,0,sd*-0.2]}); } };
-    R.add('chest',G_.box(4.4,1.5,3.0),plaster,{p:[0,2.5,-1.2],grad:0xDAD4C2,gax:1.6}); roof(3.1,2.2,3.5);
-    R.add('chest',G_.box(3.0,1.4,2.2),plaster,{p:[0,4.4,-1.2],grad:0xDAD4C2}); roof(2.3,1.7,5.3);
-    R.add('chest',G_.box(1.9,1.2,1.5),plaster,{p:[0,6.0,-1.2],grad:0xDAD4C2}); roof(1.6,1.3,6.9);
+    R.add('chest',G_.rbox(4.4,1.5,3.0),plaster,{p:[0,2.5,-1.2],grad:0xDAD4C2,gax:1.6}); roof(3.1,2.2,3.5);
+    R.add('chest',G_.rbox(3.0,1.4,2.2),plaster,{p:[0,4.4,-1.2],grad:0xDAD4C2}); roof(2.3,1.7,5.3);
+    R.add('chest',G_.rbox(1.9,1.2,1.5),plaster,{p:[0,6.0,-1.2],grad:0xDAD4C2}); roof(1.6,1.3,6.9);
     for(const sd of [1,-1]){ R.add('chest',G_.sph(0.2,0.5,0.2,6,4),gold,{p:[sd*0.6,7.8,-1.2],r:[0,0,sd*-0.35]}); kSpike(R,'chest',0.16,0.55,gold,[sd*0.5,8.1,-1.2],0,sd*0.5); }
-    for(const [y,w] of [[2.5,1.2],[4.4,0.9],[6.0,0.6]]) for(const sx of [-1,1]) R.add('chest',G_.box(w*0.5,0.5,0.1),P.hot,{p:[sx*w*1.1,y,0.38],glow:true,ol:false,grad:P.hot2});
+    for(const [y,w] of [[2.5,1.2],[4.4,0.9],[6.0,0.6]]) for(const sx of [-1,1]) R.add('chest',G_.rbox(w*0.5,0.5,0.1),P.hot,{p:[sx*w*1.1,y,0.38],glow:true,ol:false,grad:P.hot2});
     for(const sd of [1,-1]){ R.add('chest',G_.cyl(0.07,0.07,4.6,4),0x3A2A22,{p:[sd*2.6,3.2,-2.4],ol:false}); R.add('chest',G_.shape([[0,0],[0.9,0.1],[0.95,-2.2],[0,-2.1]],0.03,0),red,{p:[sd*2.6+sd*0.5,5.2,-2.4]}); }
     /* stone shoulder bastions and a gold-trimmed belly plate */
-    for(const sd of [1,-1]){ R.add('chest',G_.box(1.5,1.1,1.7),P.plate,{p:[sd*2.6,1.4,0.0],grad:P.hide2}); R.add('chest',G_.box(1.6,0.2,1.8),gold,{p:[sd*2.6,2.0,0.0],ol:false}); } }
+    for(const sd of [1,-1]){ R.add('chest',G_.rbox(1.5,1.1,1.7),P.plate,{p:[sd*2.6,1.4,0.0],grad:P.hide2}); R.add('chest',G_.rbox(1.6,0.2,1.8),gold,{p:[sd*2.6,2.0,0.0],ol:false}); } }
   /* neck(s) and head(s) */
   R.add('neck',G_.cap(hyd?0.75:wyv?0.7:skel?0.5:1.05,hyd?1.6:wyv?1.1:0.8,6),P.hide,{p:[0,hyd?0.9:0.45,0.2],r:[hyd?0.2:0.45,0,0],grad:P.belly,gax:2});
   const hr=o.hr;
@@ -2053,7 +2059,7 @@ function shishiExtra(R,d,G){ const W=d.W, L=d.L, stone=0x7C8290, jade=0x2E8C78, 
   for(let i=0;i<5;i++){ const z=(i-2)*L*0.17; gzPlate(R,'body',0,W*0.82,z,0.75-Math.abs(i-2)*0.08,stone,null,0.2); }
   R.add('neck',G_.tor(0.75,0.12,4,10),0xD8C8A0,{p:[0,0.05,0.0],r:[Math.PI/2,0.5,0]});   /* the sacred rope round its throat */
   R.add('head',G_.cone(d.hr*0.16,d.hr*0.9,4),gold,{p:[0,d.hr*0.95,d.hr*0.45],r:[0.35,0,0],grad:0xB88810});          /* one golden horn */
-  for(const sd of [1,-1]){ R.add('front',G_.box(0.7,0.12,0.7),jade,{p:[sd*W*0.75,W*0.5,0.0],glow:true,ol:false}); R.add('rear',G_.box(0.7,0.12,0.7),jade,{p:[sd*W*0.7,W*0.5,0.0],glow:true,ol:false}); } }
+  for(const sd of [1,-1]){ R.add('front',G_.rbox(0.7,0.12,0.7),jade,{p:[sd*W*0.75,W*0.5,0.0],glow:true,ol:false}); R.add('rear',G_.rbox(0.7,0.12,0.7),jade,{p:[sd*W*0.7,W*0.5,0.0],glow:true,ol:false}); } }
 function genbuExtra(R,d,G){ const W=d.W, L=d.L, shell=0x2F5A4A, rock=0x7C8290, snow=0xF4F8FF, pine=0x2E6A3A, red=0xC8241E, gold=0xF5C542, wood=0x5A3A22;
   R.add('body',G.sph(W*1.6,W*1.15,L*0.68,24,16),shell,{p:[0,W*0.5,-L*0.03],grad:shade(shell,0.55),gax:1.6});
   for(let i=0;i<8;i++){ const a=i/8*TAU, rr=W*1.5; R.add('body',G.sph(W*0.45,W*0.2,W*0.45,8,6),shade(shell,1.3),{p:[Math.sin(a)*rr*0.95,W*0.5+Math.cos(a*1.0)*0.0+W*0.35,Math.cos(a)*L*0.62*0.95-L*0.03],r:[0,a,0],ol:false}); }
@@ -2062,7 +2068,7 @@ function genbuExtra(R,d,G){ const W=d.W, L=d.L, shell=0x2F5A4A, rock=0x7C8290, s
   R.add('body',G.cone(W*0.55,W*1.0,7),snow,{p:[0,W*3.55,-L*0.03],ol:true});
   for(const [x,z,s] of [[-0.9,0.5,1.0],[0.8,0.7,0.85],[-0.5,-0.9,0.9],[0.7,-0.7,1.0],[0.0,1.2,0.7]]){ for(let k=0;k<3;k++) R.add('body',G.cone(W*0.3*s*(1-k*0.25),W*0.55*s,6),pine,{p:[x*W*0.95,W*(1.35+0.0)+W*0.42*k*s-0.05*W,z*W*0.95-L*0.03],ol:true}); }
   /* a small shrine halfway up */
-  R.add('body',G.box(W*0.7,W*0.38,W*0.55),0xF2EEE2,{p:[W*0.15,W*2.2,W*0.75-L*0.03]}); R.add('body',G.cyl(W*0.28,W*0.62,W*0.3,4),0x2F3C4E,{p:[W*0.15,W*2.5,W*0.75-L*0.03],r:[0,Math.PI/4,0]});
+  R.add('body',G.rbox(W*0.7,W*0.38,W*0.55),0xF2EEE2,{p:[W*0.15,W*2.2,W*0.75-L*0.03]}); R.add('body',G.cyl(W*0.28,W*0.62,W*0.3,4),0x2F3C4E,{p:[W*0.15,W*2.5,W*0.75-L*0.03],r:[0,Math.PI/4,0]});
   R.add('body',G.tor(W*0.22,W*0.04,4,12),red,{p:[W*0.15,W*2.2,W*1.04-L*0.03],ol:false});
   /* a waterfall running down the mountain onto the shell */
   kTube(R,'body',[[-W*0.3,W*3.2,W*0.3-L*0.03],[-W*0.35,W*2.4,W*0.9-L*0.03],[-W*0.4,W*1.5,W*1.4-L*0.03],[-W*0.4,W*0.9,W*1.6-L*0.03]],W*0.1,W*0.2,0x9FE6FF,{glow:true,ol:false,rs:5,seg:10});
@@ -2444,7 +2450,8 @@ const API={
     if(I.kind==='human'&&!I.imported&&STYLE==='anime'){ const swing=S.atkU>=0.1&&S.atkU<iu+0.2&&(TRAIL_STYLES[st]!=null)&&!(p.cast); trailTick(I,swing,dt,sc,TRAIL_STYLES[st]||0xFFFFFF); }
     /* status tints and hit flash */
     _tint.copy(WHITE); if(p.tint!=null) _tint.set(p.tint).lerp(WHITE,0.55); if(p.frozen) _tint.setRGB(0.65,0.9,1.0); if(p.burn) _tint.setRGB(1,0.82,0.7);
-    for(const m of (I.mats||[I.mat])){ m.color.copy(m.userData.base||WHITE).multiply(_tint); m.emissive.setRGB(S.hit*0.55,S.hit*0.12,S.hit*0.1); }
+    const hk=(I.sp&&(I.sp.type==='kaiju'||I.sp.key==='genbu'||I.sp.key==='shishi'))?0.22:1;   /* v90: a building-sized body must not flood pink under constant tower fire */
+    for(const m of (I.mats||[I.mat])){ m.color.copy(m.userData.base||WHITE).multiply(_tint); m.emissive.setRGB(S.hit*0.55*hk,S.hit*0.12*hk,S.hit*0.1*hk); }
     /* v85 death dissolve (p.dissolve 0..1): body, ink line and glow all burn away together */
     const dis=p.dissolve||0;
     if(dis>0||I.dis){ I.dis=dis; for(const m of (I.mats||[I.mat])) if(m.userData.dis) m.userData.dis.value=dis;
