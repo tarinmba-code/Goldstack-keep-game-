@@ -1233,7 +1233,7 @@ function miniType(si,w){ if(si<3) return 'boss:brute';
   for(let j=Math.max(0,si-14);j<si;j++) add(j); if(!pool.length) for(let j=0;j<si;j++) add(j);
   return pool.length?'mini:'+pool[(si*7+w)%pool.length]:'boss:brute'; }
 function applyStageWaves(si,W){
-  const nL=STAGES[si].lanes.length, rule=stageRule(si), boss=g=>/^(boss|mini):/.test(g[0]);
+  const nL=STAGES[si].lanes.length, rule=stageRule(si), boss=g=>/^(boss|mini|div):/.test(g[0]);
   W.forEach((wv,w)=>{
     if(rule==='swarm') wv.g.forEach(g=>{ if(!boss(g)){ g[2]=Math.max(2,Math.round(g[2]*2)); g[3]=g[3]*0.6; } });
     if(rule==='sky'&&w%2===1) wv.g.forEach(g=>{ if(!boss(g)) g[0]='eflier'; });
@@ -1452,6 +1452,9 @@ function skyImpactFx(b,R){ const c=b.col, x=b.x, z=b.z;
   #v65fog.on{ opacity:1; }
 `; document.head.appendChild(st); })();
 
+/* v98: each Kaiju God brings two Divine-series guardians who descend mid-stage and march on the keep */
+const KAIJU_GUESTS={gokaryu:['magatsu','hachiman'],mizuchi:['wata','ryugu'],genbu:['oyama','saruta'],yamata:['yatono','kurao'],otori:['takemika','orizuru'],
+  hitotsume:['bishamon','daruma'],odokuro:['biwa','okina'],mekaryu:['kane','tsukumo'],shishi:['inari','marishi'],oshiro:['mioya','minaka']};
 function genWaves(si){
   const st=STAGES[si], R=rng(4242+si*7), W=[]; let t=8; const nL=st.lanes.length;
   for(let w=0;w<st.waves;w++){
@@ -1479,6 +1482,9 @@ function genWaves(si){
         if(w>=2&&R()<0.4+prog*0.3) g.push(['kspit',li,1+Math.floor(w/4),2.0]); }
     });
     if(st.mini&&(w===Math.floor(st.waves*0.45)||(si>=4&&w===Math.floor(st.waves*0.72)))) g.push([miniType(si,w),idx[0],1,0]);
+    if(BOSSES[st.boss]&&BOSSES[st.boss].kaiju&&KAIJU_GUESTS[st.boss]){ const gp=KAIJU_GUESTS[st.boss];   /* first guardian ~40% in, second ~70% in, from opposite flanks */
+      if(w===Math.floor(st.waves*0.4)) g.push(['div:'+gp[0],Math.min(1,nL-1),1,0]);
+      if(w===Math.floor(st.waves*0.7)) g.push(['div:'+gp[1],Math.max(0,nL-2),1,0]); }
     if(w===st.waves-1){ g.push(['boss:'+st.boss,Math.floor(nL/2),1,0]); if(st.boss2) g.push(['boss:'+st.boss2,(Math.floor(nL/2)+Math.ceil(nL/2))%nL,1,3]); }
     W.push({t:Math.round(t),g}); t+=20+w*1.5;
   }
@@ -1918,7 +1924,7 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
     if(n){ refreshPads(); setTimeout(()=>toast(t2?'Iron palisades stand ready · upgrade them on the yellow pads':'Palisades stand ready · upgrade them on the yellow pads',2.6),2700); } }
   stageStartV65(si);
   if(CH3()){ CH3().clear(); const ks=[HD.sprite,st.boss,st.boss2,'brute'];
-    for(const w of (G.waves||[])) for(const g of w.g) if(/^(boss|mini):/.test(g[0])) ks.push(g[0].slice(5));
+    for(const w of (G.waves||[])) for(const g of w.g) if(/^(boss|mini|div):/.test(g[0])) ks.push(g[0].slice(g[0].indexOf(':')+1));
     const sid=summonId&&summonId(); if(sid&&HEROES[sid]) ks.push(HEROES[sid].sprite);
     try{ CH3().prebuild([...new Set(ks.filter(k=>k&&CH3().has(k)))]); }catch(err){ console.warn('3D prebuild',err&&err.message); } }
   /* perf: compile every shader for this stage now, not in the middle of the first fight */
@@ -1976,15 +1982,18 @@ function spawnEnemy(type,laneIdx,near){
   const hs=STAGES[0].hp*(1+Math.max(0,G.clock)/300);  /* normal enemies no longer scale with stage number */
   const e={lane:laneIdx,wp,x:x+rand(-1.2,1.2),z:z+rand(-1.2,1.2),rot:0,cd:rand(0.2,1),rt:0,target:null,flash:0,dead:false,moving:true,seed:rand(0,10),atk:0,
     slowT:0,slowF:0,freezeT:0,burnT:0,burnDps:0,stunT:0,burnFx:0};
-  if(type.startsWith('boss:')||type.startsWith('mini:')){
-    const mini=type.startsWith('mini:'), kind=type.slice(5), D=BOSSES[kind]; e.mini=mini||kind==='brute';
+  if(type.startsWith('boss:')||type.startsWith('mini:')||type.startsWith('div:')){
+    const guest=type.startsWith('div:'), mini=type.startsWith('mini:'), kind=type.slice(guest?4:5), D=BOSSES[kind]; e.mini=mini||kind==='brute'; e.guest=guest;
     { const base=BOSSES[G.st.boss].hp+(G.st.boss2?BOSSES[G.st.boss2].hp:0);
       if(!G.bossScale) G.bossScale=Math.min(1,((BOSSES[G.st.boss].super?9000:2600)*Math.pow(G.si+1,1.25))/base); }
-    Object.assign(e,{cls:'boss',kind,hp:(e.mini?BOSSES.brute.hp*(1+0.35*G.si)*(kind!=='brute'?1.3:1):D.hp*G.bossScale)*(G.diffMul||1),speed:D.speed,rad:D.rad,st:'move',atkT:1.5,pi:0,timer:0,dmg:30*(1+0.25*G.si)*(G.diffMul||1)*(D.super?1.95:1)});
+    Object.assign(e,{cls:'boss',kind,hp:(e.mini?BOSSES.brute.hp*(1+0.35*G.si)*(kind!=='brute'?1.3:1):guest?Math.min(D.hp,9000*Math.pow(G.si+1,1.25))*0.6:D.hp*G.bossScale)*(G.diffMul||1),speed:D.speed,rad:D.rad,st:'move',atkT:1.5,pi:0,timer:0,dmg:30*(1+0.25*G.si)*(G.diffMul||1)*(D.super?1.95:1)});
     e.max=e.hp; bossInit(e);
     const m={g:new T.Group()};
     Object.assign(e,m); e.mats=bossMats(e.g);
-    if(e.mini){ sfx('warn'); toast(kind==='brute'?'An aooni brute approaches!':`Mini-boss: a shade of ${D.name} approaches!`,2.2); }
+    if(guest){ sfx('warn'); sfx('slam'); G.shake=Math.max(G.shake,0.6); try{ flashRing(0xFFD15A); }catch(_){}
+      fx('fx_seal',e.x,0.2,e.z,11,0.9,0xFFD15A,{flat:true,spin:2,grow:1.3}); spawnParticles(e.x,(D.h||5)*0.5,e.z,36,0xFFE27A,7,0.8,1.5,-6);
+      toast(`⚡ A Divine guardian descends: ${D.name.split(',')[0]} marches on the keep!`,3.4); }
+    else if(e.mini){ sfx('warn'); toast(kind==='brute'?'An aooni brute approaches!':`Mini-boss: a shade of ${D.name} approaches!`,2.2); }
     else { G.boss=e; setTimeout(()=>bossCine(e),40); $('bossName').textContent=D.name; $('bossbar').style.display='block'; bossUiInit(e); }
   } else {
     const D=EN[type], dm=G.diffMul||1;
@@ -4102,7 +4111,7 @@ function updateHud(force){ try{ syncSumBtn(); }catch(err){}
   if(G.rosterKey!==rk){ G.rosterKey=rk; $('roster').innerHTML=Object.keys(CLS).filter(c=>counts[c]).map(c=>`<span title="${CLS[c].name}"><img src="${ART[UNIT_SPR[c]]}" alt="${CLS[c].name}"><b>${counts[c]}</b></span>`).join(''); }
   const cb=G.state==='play'?callBonus():0, cbKey=cb?`${G.waveIdx+1}|${cb}`:'';
   if(G.cbKey!==cbKey){ G.cbKey=cbKey; const btn=$('callWave'); if(cb){ btn.style.display='block'; btn.firstChild.nodeValue=`Call wave ${G.waveIdx+1}`; btn.querySelector('small').textContent=`+${cb} bonus coins`; } else btn.style.display='none'; }
-  if(G.breakT>0){ const nx=G.waveIdx<W.length?W[G.waveIdx]:null; const types=nx?[...new Set(nx.g.map(g=>/^(boss|mini):/.test(g[0])?g[0].slice(5):g[0]))]:[];
+  if(G.breakT>0){ const nx=G.waveIdx<W.length?W[G.waveIdx]:null; const types=nx?[...new Set(nx.g.map(g=>/^(boss|mini|div):/.test(g[0])?g[0].slice(g[0].indexOf(':')+1):g[0]))]:[];
     const html=`<h4>Wave ${G.waveIdx} of ${W.length} cleared</h4><div class="coins"><span><i></i>+${G.lastBreakBonus} bonus</span><span><i></i>${G.stack} carried</span></div>`+
       (nx?`<div class="foes">Next wave in ${Math.max(0,Math.ceil(nx.t-G.clock))}s: ${types.map(t=>`<img src="${ART[t==='brute'?'oni':t]||ART.bandit}" alt="${t}">`).join('')}</div>`:'');
     if(G.breakHtml!==html){ G.breakHtml=html; $('breakCard').innerHTML=html; } }
