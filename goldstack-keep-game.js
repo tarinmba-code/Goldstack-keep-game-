@@ -691,16 +691,34 @@ const DIV_UP={wata:1.5,oyama:1.5,kurao:1.5,magatsu:1.5,ryugu:1.5,gokaryu:1.5,miz
 const CROP={wata:1,oyama:1,kurao:1,magatsu:1,ryugu:1,chochin:1,kane:1,karakasa:1,ungai:1,orizuru:1,daruma:1,biwa:1,okina:1,kotoryu:1,tsukumo:1,gokaryu:1,mizuchi:1,genbu:1,yamata:1,otori:1,hitotsume:1,odokuro:1,mekaryu:1,shishi:1,oshiro:1};
 const SPR_H={chochin:9.94,kane:10.71,karakasa:10.82,ungai:9.91,orizuru:9.58,daruma:13.67,biwa:12.1,okina:8.87,kotoryu:9.85,tsukumo:12.47,naginata:2.1,tate:1.8,foxmage:1.75,wata:12.15,oyama:11.7,kurao:11.1,magatsu:13.8,ryugu:12.6,eronin:3.2,egolem:4.2,epriest:3.3,shugen:1.7,kunoichi:1.6,taiko:1.65,esapper:1.8,eflier:2.2,etunnel:2.0,etreasure:2.2,takemika:6.2,hachiman:6.3,bishamon:6.3,inari:6.1,saruta:6.5,minaka:6.4,kunitoko:6.7,yatono:6.4,marishi:6.4,mioya:6.8,espear:2.3,earcher:3.3,eshaman:3.6,eshield:4.2,fujin:5.8,yukionna:5.8,benkei:6.0,kagutsuchi:5.8,izanagi:6.2,sumo:1.75,kabuki:1.7,falcon:1.65,kusari:1.65,komainu:1.45,raiju:5.4,baku:5.2,onryo:5.6,shachi:5.4,amaterasu:5.8,jorogumo:5.6,karura:5.8,kuzuryu:6.2,izanami:6.0,tsukuyomi:6.4,ushioni:5.8,shuten:6.4,kirin:5.6,enma:6.2,susanoo:6.6,umibozu:6.0,kamaitachi:4.6,daidara:7.2,hannya:5.4,mikaboshi:6.6,yari:1.65,teppo:1.6,sohei:1.7,miko:1.6,tanuki:1.55,nue:5.0,ryujin:5.8,tsuchi:4.8,nurari:4.8,orochi:6.2,namazu:5.4,mao:6.4,kappa:5.1,gasha:6.9,raijin:6.2,hero:2.15,archer:1.6,samurai:1.7,onmyoji:1.65,ninja:1.35,bandit:1.6,oni:2.35,brute:3.7,akaoni:4.9,tengu:4.5,kitsune:4.4,yuki:4.9,shogun:6.0,gokaryu:17,mizuchi:16,genbu:12,yamata:18,otori:17,hitotsume:17,odokuro:18,mekaryu:17,shishi:12,oshiro:19};
 const sprGeo=new T.PlaneGeometry(1,1); sprGeo.translate(0,0.5,0);
+/* v93 'living paint': animated sprites use a finer mesh the vertex shader can bend (breath, sway, lean, strike smear),
+   and the fragment shader crossfades between poses instead of cutting. ?motion=0 turns it off on this device. */
+const MOTION=(()=>{ try{ const q=new URLSearchParams(location.search).get('motion'); if(q==='0'||q==='1') localStorage.setItem('gk-motion2',q); return localStorage.getItem('gk-motion2')!=='0'; }catch(e){ return true; } })();
+const SPR_U={uTime:{value:0},uMotion:{value:MOTION?1:0}};
+const animGeo=new T.PlaneGeometry(1,1,MOTION?4:1,MOTION?8:1); animGeo.translate(0,0.5,0);
 const sprMat=k=>new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide});
 const FRAMES=k=>((ANIM_META[k]&&ANIM_META[k].n)||3);
-function animMat(k){ const m=new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide}), n=FRAMES(k);
-  m.onBeforeCompile=sh=>{ sh.vertexShader='attribute float aFrame;\n'+sh.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\n  vMapUv.x=(vMapUv.x+aFrame)/'+n.toFixed(1)+';\n#else\n  vUv.x=(vUv.x+aFrame)/'+n.toFixed(1)+';\n#endif'); };
+function animMat(k){ const m=new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide}), n=FRAMES(k), N=n.toFixed(1);
+  m.onBeforeCompile=sh=>{ sh.uniforms.uTime=SPR_U.uTime; sh.uniforms.uMotion=SPR_U.uMotion;
+    sh.vertexShader='attribute float aFrame;\nattribute vec4 aMo;\nuniform float uTime;\nuniform float uMotion;\nvarying vec2 vUv2;\nvarying float vBlend;\n'+sh.vertexShader
+      .replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\n  vUv2=vec2((vMapUv.x+aMo.z)/'+N+',vMapUv.y); vMapUv.x=(vMapUv.x+aFrame)/'+N+';\n#endif\n  vBlend=aMo.w*uMotion;')
+      .replace('#include <begin_vertex>',`#include <begin_vertex>
+  { float h=clamp(position.y,0.,1.), sd=aMo.x, a=aMo.y*uMotion, hh=h*h;
+    float br=sin(uTime*2.3+sd)*uMotion;                       // breathing: chest rises, shoulders narrow
+    transformed.y*=1.+0.03*br*h;
+    transformed.x*=1.-0.022*br*h;
+    transformed.x+=sin(uTime*1.7+sd*1.3-h*2.2)*0.03*hh*uMotion;   // hair / cape / wings trail the body
+    float strike=a*(1.-a)*4.;                                  // peaks mid-swing
+    transformed.x-=(0.12*a*hh+0.09*strike*h)*(1.+0.6*sin(h*9.+sd));  // lean + smear forward (art faces -x)
+    transformed.y+=0.03*strike*hh; }`);
+    sh.fragmentShader='varying vec2 vUv2;\nvarying float vBlend;\n'+sh.fragmentShader.replace('#include <map_fragment>',
+      '#include <map_fragment>\n#ifdef USE_MAP\n  if(vBlend>0.001){ diffuseColor=mix(diffuseColor,vec4(diffuse,opacity)*texture2D(map,vUv2),vBlend); }\n#endif'); };
   /* one compiled shader per frame count: without this, three.js reuses the first one it built for every character */
-  m.customProgramCacheKey=()=>'animframes'+n;
+  m.customProgramCacheKey=()=>'animframes2'+n;
   return m; }
 const SB={}; [['hero',3],['archer',140],['samurai',40],['onmyoji',40],['ninja',40],['bandit',240],['oni',90],['espear',80],['earcher',80],['eshaman',60],['eshield',50],['esapper',50],['eflier',60],['etunnel',40],['etreasure',4],['brute',4],['akaoni',3],['tengu',3],['kitsune',3],['yuki',3],['shogun',3],['kappa',3],['gasha',3],['raijin',3],['nue',3],['ryujin',3],['tsuchi',3],['nurari',3],['orochi',3],['namazu',3],['mao',3],['umibozu',3],['kamaitachi',3],['daidara',3],['hannya',3],['mikaboshi',3],['ushioni',3],['shuten',3],['kirin',3],['enma',3],['susanoo',3],['jorogumo',3],['karura',3],['kuzuryu',3],['izanami',3],['tsukuyomi',3],['raiju',3],['baku',3],['onryo',3],['shachi',3],['amaterasu',3],['fujin',3],['yukionna',3],['benkei',3],['kagutsuchi',3],['izanagi',3],['takemika',3],['hachiman',3],['bishamon',3],['inari',3],['saruta',3],['minaka',3],['kunitoko',3],['yatono',3],['marishi',3],['mioya',3],['oyama',3],['wata',3],['chochin',3],['kane',3],['gokaryu',3],['mizuchi',3],['genbu',3],['yamata',3],['otori',3],['hitotsume',3],['odokuro',3],['mekaryu',3],['shishi',3],['oshiro',3],['karakasa',3],['ungai',3],['orizuru',3],['daruma',3],['biwa',3],['okina',3],['kotoryu',3],['tsukumo',3],['kurao',3],['magatsu',3],['ryugu',3],['eronin',50],['egolem',24],['epriest',36],['shugen',40],['kunoichi',40],['taiko',40],['naginata',40],['tate',30],['foxmage',40],['sumo',40],['kabuki',40],['falcon',50],['kusari',50],['komainu',50],['yari',60],['teppo',60],['sohei',40],['miko',40],['tanuki',40]].forEach(([k,c])=>{
-  const g=sprGeo.clone(), fa=new T.InstancedBufferAttribute(new Float32Array(c),1); fa.setUsage(T.DynamicDrawUsage); g.setAttribute('aFrame',fa);
-  SB[k]=makeBatch(g,c,{mat:animMat(k),shadow:false,order:1}); SB[k].fa=fa; });
+  const g=animGeo.clone(), fa=new T.InstancedBufferAttribute(new Float32Array(c),1), ma=new T.InstancedBufferAttribute(new Float32Array(c*4),4); fa.setUsage(T.DynamicDrawUsage); ma.setUsage(T.DynamicDrawUsage); g.setAttribute('aFrame',fa); g.setAttribute('aMo',ma);
+  SB[k]=makeBatch(g,c,{mat:animMat(k),shadow:false,order:1}); SB[k].fa=fa; SB[k].ma=ma; });
 const BLD={b_cannon:4.2,b_yari:3.2,b_teppo:3.2,b_sohei:3.6,b_tanuki:3.2,b_tower:4.6,b_range:3.2,b_dojo:3.4,b_shrine:3.6,b_ninja:3.2,b_onipit:3.4,b_banner:4.0,b_mine:3.4,b_forge:3.4,b_armory:3.3};
 
 /* ================================================================ v66 · 3D switch
@@ -820,7 +838,10 @@ function drawSprite(k,ent,x,y,z,rot,flash,moving,seed,frozen,atk,extraScale,burn
   else if(moving){ const rate=(base>3?4.6:8.2)*(NF>=6?1.35:1); frame=WALK[Math.floor(TIME*rate+seed*3)%WALK.length]; }
   else if((flash||0)>0.25&&NF>=3) frame=2;   /* flinch on the attack pose when struck */
   if(!(frame>=0&&frame<NF)) frame=0; frame=frame|0;  /* never hand the GPU a missing or out-of-range frame */
-  const b0=SB[k]; if(b0.n<b0.cap) b0.fa.array[b0.n]=frame;
+  const b0=SB[k]; if(b0.n<b0.cap){ b0.fa.array[b0.n]=frame;
+    if(ent){ if(ent._pf===undefined){ ent._pf=frame; ent._cf=frame; ent._ft=1; } if(frame!==ent._cf){ ent._pf=ent._cf; ent._cf=frame; ent._ft=0; } ent._ft+=(G&&G._rdt)||0.016; }
+    const bl=ent?Math.max(0,1-ent._ft/0.11):0, o=b0.n*4;   /* 0.11 s crossfade from the previous pose */
+    b0.ma.array[o]=seed||0; b0.ma.array[o+1]=clamp(atk||0,0,1); b0.ma.array[o+2]=ent?ent._pf:frame; b0.ma.array[o+3]=bl; }
   const spd=(base>3?7.2:13);
   /* five-beat motion: contact, pass, contact, pass, with a lean and a step bounce on each beat */
   const beat=moving?((TIME*spd*0.5+seed)%1):0, phase=Math.floor(beat*4);
@@ -2296,6 +2317,7 @@ function resolveTg(tg){
   else if(tg.shape==='donut'){ for(let k=0;k<28;k++){ const a=k/28*Math.PI*2, r=tg.r*0.72; spawnParticles(tg.x+Math.sin(a)*r,0.3,tg.z+Math.cos(a)*r,1,col,3,0.7,1.6,2); } }
   else { for(let s=0;s<tg.len;s+=0.8) spawnParticles(tg.x+tg.dx*s,0.3,tg.z+tg.dz*s,2,col,3,0.6,1.3,tg.col===0xBFF0FF?-4:1); }
   G.shake=Math.max(G.shake,tg.shake||0.35); sfx(tg.sound||'slam');
+  if(tg.owner&&tg.owner.cls==='boss') bossImpact(tg,col);
   if(tg.onDone) tg.onDone();
 }
 
@@ -3132,7 +3154,7 @@ function syncSumBtn(){ let b=$('sumBtn'); if(!b) return; const id=G&&G.state==='
 function castUlt(){ G._vfx=true; G._gb=3; try{ castUlt0(); } finally{ G._vfx=false; G._gb=0; } }
 function castUlt0(){
   if(!ultReady()) return; const h=G.hero, HD=G.heroDef; G.ultCd=ultMax();
-  const U0=ULTS[HD.id]||ULTS.ronin, R0=MOD('ultR')*U0.r, col=U0.col; specialCam(col,false);
+  const U0=ULTS[HD.id]||ULTS.ronin, R0=MOD('ultR')*U0.r, col=U0.col; specialCam(col,false); ultCard(HD,U0);
   const dmg=MOD('ultDmg')*MOD('heroDmg')*HD.dmg*U0.mult*(1+0.5*G.si)*(1+0.12*PK('hero'))*(1+0.1*LV('m_hero'))*(PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg');
   const ULT_NERF=0.6;   /* v78: specials were near one-shotting bosses; 40% less damage */
   const hits=U0.hits||1, K0=ULT_FX[HD.id]||'slash';
@@ -3631,11 +3653,38 @@ function updateBoss(e,dt){
     if(blocked||e.blockT>0.5){ const wall=['slam','donut','line','summon']; if(!wall.includes(pat)) pat=wall[e.pi%wall.length]; }
     castPattern(e,pat,aim[0],aim[1],enr); e.pi++; e.atkT=bossCadence(e,enr); if((e.phase||0)>=2&&e.pi%2===0&&pat!=='summon') furyBarrage(e); }
 }
+/* v93 step B - attack feel: a rune circle spins up under a boss while it winds up, the landing hit throws a shockwave,
+   a slash arc, a short freeze and a camera punch, and the hero's special opens with a full-screen splash card. */
+const RUNE_COL={kitsune:0xFF7AC8,yuki:0xBFF0FF,raijin:0xFFF27A,ryujin:0x6FE3FF,shogun:0xFF7A2A,kane:0xD6FF5A,susanoo:0x8FD0FF,amaterasu:0xFFD36A,izanami:0xC58CFF,
+  gokaryu:0xFF8A2A,mizuchi:0x5FE6FF,genbu:0x7BFF9A,yamata:0xFFD24A,otori:0x8FB6FF,hitotsume:0xFFE27A,odokuro:0xC58CFF,mekaryu:0x5FFFF0,shishi:0x7BFFB8,oshiro:0xFFC24A};
+function bossRune(e,delay,enr){ const D=BOSSES[e.kind]||{}, col=RUNE_COL[e.kind]||(enr?0xFF4A6A:0xFFB04A), r=Math.max(3.2,(D.rad||2)*2.6);
+  fx('fx_seal',e.x,0.07,e.z,r,delay+0.35,col,{flat:true,spin:enr?2.6:1.6,grow:1.18});
+  fx('fx_glow',e.x,0.09,e.z,r*0.7,delay+0.2,col,{flat:true,grow:1.4});
+  G.camPunch=Math.max(G.camPunch||0,0.03); }
+function bossImpact(tg,col){ const x=tg.shape==='rect'?tg.x+tg.dx*tg.len*0.6:tg.x, z=tg.shape==='rect'?tg.z+tg.dz*tg.len*0.6:tg.z, r=tg.r||3;
+  fx('fx_seal',x,0.1,z,r*1.5,0.45,col,{flat:true,spin:4,grow:2.2});
+  fx('fx_slash',x,1.6,z,Math.min(7,r*1.6),0.28,0xFFFFFF,{rot:rand(-0.6,0.6)});
+  fx('fx_dust',x,0.6,z,r*1.3,0.6,0xE8D8C0,{grow:1.8});
+  G.hitStop=Math.max(G.hitStop||0,0.06); G.camPunch=Math.max(G.camPunch||0,0.07); }
+function ultCard(HD,U){ const L=document.body;   /* own layer: the cine layer blends in screen mode and would hide the dark banner */
+  const c=document.createElement('div'), hex='#'+(U.col||0xFFE27A).toString(16).padStart(6,'0');
+  c.className='ucard'; c.style.setProperty('--uc',hex);
+  c.innerHTML=`<div class="ulines"></div><img src="${ART[HD.sprite]||ART.hero}" alt=""><b>${U.name||'Special'}</b>`;
+  L.appendChild(c); setTimeout(()=>c.remove(),1100); }
+{ const st=document.createElement('style'); st.textContent=
+  '.ucard{position:fixed;left:0;right:0;top:34%;height:23vh;pointer-events:none;z-index:25;overflow:hidden;animation:ucIn 1.05s cubic-bezier(.2,.9,.2,1) forwards}'+
+  '.ucard .ulines{position:absolute;inset:0;background:repeating-linear-gradient(100deg,transparent 0 18px,rgba(255,255,255,.22) 18px 21px),linear-gradient(90deg,rgba(20,14,30,.92),var(--uc) 160%);animation:ucLines .35s linear infinite;transform:skewY(-6deg) scaleY(1.2)}'+
+  '.ucard img{position:absolute;left:0;bottom:-6%;height:118%;-webkit-mask-image:linear-gradient(90deg,#000 62%,transparent);mask-image:linear-gradient(90deg,#000 62%,transparent);animation:ucHero 1.05s cubic-bezier(.2,.9,.2,1) forwards}'+
+  '.ucard b{position:absolute;right:5%;top:50%;transform:translateY(-50%) skewX(-10deg);font:900 clamp(26px,8vw,54px) "Nunito Sans",sans-serif;color:#fff;letter-spacing:.02em;text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 18px var(--uc);white-space:nowrap}'+
+  '@keyframes ucIn{0%{clip-path:inset(50% 0 50% 0);opacity:1}14%{clip-path:inset(0 0 0 0)}82%{clip-path:inset(0 0 0 0);opacity:1}100%{clip-path:inset(50% 0 50% 0);opacity:0}}'+
+  '@keyframes ucHero{0%{transform:translateX(-60%)}22%{transform:translateX(0)}82%{transform:translateX(6%)}100%{transform:translateX(30%)}}'+
+  '@keyframes ucLines{to{background-position:42px 0,0 0}}';
+  document.head.appendChild(st); }
 function castPattern(e,p,ax,az,enr){
   const D=BOSSES[e.kind], dx0=ax-e.x, dz0=az-e.z, d0=Math.hypot(dx0,dz0)||1, ux=dx0/d0, uz=dz0/d0, dmg=e.dmg;
   e.rot=Math.atan2(ux,uz); e.castKind=p; e.castT=0;
   const fin=(rec=0.8)=>()=>{ e.st='recover'; e.timer=rec; };
-  e.st='cast'; const delay=enr?0.7:0.95;
+  e.st='cast'; const delay=enr?0.7:0.95; bossRune(e,delay,enr);
   if(p==='slam'){ const off=Math.min(2,d0); addTg({shape:'circle',x:e.x+ux*off,z:e.z+uz*off,r:D.slamR,dur:delay,dmg:dmg*1.2,owner:e,onDone:fin(),col:e.kind==='yuki'?0xBFF0FF:0xE2C28C}); e.castDur=delay; }
   else if(p==='dash'){ const len=10; addTg({shape:'rect',x:e.x,z:e.z,dx:ux,dz:uz,len,w:2.4,dur:0.8,dmg,owner:e,shake:0.25,sound:'dash',col:0x2A2433,
       onDone:()=>{ let ex=e.x+ux*len, ez=e.z+uz*len; for(let s=0.5;s<=len;s+=0.5){ const f=fenceBlocking(e.x+ux*(s-0.5),e.z+uz*(s-0.5),e.x+ux*s,e.z+uz*s); if(f){ damageFence(f,130); ex=e.x+ux*(s-0.8); ez=e.z+uz*(s-0.8); break; } }
@@ -3759,7 +3808,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
     drawSprite(e.cls,e,e.x+(e.kx||0),(EN[e.cls]&&EN[e.cls].flier)?1.7+Math.sin(TIME*3+e.seed)*0.25:0,e.z+(e.kz||0),e.rot,Math.max(e.flash,e.mut?0.42+Math.sin(TIME*4+e.seed)*0.12:0),e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,e.mut?1.18:1,e.burnT>0);
   }
   if(CH3()){ CH3().troops.end(); CH3().end(); }
-  Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
+  SPR_U.uTime.value=TIME; Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; if(b.ma) b.ma.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
 
   bBegin(B.coin); bBegin(B.ingot);
   for(const c of G.coins){ if(c.st===2&&c.t<0) continue;
@@ -4216,5 +4265,5 @@ $('avatar').src=ART.hero; $('titleHero').src=ART[(HEROES[SAVE.hero]||HEROES.roni
 })();
 startStage(0); G.state='title'; showScreen('title'); $('toast').classList.remove('show'); toastTimer=0;
 requestAnimationFrame(frame);
-window.__T={ kill:e=>killEnemy(e,null), themes:()=>STAGES.map(x=>x.theme), unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, step:(n,dt)=>{ for(let i=0;i<n;i++){ TIME+=dt; update(dt); } }, towers:()=>Object.values(G.towers).map(t=>({tier:t.tier,cannon:!!t.cannon,d3:!!(t.obj&&t.obj.userData.model3d),gun:!!(t.obj&&t.obj.userData.gun),aim:t.obj&&t.obj.userData.gun?+t.obj.userData.gun.rotation.y.toFixed(2):null})), et:k=>{ G.stack+=9999; placeETower(k); return G.etowers.length; }, fence:()=>Object.values(G.fences).map(f=>[f.built,Math.round(f.max),f.tier||1]), boss:()=>{ const e=G&&G.boss; return e&&{kind:e.kind,trait:e.trait,phase:e.phase,hp:e.hp,max:e.max,guard:e.guard,guardMax:e.guardMax,broke:e.brokeT,inv:e.invT,st:e.st}; }, troopMul:c=>troopMul(c), troopHp:c=>troopHpMul(c), buy:id=>{ const u=UPG.find(x=>x.id===id); if(u.rep) G.lvls[id]=(G.lvls[id]||0)+1; else G.up.add(id); if(id==='oni1'||/^d_/.test(id)) rescaleHp(); }, forceMut:(e,id)=>forceMut(e,id), spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
+window.__T={ ucard:()=>ultCard(G.heroDef||HEROES.ronin,ULTS[(G.heroDef||{}).id]||ULTS.ronin), fxn:()=>Object.fromEntries(Object.entries(FX).map(([k,v])=>[k,v.items.length])), bst:()=>G.boss&&{st:G.boss.st,ck:G.boss.castKind}, kill:e=>killEnemy(e,null), themes:()=>STAGES.map(x=>x.theme), unit:(c,n)=>{ for(let i=0;i<(n||1);i++) spawnUnit(c,G.hero.x+rand(-3,3),G.hero.z+rand(-3,3)); return G.units.length; }, w3:()=>!!_w3d, th:(x,z)=>TH(x,z), ch3:()=>CH3()&&CH3().stats(), ch3keys:()=>CH3()?CH3().keys():[], acad:()=>G&&G.acad, twKind:k=>chooseTowerKind(k), offerTw:id=>offerTowerKind(G.towers[id]), rdr:()=>renderer, scn:()=>scene, gfx:()=>GFX, models3d:MODELS3D, kit3d:()=>load3DKit().then(()=>true), perf:()=>perfStats(), three:()=>T.REVISION, lay:(si,units)=>{ if(units) SAVE.units=units; const L=genLayout(si); return {keep:KEEP,lanes:STAGES[si].lanes.length,pads:L.pads.map(p=>({k:p.kind,id:p.id,x:p.x,z:p.z,a:angOf(p.x,p.z)}))}; }, tod:()=>G&&G.tod&&Object.assign(todState(G.tod.t),{t:G.tod.t}), setTod:t=>{ if(G&&G.tod){ G.tod.t=t; G.tod.k=0; } }, ult:()=>{ G.ultCd=0; castUlt(); }, sky:()=>{ G.sky2Cd=0; castSky(); }, nst:()=>STAGES.length, summon:()=>castSummon(), ally:()=>G&&G.ally&&{id:G.ally.id,t:G.ally.t,x:G.ally.x}, combo:(e,el,d)=>hitEnemy(e,d||10,G.hero,el,1), sky:()=>({has:hasSky(),cd:Math.round(G.sky2Cd||0),max:sky2Max(),falling:(G.skyFall||[]).length}), castSky:()=>castSky(), diff:()=>({diff:G.diff,mul:G.diffMul,reward:G.diffReward,tiers:SAVE.tier}), ql:()=>({quality:QL,fps:Math.round(_fps)}), muts:()=>G.enemies.filter(e=>e.mut).map(e=>({m:e.mut,hp:Math.round(e.hp),max:Math.round(e.max),ward:Math.round(e.ward||0)})), cards:()=>({taken:G.cards,mods:G.mods}), offer:()=>offerCards(), spawn:(t,l)=>spawnEnemy(t,l||0), snd:()=>SND.dbg(), hpn:()=>B.hpBg.n, gs:()=>gsState, camQ:()=>camQ.toArray(), camBill:()=>camBill.toArray(), frames:k=>FRAMES(k), sb:k=>SB[k], packs:()=>PACKS, fx:()=>FX, layout:()=>LAYOUT, home:()=>{ renderHome(); showScreen('map'); }, music:()=>Music.dbg(), ac:()=>AC&&AC.state, build:id=>{ const p=G.pads.find(x=>x.id===id); if(p){ p.done=true; p.active=false; p.g.visible=false; p.el.style.display='none'; buildStructure(p); } }, step:(n,dt)=>{ for(let i=0;i<n;i++){ TIME+=dt; update(dt); } }, towers:()=>Object.values(G.towers).map(t=>({tier:t.tier,cannon:!!t.cannon,d3:!!(t.obj&&t.obj.userData.model3d),gun:!!(t.obj&&t.obj.userData.gun),aim:t.obj&&t.obj.userData.gun?+t.obj.userData.gun.rotation.y.toFixed(2):null})), et:k=>{ G.stack+=9999; placeETower(k); return G.etowers.length; }, fence:()=>Object.values(G.fences).map(f=>[f.built,Math.round(f.max),f.tier||1]), boss:()=>{ const e=G&&G.boss; return e&&{kind:e.kind,trait:e.trait,phase:e.phase,hp:e.hp,max:e.max,guard:e.guard,guardMax:e.guardMax,broke:e.brokeT,inv:e.invT,st:e.st}; }, troopMul:c=>troopMul(c), troopHp:c=>troopHpMul(c), buy:id=>{ const u=UPG.find(x=>x.id===id); if(u.rep) G.lvls[id]=(G.lvls[id]||0)+1; else G.up.add(id); if(id==='oni1'||/^d_/.test(id)) rescaleHp(); }, forceMut:(e,id)=>forceMut(e,id), spawnBoss:k=>{ const e=spawnEnemy('boss:'+k,0); e.x=G.hero.x; e.z=G.hero.z-4.5; e.atkT=999; e.speed=0; return 1; }, G:()=>G, start:i=>startStage(i), save:()=>SAVE, clock:t=>{ G.clock=t; }, give:(g,i)=>{ G.stack+=g; G.ingots+=i; } };
 })();
