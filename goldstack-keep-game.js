@@ -4328,12 +4328,62 @@ $('map').addEventListener('click',e=>{
   persist(); sfx('build'); renderHome();
 });
 window.GK_STAGE_ART=function(){ return STAGES.map(function(s){ return ART[s.boss]; }).filter(Boolean); };
+/* v99: stage select is grouped by boss category - an overview of category cards, tap one to see only its stages */
+const STAGE_CATS=[
+  {id:'oni',name:'Oni & Yokai',blurb:'The first demons of the realm',icon:'👹',from:0,to:14},
+  {id:'lords',name:'Yokai Lords',blurb:'Sea, wind and wrath: the great horrors',icon:'🌊',from:15,to:29},
+  {id:'twin',name:'Twin Bosses',blurb:'Two bosses on one battlefield',icon:'⚔️',from:30,to:39},
+  {id:'kami',name:'Divine Sovereigns',blurb:'The gods of the High Heavens descend',icon:'⛩️',from:40,to:54},
+  {id:'tsukumo',name:'Hundred Objects',blurb:'Lanterns, bells and masks awaken',icon:'🏮',from:55,to:64},
+  {id:'kaiju',name:'Kaiju Gods',blurb:'Colossal titans, with Divine guardians in tow',icon:'🦖',from:65,to:1e9}];
+let mapCat=null;
+(function(){ const st=document.createElement('style'); st.textContent=`
+.catgrid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+@media (min-width:700px){ .catgrid{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.cat{ position:relative; display:flex; flex-direction:column; gap:6px; text-align:left; border:0; border-radius:16px; padding:10px; cursor:pointer; color:#2A2433; background:#fff; box-shadow:0 4px 0 rgba(0,0,0,.25); font-family:"Nunito Sans",sans-serif; overflow:hidden; }
+.cat,.cat *{ text-shadow:none !important; }
+.cat:focus-visible{ outline:4px solid #fff; outline-offset:3px; }
+.cat .pics{ display:flex; justify-content:center; }
+.cat .pics img{ width:50px; height:50px; border-radius:50%; object-fit:cover; border:3px solid #fff; background:#E2D6C2; margin-left:-10px; box-shadow:0 2px 0 rgba(0,0,0,.2); }
+.cat .pics img:first-child{ margin-left:0; }
+.cat h3{ margin:0; font-family:"Lilita One",sans-serif; font-weight:400; font-size:16px; line-height:1.1; }
+.cat p{ margin:0; font-size:11.5px; line-height:1.25; opacity:.75; }
+.cat .prog{ display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:12px; font-weight:800; }
+.cat .bar{ height:7px; border-radius:6px; background:#EADFCB; overflow:hidden; } .cat .bar i{ display:block; height:100%; background:#F5B820; }
+.cat .badge{ position:absolute; right:8px; top:8px; font-size:10px; font-weight:900; letter-spacing:.04em; background:#2B3D8F; color:#fff; border-radius:8px; padding:2px 6px; }
+.cat.locked{ opacity:.55; cursor:default; } .cat .lockmsg{ font-size:11px; font-weight:800; color:#8A3030; }
+.catbar{ display:flex; align-items:center; gap:8px; margin:0 0 8px; }
+.catbar button{ border:0; border-radius:12px; padding:8px 12px; font-family:"Lilita One",sans-serif; font-size:14px; color:#fff; background:#2B3D8F; box-shadow:0 3px 0 rgba(0,0,0,.25); cursor:pointer; }
+.catbar b{ font-family:"Lilita One",sans-serif; font-weight:400; font-size:17px; flex:1; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.35); line-height:1.1; }
+.catbar span{ font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 0 rgba(0,0,0,.4); white-space:nowrap; }
+`; document.head.appendChild(st); })();
+function catRange(c){ return [c.from, Math.min(c.to,STAGES.length-1)]; }
+function catStats(c){ const [a,b]=catRange(c); let done=0,stars=0; for(let i=a;i<=b;i++){ if((SAVE.stars[i]||0)>0) done++; stars+=SAVE.stars[i]||0; } return {a,b,n:b-a+1,done,stars}; }
 function renderMap(){
-  let html='';
-  STAGES.forEach((s,i)=>{ const locked=i>=SAVE.unlocked, stars=SAVE.stars[i]||0, th=THEMES[s.theme];
-    html+=`<button class="stage${locked?' locked':''}" data-i="${i}" title="${locked?'Locked':s.name+' — '+BOSSES[s.boss].name}"><span class="no" style="background:${th.stageCol}">${i+1}</span><img src="${ART[s.boss]}" alt=""><b>${s.name}</b><span class="stars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</span>${stageRule(i)&&!locked?`<span class="v65r" title="${RULES[stageRule(i)].name}">${RULES[stageRule(i)].icon}</span>`:''}</button>`; });
-  $('stageList').innerHTML=html; $('stageList').className='stagegrid'; renderShops(); if($('walCoins')){ $('walCoins').textContent=SAVE.honor; $('walJade').textContent=SAVE.jade||0; }
+  const L=$('stageList'); let html='';
+  if(mapCat===null){
+    const cur=Math.min(Math.max(0,SAVE.unlocked-1),STAGES.length-1);
+    STAGE_CATS.forEach(c=>{ const S=catStats(c); if(S.b<S.a) return; const locked=S.a>=SAVE.unlocked, here=cur>=S.a&&cur<=S.b&&!locked&&S.done<S.n;
+      const pic=[S.a,Math.floor((S.a+S.b)/2),S.b].map(i=>ART[STAGES[i].boss]).filter(Boolean);
+      html+=`<button class="cat${locked?' locked':''}" data-cat="${c.id}" aria-label="${c.name}"><div class="pics">${pic.map(u=>`<img src="${u}" alt="" loading="lazy" decoding="async">`).join('')}</div>`+
+        `<h3>${c.icon} ${c.name}</h3><p>${c.blurb}</p>`+
+        (locked?`<span class="lockmsg">🔒 Clear stage ${S.a} to unlock</span>`:`<div class="prog"><span>${S.done}/${S.n} cleared</span><span style="color:#F5B820">★ ${S.stars}/${S.n*3}</span></div><div class="bar"><i style="width:${Math.round(100*S.done/S.n)}%"></i></div>`)+
+        `${here?'<span class="badge">CONTINUE</span>':''}</button>`; });
+    L.className='catgrid'; L.innerHTML=html; }
+  else {
+    const c=STAGE_CATS.find(x=>x.id===mapCat)||STAGE_CATS[0], S=catStats(c);
+    html=`<div class="catbar"><button data-back="1" aria-label="Back to categories">← All</button><b>${c.icon} ${c.name}</b><span>${S.done}/${S.n} cleared</span></div>`;
+    html+=`<div class="stagegrid">`;
+    for(let i=S.a;i<=S.b;i++){ const s=STAGES[i], locked=i>=SAVE.unlocked, stars=SAVE.stars[i]||0, th=THEMES[s.theme];
+      html+=`<button class="stage${locked?' locked':''}" data-i="${i}" title="${locked?'Locked':s.name+' — '+BOSSES[s.boss].name}"><span class="no" style="background:${th.stageCol}">${i+1}</span><img src="${ART[s.boss]}" alt="" loading="lazy" decoding="async"><b>${s.name}</b><span class="stars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</span>${stageRule(i)&&!locked?`<span class="v65r" title="${RULES[stageRule(i)].name}">${RULES[stageRule(i)].icon}</span>`:''}</button>`; }
+    html+=`</div>`; L.className=''; L.innerHTML=html; }
+  renderShops(); if($('walCoins')){ $('walCoins').textContent=SAVE.honor; $('walJade').textContent=SAVE.jade||0; }
 }
+$('stageList').addEventListener('click',e=>{ const c=e.target.closest('.cat'), bk=e.target.closest('[data-back]');
+  if(c){ if(c.classList.contains('locked')){ c.animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'none'}],{duration:250}); return; } mapCat=c.dataset.cat; sfx('build'); renderMap(); const t=$('tab-stages'); if(t&&t.scrollIntoView) t.scrollIntoView({block:'start'}); return; }
+  if(bk){ mapCat=null; sfx('build'); renderMap(); } });
+/* after a stage, land back in the category that contains it */
+function mapFocus(i){ const c=STAGE_CATS.find(x=>i>=x.from&&i<=x.to); if(c) mapCat=c.id; }
 function renderShops(){
   const h=PERKS.map(p=>{ const lv=PK(p.id), max=lv>=pmax(p);
     return `<button class="perk${max?' max':''}" data-p="${p.id}"><b>${p.name}</b><em>Lv ${lv}/${pmax(p)}</em><small>${p.desc} per level</small><small class="now">Now: ${p.at?p.at(lv):'+'+lv+' levels'}</small><span>${max?'Max':'🪙 '+perkCost(p,lv)}</span></button>`; }).join('');
