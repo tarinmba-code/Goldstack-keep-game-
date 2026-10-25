@@ -45,7 +45,7 @@
   window.GK_SUPABASE = { url: "https://xrsvrvrqrctvufkneizs.supabase.co", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyc3ZydnJxcmN0dnVma25laXpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MDQ2NzQsImV4cCI6MjA5ODk4MDY3NH0.R372wC1w81zfMjLMjG7L_sFKM67bdVoGd3-E4JUQ97s" };
 
   (function(){
-    var GAME='./goldstack-keep-game.js?v=90';   /* the game now lives in your own repo */
+    var GAME='./goldstack-keep-game.js?v=91';   /* the game now lives in your own repo */
     var step=document.getElementById('bootStep'), errBox=document.getElementById('bootErr'), done=false;
     function say(t){ step.textContent=t; }
     function fail(t,d){ errBox.style.display='block'; errBox.innerHTML='<b>'+t+'</b><br>'+(d||''); }
@@ -70,7 +70,7 @@
       load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','Loading accounts…',function(){
       load('./goldstack-art-core.js?v=90','Loading artwork…',function(){
       load('./goldstack-art-gods.js?v=90','Loading the gods…',function(){
-      load('./goldstack-art-kaiju.js?v=90','Summoning the Kaiju…',function(){
+      load('./goldstack-art-kaiju.js?v=91','Summoning the Kaiju…',function(){
       preloadArt(function(){
       load('./goldstack-3d-chars.js?v=90','Loading 3D characters…',function(){
       load('./goldstack-3d-world.js?v=90','Building the village…',function(){
