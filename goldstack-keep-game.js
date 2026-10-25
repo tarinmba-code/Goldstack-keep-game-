@@ -691,16 +691,34 @@ const DIV_UP={wata:1.5,oyama:1.5,kurao:1.5,magatsu:1.5,ryugu:1.5,gokaryu:1.5,miz
 const CROP={wata:1,oyama:1,kurao:1,magatsu:1,ryugu:1,chochin:1,kane:1,karakasa:1,ungai:1,orizuru:1,daruma:1,biwa:1,okina:1,kotoryu:1,tsukumo:1,gokaryu:1,mizuchi:1,genbu:1,yamata:1,otori:1,hitotsume:1,odokuro:1,mekaryu:1,shishi:1,oshiro:1};
 const SPR_H={chochin:9.94,kane:10.71,karakasa:10.82,ungai:9.91,orizuru:9.58,daruma:13.67,biwa:12.1,okina:8.87,kotoryu:9.85,tsukumo:12.47,naginata:2.1,tate:1.8,foxmage:1.75,wata:12.15,oyama:11.7,kurao:11.1,magatsu:13.8,ryugu:12.6,eronin:3.2,egolem:4.2,epriest:3.3,shugen:1.7,kunoichi:1.6,taiko:1.65,esapper:1.8,eflier:2.2,etunnel:2.0,etreasure:2.2,takemika:6.2,hachiman:6.3,bishamon:6.3,inari:6.1,saruta:6.5,minaka:6.4,kunitoko:6.7,yatono:6.4,marishi:6.4,mioya:6.8,espear:2.3,earcher:3.3,eshaman:3.6,eshield:4.2,fujin:5.8,yukionna:5.8,benkei:6.0,kagutsuchi:5.8,izanagi:6.2,sumo:1.75,kabuki:1.7,falcon:1.65,kusari:1.65,komainu:1.45,raiju:5.4,baku:5.2,onryo:5.6,shachi:5.4,amaterasu:5.8,jorogumo:5.6,karura:5.8,kuzuryu:6.2,izanami:6.0,tsukuyomi:6.4,ushioni:5.8,shuten:6.4,kirin:5.6,enma:6.2,susanoo:6.6,umibozu:6.0,kamaitachi:4.6,daidara:7.2,hannya:5.4,mikaboshi:6.6,yari:1.65,teppo:1.6,sohei:1.7,miko:1.6,tanuki:1.55,nue:5.0,ryujin:5.8,tsuchi:4.8,nurari:4.8,orochi:6.2,namazu:5.4,mao:6.4,kappa:5.1,gasha:6.9,raijin:6.2,hero:2.15,archer:1.6,samurai:1.7,onmyoji:1.65,ninja:1.35,bandit:1.6,oni:2.35,brute:3.7,akaoni:4.9,tengu:4.5,kitsune:4.4,yuki:4.9,shogun:6.0,gokaryu:17,mizuchi:16,genbu:12,yamata:18,otori:17,hitotsume:17,odokuro:18,mekaryu:17,shishi:12,oshiro:19};
 const sprGeo=new T.PlaneGeometry(1,1); sprGeo.translate(0,0.5,0);
+/* v93 'living paint': animated sprites use a finer mesh the vertex shader can bend (breath, sway, lean, strike smear),
+   and the fragment shader crossfades between poses instead of cutting. ?motion=0 turns it off on this device. */
+const MOTION=(()=>{ try{ const q=new URLSearchParams(location.search).get('motion'); if(q==='0'||q==='1') localStorage.setItem('gk-motion2',q); return localStorage.getItem('gk-motion2')!=='0'; }catch(e){ return true; } })();
+const SPR_U={uTime:{value:0},uMotion:{value:MOTION?1:0}};
+const animGeo=new T.PlaneGeometry(1,1,MOTION?4:1,MOTION?8:1); animGeo.translate(0,0.5,0);
 const sprMat=k=>new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide});
 const FRAMES=k=>((ANIM_META[k]&&ANIM_META[k].n)||3);
-function animMat(k){ const m=new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide}), n=FRAMES(k);
-  m.onBeforeCompile=sh=>{ sh.vertexShader='attribute float aFrame;\n'+sh.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\n  vMapUv.x=(vMapUv.x+aFrame)/'+n.toFixed(1)+';\n#else\n  vUv.x=(vUv.x+aFrame)/'+n.toFixed(1)+';\n#endif'); };
+function animMat(k){ const m=new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,side:T.DoubleSide}), n=FRAMES(k), N=n.toFixed(1);
+  m.onBeforeCompile=sh=>{ sh.uniforms.uTime=SPR_U.uTime; sh.uniforms.uMotion=SPR_U.uMotion;
+    sh.vertexShader='attribute float aFrame;\nattribute vec4 aMo;\nuniform float uTime;\nuniform float uMotion;\nvarying vec2 vUv2;\nvarying float vBlend;\n'+sh.vertexShader
+      .replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\n  vUv2=vec2((vMapUv.x+aMo.z)/'+N+',vMapUv.y); vMapUv.x=(vMapUv.x+aFrame)/'+N+';\n#endif\n  vBlend=aMo.w*uMotion;')
+      .replace('#include <begin_vertex>',`#include <begin_vertex>
+  { float h=clamp(position.y,0.,1.), sd=aMo.x, a=aMo.y*uMotion, hh=h*h;
+    float br=sin(uTime*2.3+sd)*uMotion;                       // breathing: chest rises, shoulders narrow
+    transformed.y*=1.+0.03*br*h;
+    transformed.x*=1.-0.022*br*h;
+    transformed.x+=sin(uTime*1.7+sd*1.3-h*2.2)*0.03*hh*uMotion;   // hair / cape / wings trail the body
+    float strike=a*(1.-a)*4.;                                  // peaks mid-swing
+    transformed.x-=(0.12*a*hh+0.09*strike*h)*(1.+0.6*sin(h*9.+sd));  // lean + smear forward (art faces -x)
+    transformed.y+=0.03*strike*hh; }`);
+    sh.fragmentShader='varying vec2 vUv2;\nvarying float vBlend;\n'+sh.fragmentShader.replace('#include <map_fragment>',
+      '#include <map_fragment>\n#ifdef USE_MAP\n  if(vBlend>0.001){ diffuseColor=mix(diffuseColor,vec4(diffuse,opacity)*texture2D(map,vUv2),vBlend); }\n#endif'); };
   /* one compiled shader per frame count: without this, three.js reuses the first one it built for every character */
-  m.customProgramCacheKey=()=>'animframes'+n;
+  m.customProgramCacheKey=()=>'animframes2'+n;
   return m; }
 const SB={}; [['hero',3],['archer',140],['samurai',40],['onmyoji',40],['ninja',40],['bandit',240],['oni',90],['espear',80],['earcher',80],['eshaman',60],['eshield',50],['esapper',50],['eflier',60],['etunnel',40],['etreasure',4],['brute',4],['akaoni',3],['tengu',3],['kitsune',3],['yuki',3],['shogun',3],['kappa',3],['gasha',3],['raijin',3],['nue',3],['ryujin',3],['tsuchi',3],['nurari',3],['orochi',3],['namazu',3],['mao',3],['umibozu',3],['kamaitachi',3],['daidara',3],['hannya',3],['mikaboshi',3],['ushioni',3],['shuten',3],['kirin',3],['enma',3],['susanoo',3],['jorogumo',3],['karura',3],['kuzuryu',3],['izanami',3],['tsukuyomi',3],['raiju',3],['baku',3],['onryo',3],['shachi',3],['amaterasu',3],['fujin',3],['yukionna',3],['benkei',3],['kagutsuchi',3],['izanagi',3],['takemika',3],['hachiman',3],['bishamon',3],['inari',3],['saruta',3],['minaka',3],['kunitoko',3],['yatono',3],['marishi',3],['mioya',3],['oyama',3],['wata',3],['chochin',3],['kane',3],['gokaryu',3],['mizuchi',3],['genbu',3],['yamata',3],['otori',3],['hitotsume',3],['odokuro',3],['mekaryu',3],['shishi',3],['oshiro',3],['karakasa',3],['ungai',3],['orizuru',3],['daruma',3],['biwa',3],['okina',3],['kotoryu',3],['tsukumo',3],['kurao',3],['magatsu',3],['ryugu',3],['eronin',50],['egolem',24],['epriest',36],['shugen',40],['kunoichi',40],['taiko',40],['naginata',40],['tate',30],['foxmage',40],['sumo',40],['kabuki',40],['falcon',50],['kusari',50],['komainu',50],['yari',60],['teppo',60],['sohei',40],['miko',40],['tanuki',40]].forEach(([k,c])=>{
-  const g=sprGeo.clone(), fa=new T.InstancedBufferAttribute(new Float32Array(c),1); fa.setUsage(T.DynamicDrawUsage); g.setAttribute('aFrame',fa);
-  SB[k]=makeBatch(g,c,{mat:animMat(k),shadow:false,order:1}); SB[k].fa=fa; });
+  const g=animGeo.clone(), fa=new T.InstancedBufferAttribute(new Float32Array(c),1), ma=new T.InstancedBufferAttribute(new Float32Array(c*4),4); fa.setUsage(T.DynamicDrawUsage); ma.setUsage(T.DynamicDrawUsage); g.setAttribute('aFrame',fa); g.setAttribute('aMo',ma);
+  SB[k]=makeBatch(g,c,{mat:animMat(k),shadow:false,order:1}); SB[k].fa=fa; SB[k].ma=ma; });
 const BLD={b_cannon:4.2,b_yari:3.2,b_teppo:3.2,b_sohei:3.6,b_tanuki:3.2,b_tower:4.6,b_range:3.2,b_dojo:3.4,b_shrine:3.6,b_ninja:3.2,b_onipit:3.4,b_banner:4.0,b_mine:3.4,b_forge:3.4,b_armory:3.3};
 
 /* ================================================================ v66 · 3D switch
@@ -820,7 +838,10 @@ function drawSprite(k,ent,x,y,z,rot,flash,moving,seed,frozen,atk,extraScale,burn
   else if(moving){ const rate=(base>3?4.6:8.2)*(NF>=6?1.35:1); frame=WALK[Math.floor(TIME*rate+seed*3)%WALK.length]; }
   else if((flash||0)>0.25&&NF>=3) frame=2;   /* flinch on the attack pose when struck */
   if(!(frame>=0&&frame<NF)) frame=0; frame=frame|0;  /* never hand the GPU a missing or out-of-range frame */
-  const b0=SB[k]; if(b0.n<b0.cap) b0.fa.array[b0.n]=frame;
+  const b0=SB[k]; if(b0.n<b0.cap){ b0.fa.array[b0.n]=frame;
+    if(ent){ if(ent._pf===undefined){ ent._pf=frame; ent._cf=frame; ent._ft=1; } if(frame!==ent._cf){ ent._pf=ent._cf; ent._cf=frame; ent._ft=0; } ent._ft+=(G&&G._rdt)||0.016; }
+    const bl=ent?Math.max(0,1-ent._ft/0.11):0, o=b0.n*4;   /* 0.11 s crossfade from the previous pose */
+    b0.ma.array[o]=seed||0; b0.ma.array[o+1]=clamp(atk||0,0,1); b0.ma.array[o+2]=ent?ent._pf:frame; b0.ma.array[o+3]=bl; }
   const spd=(base>3?7.2:13);
   /* five-beat motion: contact, pass, contact, pass, with a lean and a step bounce on each beat */
   const beat=moving?((TIME*spd*0.5+seed)%1):0, phase=Math.floor(beat*4);
@@ -3759,7 +3780,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
     drawSprite(e.cls,e,e.x+(e.kx||0),(EN[e.cls]&&EN[e.cls].flier)?1.7+Math.sin(TIME*3+e.seed)*0.25:0,e.z+(e.kz||0),e.rot,Math.max(e.flash,e.mut?0.42+Math.sin(TIME*4+e.seed)*0.12:0),e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,e.mut?1.18:1,e.burnT>0);
   }
   if(CH3()){ CH3().troops.end(); CH3().end(); }
-  Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
+  SPR_U.uTime.value=TIME; Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; if(b.ma) b.ma.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
 
   bBegin(B.coin); bBegin(B.ingot);
   for(const c of G.coins){ if(c.st===2&&c.t<0) continue;
