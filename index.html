@@ -29,7 +29,7 @@
   <i></i>
   <div>Loading Goldstack Keep</div>
   <div id="bootStep">Starting…</div>
-  <div id="bootVer">Build v90 · 75 stages · 80 heroes · 31 recruits</div>
+  <div id="bootVer">Build v94 · 75 stages · 80 heroes · 31 recruits</div>
   <div id="bootErr"></div>
 </div>
 <script type="importmap">
@@ -57,14 +57,21 @@
       document.head.appendChild(s); }
     /* art now lives in real image files: warm the browser cache in parallel before the game starts,
        without decoding every image up front (that would use far more memory than the game needs) */
-    function preloadArt(next){ var A=window.GKA||{}, urls=[], seen={};
-      ['SPR','ANIM','ART'].forEach(function(t){ var o=A[t]||{}; for(var k in o){ var u=o[k]; if(typeof u==='string'&&u.indexOf('assets/')===0&&!seen[u]){ seen[u]=1; urls.push(u); } } });
-      var total=urls.length, got=0, i=0, finished=false; if(!total){ next(); return; }
-      function one(){ if(i>=total) return; var u=urls[i++];
-        fetch(u,{cache:'force-cache'}).then(function(r){ return r.ok?r.arrayBuffer():null; }).catch(function(){ return null; }).then(function(){
-          got++; say('Loading artwork '+got+' of '+total+'…');
-          if(got>=total){ if(!finished){ finished=true; next(); } } else one(); }); }
-      for(var c=0;c<8;c++) one(); }
+    /* v94: the game no longer waits for all ~290 art files. It starts straight away; every image still loads the moment
+       the game first uses it, and the rest is warmed into the cache in the background, most-needed first
+       (world props and effects, then troops and enemies, then early-stage bosses and heroes, then portraits). */
+    function preloadArt(next){ next(); setTimeout(warmArt, 1500); }
+    function warmArt(){ var A=window.GKA||{}, urls=[], seen={};
+      function add(u){ if(typeof u==='string'&&u.indexOf('assets/')===0&&!seen[u]){ seen[u]=1; urls.push(u); } }
+      var S=A.SPR||{}, N=A.ANIM||{}, P=A.ART||{}, k;
+      for(k in S) add(S[k]);
+      ['archer','samurai','onmyoji','ninja','bandit','oni','espear','earcher','eshaman','eshield','esapper','eflier','etunnel','hero'].forEach(function(c){ add(N[c]); });
+      for(k in N) add(N[k]);
+      for(k in P) add(P[k]);
+      var i=0; function one(){ if(i>=urls.length) return; var u=urls[i++];
+        var go2=function(){ fetch(u,{cache:'force-cache',priority:'low'}).then(function(r){ return r.ok?r.arrayBuffer():null; }).catch(function(){ return null; }).then(one); };
+        if(window.requestIdleCallback) requestIdleCallback(go2,{timeout:2000}); else setTimeout(go2,30); }
+      for(var c=0;c<3;c++) one(); }
     function go(){
       if(!window.THREE){ fail('3D engine did not start','Your browser may be blocking WebGL.'); return; }
       load('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','Loading accounts…',function(){
