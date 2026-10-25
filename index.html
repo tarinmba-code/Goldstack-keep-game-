@@ -106,10 +106,10 @@
       (function wait(){ if(window.GK_STAGE_ART||waited>=20000) return preloadBosses(); waited+=100; setTimeout(wait,100); })(); }
     function preloadBosses(){ var urls=[]; try{ urls=window.GK_STAGE_ART?window.GK_STAGE_ART():[]; }catch(e){}
       urls=urls.filter(function(u,i){ return u&&urls.indexOf(u)===i; }); var n=urls.length, d=0, fin=false;
-      function end(){ if(fin) return; fin=true; done=true; frac=1; fill.style.width='100%'; pctEl.textContent='100%'; var b=document.getElementById('boot'); if(b){ b.style.transition='opacity .45s'; b.style.opacity=0; setTimeout(function(){ b.remove(); },480); } }
+      function end(){ if(fin) return; fin=true; done=true; frac=1; fill.style.width='100%'; pctEl.textContent='100%'; var b=document.getElementById('boot'); if(b){ b.style.transition='opacity .45s'; b.style.opacity=0; setTimeout(function(){ b.remove(); },480); } setTimeout(warmArt,1200); }
       if(!n){ end(); return; }
       setTimeout(end,25000);   /* never trap the player on a bad connection */
-      urls.forEach(function(u){ var im=new Image(); im.decoding='async'; im.src=u; var tick=function(){ d++; frac=d/n; if(d>=n) end(); };
+      urls.forEach(function(u){ var im=new Image(); im.decoding='async'; im.fetchPriority='high'; im.src=u; var tick=function(){ d++; frac=d/n; if(d>=n) end(); };
         if(im.decode) im.decode().then(tick,tick); else { im.onload=im.onerror=tick; } }); }
     function preloadArt(next){ next(); setTimeout(warmArt, 1500); }
     function warmArt(){ var A=window.GKA||{}, urls=[], seen={};
