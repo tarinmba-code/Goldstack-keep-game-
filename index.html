@@ -10,28 +10,14 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="image" href="./goldstack-bg.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito+Sans:wght@600;800&display=swap" rel="stylesheet">
 <style>
   :root{ color-scheme: light only; }
   html,body{ margin:0; height:100%; background:#1B1840; color:#fff; color-scheme: light only; overflow:hidden; }
   @media (prefers-color-scheme: dark){ html,body{ background:#1B1840 !important; color:#fff !important; } }
-  #boot{ position:fixed; inset:0; z-index:9999; overflow:hidden; font-family:"Nunito Sans","Trebuchet MS",sans-serif;
-    background:linear-gradient(180deg,#1B1840 0%,#4A2E7A 34%,#C65A7C 62%,#F6A04D 82%,#FFD27A 100%); }
-  #boot .sun{ position:absolute; left:50%; top:54%; width:62vmin; height:62vmin; margin:-31vmin 0 0 -31vmin; border-radius:50%;
-    background:radial-gradient(circle,#FFF4C2 0%,#FFD66B 38%,rgba(255,190,90,.35) 62%,rgba(255,190,90,0) 72%); animation:glow 4s ease-in-out infinite; }
-  @keyframes glow{ 50%{ transform:scale(1.07); opacity:.88 } }
-  #boot .stars{ position:absolute; inset:0 0 50% 0; background-image:
-    radial-gradient(2px 2px at 12% 18%,#fff,transparent),radial-gradient(1.5px 1.5px at 28% 8%,#fff,transparent),
-    radial-gradient(2px 2px at 44% 22%,#FFE9A8,transparent),radial-gradient(1.5px 1.5px at 63% 10%,#fff,transparent),
-    radial-gradient(2px 2px at 78% 24%,#fff,transparent),radial-gradient(1.5px 1.5px at 90% 12%,#FFE9A8,transparent),
-    radial-gradient(1.5px 1.5px at 6% 34%,#fff,transparent),radial-gradient(1.5px 1.5px at 54% 36%,#fff,transparent);
-    animation:twk 3s ease-in-out infinite alternate; }
-  @keyframes twk{ from{ opacity:.45 } to{ opacity:1 } }
-  #boot .cloud{ position:absolute; height:5vmin; border-radius:5vmin; background:rgba(255,224,200,.35); filter:blur(2px); animation:drift linear infinite; }
-  #boot .cloud:before{ content:""; position:absolute; left:18%; top:-60%; width:42%; height:160%; border-radius:50%; background:inherit; }
-  @keyframes drift{ from{ transform:translateX(-30vw) } to{ transform:translateX(130vw) } }
-  #boot svg.land{ position:absolute; left:0; right:0; bottom:0; width:100%; height:64%; }
-  #boot .shade{ position:absolute; left:0; right:0; bottom:0; height:38%; background:linear-gradient(180deg,rgba(20,8,40,0),rgba(20,8,40,.78)); }
+  #boot{ position:fixed; inset:0; z-index:9999; overflow:hidden; font-family:"Nunito Sans","Trebuchet MS",sans-serif; background:linear-gradient(180deg,rgba(255,240,248,.06) 0%,rgba(31,28,40,.38) 55%,rgba(31,28,40,.78) 100%) center/cover no-repeat, url(./goldstack-bg.jpg) center top/cover no-repeat, #1B1840; }
+  #boot .shade{ position:absolute; left:0; right:0; bottom:0; height:30%; background:linear-gradient(180deg,rgba(20,8,40,0),rgba(20,8,40,.78)); }
   #boot .spark{ position:absolute; bottom:-10px; width:6px; height:6px; border-radius:50%; background:#FFE08A; box-shadow:0 0 8px 2px rgba(255,214,107,.8); animation:rise linear infinite; opacity:0; }
   @keyframes rise{ 0%{ transform:translate(0,0); opacity:0 } 15%{ opacity:1 } 100%{ transform:translate(var(--dx,20px),-78vh); opacity:0 } }
   #boot .center{ position:absolute; left:0; right:0; top:11%; text-align:center; padding:0 20px; }
@@ -60,23 +46,6 @@
 </head>
 <body>
 <div id="boot">
-  <div class="stars"></div>
-  <div class="sun"></div>
-  <div class="cloud" style="top:20%;width:22vmin;animation-duration:70s;animation-delay:-20s"></div>
-  <div class="cloud" style="top:30%;width:16vmin;animation-duration:95s;animation-delay:-60s"></div>
-  <div class="cloud" style="top:42%;width:26vmin;animation-duration:80s;animation-delay:-5s"></div>
-  <svg class="land" viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-    <path d="M0 150 Q70 118 140 140 T290 128 T400 142 V200 H0Z" fill="#5B2F6B" opacity=".75"/>
-    <g fill="#2A1745">
-      <path d="M150 200 V112 h12 v-12 h10 v12 h8 v-30 l8 -14 l8 14 v30 h8 v-12 h10 v12 h12 V200Z"/>
-      <path d="M176 200 V92 l6 -16 l6 16 V200Z M212 200 V92 l6 -16 l6 16 V200Z"/>
-      <rect x="188" y="130" width="24" height="70"/>
-    </g>
-    <g fill="#FFD66B"><rect x="192" y="124" width="5" height="8" rx="1"/><rect x="203" y="124" width="5" height="8" rx="1"/><rect x="178" y="108" width="3" height="6"/><rect x="214" y="108" width="3" height="6"/></g>
-    <path d="M200 70 v-18 l14 5 l-14 5Z" fill="#E8453C"/><rect x="199" y="50" width="2" height="22" fill="#2A1745"/>
-    <path d="M0 176 Q90 150 180 172 T400 160 V200 H0Z" fill="#1E1035"/>
-    <g fill="#1E1035"><path d="M20 176 l6 -22 l6 22Z M36 178 l5 -16 l5 16Z M350 168 l6 -24 l6 24Z M366 170 l5 -17 l5 17Z"/></g>
-  </svg>
   <i class="spark" style="left:8%;--dx:24px;animation-duration:7.0s;animation-delay:-1.0s"></i><i class="spark" style="left:18%;--dx:-30px;animation-duration:9.0s;animation-delay:-4.0s"></i><i class="spark" style="left:30%;--dx:18px;animation-duration:8.0s;animation-delay:-2.0s"></i><i class="spark" style="left:42%;--dx:-22px;animation-duration:10.0s;animation-delay:-6.0s"></i><i class="spark" style="left:55%;--dx:30px;animation-duration:7.5s;animation-delay:-3.0s"></i><i class="spark" style="left:66%;--dx:-26px;animation-duration:9.5s;animation-delay:-5.0s"></i><i class="spark" style="left:77%;--dx:20px;animation-duration:8.5s;animation-delay:-0.0s"></i><i class="spark" style="left:88%;--dx:-18px;animation-duration:7.0s;animation-delay:-2.5s"></i><i class="spark" style="left:24%;--dx:10px;animation-duration:11.0s;animation-delay:-7.0s"></i><i class="spark" style="left:72%;--dx:-12px;animation-duration:10.5s;animation-delay:-8.0s"></i>
   <div class="shade"></div>
   <div class="center">
@@ -108,9 +77,9 @@
     var GAME='./goldstack-keep-game.js?v=94';   /* the game now lives in your own repo */
     var step=document.getElementById('bootStep'), errBox=document.getElementById('bootErr'), done=false;
     var fill=document.getElementById('bootFill'), pctEl=document.getElementById('bootPct'), tipEl=document.getElementById('bootTip');
-    var TOTAL=8, stage=0, shown=0;
+    var TOTAL=9, stage=0, frac=0, shown=0;
     /* friendly progress: the bar eases toward the stage reached and creeps a little so it never looks frozen */
-    setInterval(function(){ if(done) return; var target=stage/TOTAL*100, cap=Math.min(99,target+100/TOTAL*0.85);
+    setInterval(function(){ if(done) return; var target=(stage+frac)/TOTAL*100, cap=Math.min(99,target+100/TOTAL*0.85);
       shown = shown<target ? shown+Math.max(0.6,(target-shown)*0.18) : Math.min(cap,shown+0.08);
       fill.style.width=shown.toFixed(1)+'%'; pctEl.textContent=Math.floor(shown)+'%'; },120);
     var TIPS=['<b>Tip:</b> Stack gold on your wall, then carry it home before the horde arrives.','<b>Tip:</b> Heroes grow stronger every land you conquer.','<b>Tip:</b> Each Kaiju boss has a weakness. Watch the glowing warning on the ground.','<b>Tip:</b> Archers on the wall rain arrows. Keep them guarded.','<b>Tip:</b> Fifty-five lands await. The Keep never sleeps.','<b>Tip:</b> Call on the gods when the battle turns dark.'];
@@ -132,6 +101,16 @@
     /* v94: the game no longer waits for all ~290 art files. It starts straight away; every image still loads the moment
        the game first uses it, and the rest is warmed into the cache in the background, most-needed first
        (world props and effects, then troops and enemies, then early-stage bosses and heroes, then portraits). */
+    /* make sure every boss portrait the stage-select screen shows is already decoded before the loading screen goes away */
+    function finishBoot(){ say('Meeting the Kaiju…'); var waited=0;
+      (function wait(){ if(window.GK_STAGE_ART||waited>=20000) return preloadBosses(); waited+=100; setTimeout(wait,100); })(); }
+    function preloadBosses(){ var urls=[]; try{ urls=window.GK_STAGE_ART?window.GK_STAGE_ART():[]; }catch(e){}
+      urls=urls.filter(function(u,i){ return u&&urls.indexOf(u)===i; }); var n=urls.length, d=0, fin=false;
+      function end(){ if(fin) return; fin=true; done=true; frac=1; fill.style.width='100%'; pctEl.textContent='100%'; var b=document.getElementById('boot'); if(b){ b.style.transition='opacity .45s'; b.style.opacity=0; setTimeout(function(){ b.remove(); },480); } }
+      if(!n){ end(); return; }
+      setTimeout(end,25000);   /* never trap the player on a bad connection */
+      urls.forEach(function(u){ var im=new Image(); im.decoding='async'; im.src=u; var tick=function(){ d++; frac=d/n; if(d>=n) end(); };
+        if(im.decode) im.decode().then(tick,tick); else { im.onload=im.onerror=tick; } }); }
     function preloadArt(next){ next(); setTimeout(warmArt, 1500); }
     function warmArt(){ var A=window.GKA||{}, urls=[], seen={};
       function add(u){ if(typeof u==='string'&&u.indexOf('assets/')===0&&!seen[u]){ seen[u]=1; urls.push(u); } }
@@ -153,7 +132,7 @@
       preloadArt(function(){
       load('./goldstack-3d-chars.js?v=90','Waking the heroes…',function(){
       load('./goldstack-3d-world.js?v=90','Raising the walls…',function(){
-      load(GAME,'Gathering the gold…',function(){ done=true; fill.style.width='100%'; pctEl.textContent='100%'; var b=document.getElementById('boot'); if(b){ b.style.transition='opacity .45s'; b.style.opacity=0; setTimeout(function(){ b.remove(); },480); } });
+      load(GAME,'Gathering the gold…',finishBoot);
       });
       });
       });
