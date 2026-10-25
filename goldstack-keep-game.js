@@ -719,7 +719,7 @@ const CHAR_MODELS={};
 /* v83: in the anime style the squad is drawn as 3D anime troops (one draw per troop type); the chibi style keeps the
    painted sprites. ?troops=sprite or ?troops=3d overrides it on this device. */
 const TROOPS_MODE=(()=>{ try{ const q=new URLSearchParams(location.search).get('troops'); if(q==='sprite'||q==='3d'||q==='auto'){ localStorage.setItem('gk-troops',q); return q; } return localStorage.getItem('gk-troops')||'auto'; }catch(e){ return 'auto'; } })();
-const troops3D=()=>{ const C=CH3(); if(!C||!C.troops||TROOPS_MODE==='sprite'||QL<=0.3) return null;   /* emergency quality step falls back to sprites */ return (TROOPS_MODE==='3d'||C.style()==='anime')?C.troops:null; };
+const troops3D=()=>{ const C=CH3(); if(!C||!C.troops||TROOPS_MODE==='sprite'||QL<=0.3||PAINT_ALL) return null;   /* emergency quality step falls back to sprites */ return (TROOPS_MODE==='3d'||C.style()==='anime')?C.troops:null; };
 let _ch3d; const CH3=()=>_ch3d!==undefined?_ch3d:(_ch3d=(GFX==='3d'&&window.GK3D_CHARS)?(C=>{ for(const k in CHAR_MODELS) C.registerModel(k,CHAR_MODELS[k]).catch(()=>{}); return C; })(window.GK3D_CHARS(T,{gradTex,scene,camera,loadModel})):null);
 /* v68 Phase 1: 3D world (goldstack-3d-world.js) - terrain, trees, props, castle, buildings */
 let _w3d; const W3=()=>_w3d!==undefined?_w3d:(_w3d=(GFX==='3d'&&window.GK3D_WORLD&&CH3())?window.GK3D_WORLD(T,CH3().kit,{scene}):null);
@@ -729,7 +729,12 @@ const HSTYLE={arrow:'arrow',wind:'wind',orb:'orb',fox:'orb',melee:'melee',blade:
    ?boss=painted or ?boss=3d overrides it on this device. Add a key once its sheet has 5 frames (idle, step, attack, step, cast). */
 const BOSS_ART=(()=>{ try{ const q=new URLSearchParams(location.search).get('boss'); if(q==='painted'||q==='3d'){ localStorage.setItem('gk-boss',q); return q; } return localStorage.getItem('gk-boss')||'painted'; }catch(e){ return 'painted'; } })();
 const PAINTED_BOSSES=new Set(['kane','gokaryu','mizuchi','genbu','yamata','otori','hitotsume','odokuro','mekaryu','shishi','oshiro']);   /* v91: all ten Kaiju repainted (bosses and their Divine-hero forms) */
-const paintedBoss=k=>BOSS_ART==='painted'&&PAINTED_BOSSES.has(k)&&!!ANIM[k]&&FRAMES(k)>=5;
+/* v92: third character style 'Painted' - every hero, boss and troop draws its hand-painted sheet (the pre-chibi/anime look) inside the 3D world.
+   Kept here, not in the 3D module, because no 3D model is involved. ?style=painted|anime|chibi sets it on this device. */
+let PAINT_ALL=(()=>{ try{ const q=new URLSearchParams(location.search).get('style'); if(q==='painted'||q==='anime'||q==='chibi'){ localStorage.setItem('gk-paint',q==='painted'?'1':'0'); if(q!=='painted') localStorage.setItem('gk-style2',q); }
+  return localStorage.getItem('gk-paint')==='1'; }catch(e){ return false; } })();
+const BOSS_MIN_H=6.2;   /* painted boss floor (sheet height; visible body about 6, a typical enemy is about 2.35) */
+const paintedBoss=k=>(PAINT_ALL&&!!ANIM[k]&&!!SB[k])||(BOSS_ART==='painted'&&PAINTED_BOSSES.has(k)&&!!ANIM[k]&&FRAMES(k)>=5);
 const sprH=(k,extra)=>(SPR_H[k]||2.2)*(extra||1)*((ANIM_META[k]&&ANIM_META[k].hs)||1);
 function draw3D(ent,key,x,y,z,rot,o){ const C=CH3(); if(!C||!C.has(key)||paintedBoss(key)) return false;   /* painted keys (bosses and Kaiju heroes) always use their sheet */
   const ty=TH(x,z); const ok=C.drive(ent,key,Object.assign({x,y:y+ty,z,rot,dt:Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1)},o));   /* v82: characters share the global hit-stop */ if(!ok) return false;
@@ -756,13 +761,17 @@ if(GFX==='3d'){ /* v79: mon coins with a square hole and a raised rim; trapezoid
   chip.textContent=GFX==='3d'?'3D on · tap for classic':'Classic · tap for 3D'; bar.appendChild(chip);
   chip.addEventListener('click',()=>{ try{ localStorage.setItem('gk-gfx2',GFX==='3d'?'sprite':'3d'); }catch(e){} const u=new URL(location.href); u.searchParams.delete('gfx'); location.replace(u.toString()); });
   if(GFX==='3d'){ const sb=document.createElement('button'); sb.id='gfxstyle'; sb.type='button'; bar.appendChild(sb);
-    const cur=()=>{ const C=window.GK3D_CHARS&&CH3(); return C?C.style():'chibi'; };
-    const label=()=>{ const a=cur()==='anime'; sb.textContent=a?'Style: Anime · tap for Chibi':'Style: Chibi · tap for Anime'; sb.className=a?'anime':'chibi'; };
-    sb.addEventListener('click',e=>{ e.stopPropagation(); const C=CH3(); if(!C) return; C.setStyle(C.style()==='anime'?'chibi':'anime'); label(); if(typeof sfx==='function') try{ sfx('rank'); }catch(_){} });
+    const cur=()=>{ if(PAINT_ALL) return 'painted'; const C=window.GK3D_CHARS&&CH3(); return C?C.style():'chibi'; };
+    const NEXT={chibi:'anime',anime:'painted',painted:'chibi'}, NAME={chibi:'Chibi',anime:'Anime',painted:'Painted'};
+    const label=()=>{ const c=cur(); sb.textContent='Style: '+NAME[c]+' · tap for '+NAME[NEXT[c]]; sb.className=c; };
+    sb.addEventListener('click',ev=>{ ev.stopPropagation(); const C=CH3(); if(!C) return; const nx=NEXT[cur()];
+      PAINT_ALL=nx==='painted'; try{ localStorage.setItem('gk-paint',PAINT_ALL?'1':'0'); }catch(_){}
+      if(nx!=='painted') C.setStyle(nx);   /* painted keeps the 3D module's last style untouched underneath */
+      label(); if(typeof sfx==='function') try{ sfx('rank'); }catch(_){} });
     setTimeout(label,0); }
   const st=document.createElement('style'); st.textContent='#gfxbar{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 6px);transform:translateX(-50%);z-index:30;display:flex;gap:6px;white-space:nowrap}'+
     '#gfxbar button{font:800 11px "Nunito Sans",sans-serif;color:#fff;border:0;border-radius:999px;padding:5px 12px;cursor:pointer;touch-action:manipulation}'+
-    '#gfx3d{background:'+(GFX==='3d'?'rgba(46,125,50,.9)':'rgba(60,60,72,.85)')+'}#gfxstyle.anime{background:rgba(110,63,176,.9)}#gfxstyle.chibi{background:rgba(216,52,104,.88)}'; document.head.appendChild(st); }
+    '#gfx3d{background:'+(GFX==='3d'?'rgba(46,125,50,.9)':'rgba(60,60,72,.85)')+'}#gfxstyle.anime{background:rgba(110,63,176,.9)}#gfxstyle.chibi{background:rgba(216,52,104,.88)}#gfxstyle.painted{background:rgba(176,120,32,.92)}'; document.head.appendChild(st); }
 
 /* ================================================================ v66 · performance overlay
    ?perf=1 shows frame rate, frame time, draw calls, triangles, GPU objects and memory; ?perf=0 hides it. */
@@ -3710,7 +3719,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   if(h.alive){ let hx=0.7*G.heroDef.h*(HERO_UP[G.heroDef.sprite]||1)/SPR_H[G.heroDef.sprite];
     /* v84: in the chibi and classic looks the hero stands at least HERO_TROOP_X times as tall as a typical soldier,
        so you can always pick out your hero in the crowd (anime style keeps its own 1.2x presence) */
-    const anime=!!(CH3()&&CH3().style()==='anime'), k=anime?1:Math.max(1,HERO_TROOP_X*troopRefH()/sprH(G.heroDef.sprite,hx)); hx*=k; G._heroK=k; G._hvis=sprH(G.heroDef.sprite,hx);
+    const anime=!PAINT_ALL&&!!(CH3()&&CH3().style()==='anime'), k=anime?1:Math.max(1,HERO_TROOP_X*troopRefH()/sprH(G.heroDef.sprite,hx)); hx*=k; G._heroK=k; G._hvis=sprH(G.heroDef.sprite,hx);
     if(!draw3D(h,G.heroDef.sprite,h.x,0,h.z,h.rot,{H:sprH(G.heroDef.sprite,hx)*(anime?0.92:1),moving:h.moving,atk:h.atk||0,flash:h.flash,style:HSTYLE[G.heroDef.attack],atkDur:Math.min(0.5,Math.max(0.24,(G.heroDef.cd||0.6)*0.9)),wide:0.5}))
       drawSprite(G.heroDef.sprite,h,h.x,0,h.z,h.rot,h.flash,h.moving,0,false,h.atk||0,hx,false); }
   const TR=troops3D(), tdt=Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1);
@@ -3734,6 +3743,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
       if(e.kind==='raijin'&&Math.random()<dt*5) spawnParticles(e.x+rand(-1.5,1.5),rand(2,5),e.z,1,0xFFF27A,2,0.3,0.9,0);
       if(e.kind==='gasha'&&Math.random()<dt*6) spawnParticles(e.x+rand(-1.2,1.2),rand(3,6),e.z,1,0xC58CFF,0.8,0.8,1,1.5);
       if(e.st==='dash') sc=1.05;
+      if(PAINT_ALL&&!e.mini) sc*=Math.max(1,BOSS_MIN_H/sprH(e.kind));   /* v92: in Painted a boss stands at least ~2.5x a typical enemy */
       const SUP=BOSSES[e.kind]&&BOSSES[e.kind].super&&FRAMES(e.kind)>=5;
       const bf=SUP?(e.st==='cast'?4:(e.st==='dash'||(e.st==='recover'&&(e.timer||0)>0.45))?2:null)
                  :((e.st==='cast'||e.st==='dash'||(e.st==='recover'&&(e.timer||0)>0.45))?((ANIM_META[e.kind]||{}).atkF??2):null);
