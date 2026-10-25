@@ -37,7 +37,13 @@ const CLS = {
   taiko:   {name:'Taiko Drummer', cp:3, hp:150, speed:5.6, range:5,   dmg:24, cd:1.8,  train:7, order:1, aoe:4.2, el:'bolt'},
   naginata:{name:'Naginata Maiden',cp:2, hp:170, speed:6.6, range:2.6, dmg:30, cd:0.9,  train:6, order:3, cleave:3},
   tate:    {name:'Shield Guard',  cp:3, hp:700, speed:5.2, range:1.6, dmg:18, cd:1.1,  train:8, order:5, taunt:6, guard:0.45},
-  foxmage: {name:'Kitsune Mage',  cp:2, hp:55,  speed:6.0, range:8.5, dmg:28, cd:1.4,  train:6, order:0, aoe:2.2}
+  foxmage: {name:'Kitsune Mage',  cp:2, hp:55,  speed:6.0, range:8.5, dmg:28, cd:1.4,  train:6, order:0, aoe:2.2},
+  /* v96: five more soldiers */
+  duelist: {name:'Ronin Duelist',  cp:2, hp:130, speed:8.2, range:1.5, dmg:40, cd:0.7,  train:6, order:2, crit:0.35},
+  tidecaller:{name:'Tide Caller',  cp:2, hp:60,  speed:5.8, range:8.5, dmg:30, cd:1.5,  train:6, order:0, aoe:2.6, el:'ice'},
+  berserker:{name:'Hannya Berserker',cp:3, hp:380, speed:6.2, range:1.9, dmg:46, cd:1.2, train:8, order:5, cleave:2},
+  bowmaster:{name:'Bow Master',   cp:2, hp:55,  speed:6.0, range:13,  dmg:44, cd:2.0,  train:6, order:1, crit:0.2},
+  cannoneer:{name:'Ozutsu Cannoneer',cp:3, hp:90, speed:5.0, range:10, dmg:62, cd:3.0,  train:7, order:1, aoe:3.2}
 };
 const EN = {
   bandit:{hp:40,  speed:2.3, dmg:6,  cd:1.0, rad:0.45, loot:[2,3], aggro:3.4},
@@ -52,7 +58,12 @@ const EN = {
   eshield: {hp:900, speed:1.3, dmg:28, cd:1.5, rad:1.25, loot:[6,9], aggro:3.4, armor:0.45},
   eronin:  {hp:260, speed:2.6, dmg:22, cd:1.0, rad:0.75, loot:[6,9], aggro:5.5, dasher:true},
   egolem:  {hp:1300,speed:1.15,dmg:34, cd:1.6, rad:1.35, loot:[8,12], aggro:3.4, armor:0.35, erupt:150},
-  epriest: {hp:220, speed:1.7, dmg:14, cd:2.2, rad:0.85, loot:[6,9], aggro:7.0, range:6.5, proj:'water', aoe:1.4, healer:true}
+  epriest: {hp:220, speed:1.7, dmg:14, cd:2.2, rad:0.85, loot:[6,9], aggro:7.0, range:6.5, proj:'water', aoe:1.4, healer:true},
+  /* v96: Kaiju minions, one pack for every stage whose boss is a Kaiju God */
+  kspawn:  {hp:90,  speed:3.4, dmg:14, cd:0.8, rad:0.7,  loot:[6,9],  aggro:5.0, dasher:true},
+  kcrab:   {hp:520, speed:1.3, dmg:40, cd:1.7, rad:1.3,  loot:[9,13], aggro:3.4, armor:0.5},
+  kwyrm:   {hp:110, speed:3.0, dmg:16, cd:1.1, rad:0.7,  loot:[6,9],  aggro:3.0, flier:true},
+  kspit:   {hp:200, speed:1.6, dmg:20, cd:2.0, rad:0.9,  loot:[7,10], aggro:8.0, range:7.5, proj:'poison', aoe:1.8}
 };
 const BOSSES = {
   brute:   {name:'Aooni Brute',            hp:900,  speed:1.45, rad:1.3, h:4.0, slamR:3.0, patterns:['slam'],                                summon:null},
@@ -408,10 +419,15 @@ const RECRUITS = {
   foxmage:{name:'Kitsune Mage',   sprite:'foxmage',price:3200, jade:48, req:34, desc:'Hurls two foxfire orbs at different foes, burning whole groups. Unlocks the Fox Shrine.'},
   shugen: {name:'Flame Shugenja', sprite:'shugen', price:4000, jade:40, req:50, desc:'Hurls fire talismans that set whole groups burning. Unlocks the Fire Altar.'},
   kunoichi:{name:'Frost Kunoichi',sprite:'kunoichi',price:4500, jade:45, req:51, desc:'Lightning-fast ice kunai that chill and freeze foes, with critical hits. Unlocks the Frost Dojo.'},
-  taiko:  {name:'Taiko Drummer',  sprite:'taiko',  price:5000, jade:50, req:52, desc:'Thunder drum beats shock every nearby foe and rally the squad. Unlocks the Drum Tower.'}
+  taiko:  {name:'Taiko Drummer',  sprite:'taiko',  price:5000, jade:50, req:52, desc:'Thunder drum beats shock every nearby foe and rally the squad. Unlocks the Drum Tower.'},
+  duelist:{name:'Ronin Duelist',  sprite:'duelist',price:1500, jade:22, req:15, desc:'A lone blade who dashes in and cuts down a foe in a flash, with frequent critical strikes.'},
+  tidecaller:{name:'Tide Caller', sprite:'tidecaller',price:2200, jade:34, req:25, desc:'Sweeps in a wave of cold water that soaks and slows a whole group.'},
+  berserker:{name:'Hannya Berserker',sprite:'berserker',price:3600, jade:44, req:38, desc:'A demon-masked brute whose giant club hits two foes at once.'},
+  bowmaster:{name:'Bow Master',  sprite:'bowmaster',price:4200, jade:46, req:44, desc:'A mountain archer with a huge longbow: very long range, piercing shots and sharp crits.'},
+  cannoneer:{name:'Ozutsu Cannoneer',sprite:'cannoneer',price:4800, jade:52, req:48, desc:'Fires a hand cannon that blasts a wide area, slow but devastating.'}
 };
-const UNIT_SPR={archer:'archer',samurai:'samurai',onmyoji:'onmyoji',ninja:'ninja',oniw:'oni',yari:'yari',teppo:'teppo',sohei:'sohei',miko:'miko',tanuki:'tanuki',sumo:'sumo',kabuki:'kabuki',falcon:'falcon',kusari:'kusari',komainu:'komainu',shugen:'shugen',kunoichi:'kunoichi',taiko:'taiko',naginata:'naginata',tate:'tate',foxmage:'foxmage'};
-const MELEE_CLS=['samurai','oniw','yari','sohei','sumo','kusari','komainu','kunoichi','naginata','tate'];
+const UNIT_SPR={archer:'archer',samurai:'samurai',onmyoji:'onmyoji',ninja:'ninja',oniw:'oni',yari:'yari',teppo:'teppo',sohei:'sohei',miko:'miko',tanuki:'tanuki',sumo:'sumo',kabuki:'kabuki',falcon:'falcon',kusari:'kusari',komainu:'komainu',shugen:'shugen',kunoichi:'kunoichi',taiko:'taiko',naginata:'naginata',tate:'tate',foxmage:'foxmage',duelist:'duelist',tidecaller:'tidecaller',berserker:'berserker',bowmaster:'bowmaster',cannoneer:'cannoneer'};
+const MELEE_CLS=['samurai','oniw','yari','sohei','sumo','kusari','komainu','kunoichi','naginata','tate','duelist','berserker'];
 /* v83 scenery budget: terrain grid sizes (ground, wide paint layer, detail layer; were 150, 110, 80) and the radius
    around the castle inside which trees keep their ink outline */
 const TERRAIN_SEG=[112,80,56], TREE_OUTLINE_R=26;
@@ -690,6 +706,7 @@ const HERO_UP={takemika:1.35,hachiman:1.31,bishamon:1.31,inari:1.39,saruta:1.28,
 const DIV_UP={wata:1.5,oyama:1.5,kurao:1.5,magatsu:1.5,ryugu:1.5,gokaryu:1.5,mizuchi:1.5,genbu:1.5,yamata:1.5,otori:1.5,hitotsume:1.5,odokuro:1.5,mekaryu:1.5,shishi:1.5,oshiro:1.5};
 const CROP={wata:1,oyama:1,kurao:1,magatsu:1,ryugu:1,chochin:1,kane:1,karakasa:1,ungai:1,orizuru:1,daruma:1,biwa:1,okina:1,kotoryu:1,tsukumo:1,gokaryu:1,mizuchi:1,genbu:1,yamata:1,otori:1,hitotsume:1,odokuro:1,mekaryu:1,shishi:1,oshiro:1};
 const SPR_H={chochin:9.94,kane:10.71,karakasa:10.82,ungai:9.91,orizuru:9.58,daruma:13.67,biwa:12.1,okina:8.87,kotoryu:9.85,tsukumo:12.47,naginata:2.1,tate:1.8,foxmage:1.75,wata:12.15,oyama:11.7,kurao:11.1,magatsu:13.8,ryugu:12.6,eronin:3.2,egolem:4.2,epriest:3.3,shugen:1.7,kunoichi:1.6,taiko:1.65,esapper:1.8,eflier:2.2,etunnel:2.0,etreasure:2.2,takemika:6.2,hachiman:6.3,bishamon:6.3,inari:6.1,saruta:6.5,minaka:6.4,kunitoko:6.7,yatono:6.4,marishi:6.4,mioya:6.8,espear:2.3,earcher:3.3,eshaman:3.6,eshield:4.2,fujin:5.8,yukionna:5.8,benkei:6.0,kagutsuchi:5.8,izanagi:6.2,sumo:1.75,kabuki:1.7,falcon:1.65,kusari:1.65,komainu:1.45,raiju:5.4,baku:5.2,onryo:5.6,shachi:5.4,amaterasu:5.8,jorogumo:5.6,karura:5.8,kuzuryu:6.2,izanami:6.0,tsukuyomi:6.4,ushioni:5.8,shuten:6.4,kirin:5.6,enma:6.2,susanoo:6.6,umibozu:6.0,kamaitachi:4.6,daidara:7.2,hannya:5.4,mikaboshi:6.6,yari:1.65,teppo:1.6,sohei:1.7,miko:1.6,tanuki:1.55,nue:5.0,ryujin:5.8,tsuchi:4.8,nurari:4.8,orochi:6.2,namazu:5.4,mao:6.4,kappa:5.1,gasha:6.9,raijin:6.2,hero:2.15,archer:1.6,samurai:1.7,onmyoji:1.65,ninja:1.35,bandit:1.6,oni:2.35,brute:3.7,akaoni:4.9,tengu:4.5,kitsune:4.4,yuki:4.9,shogun:6.0,gokaryu:17,mizuchi:16,genbu:12,yamata:18,otori:17,hitotsume:17,odokuro:18,mekaryu:17,shishi:12,oshiro:19};
+Object.assign(SPR_H,window.GK_SPRH2||{});  /* v96: heights for the new Kaiju minions and soldiers */
 const sprGeo=new T.PlaneGeometry(1,1); sprGeo.translate(0,0.5,0);
 /* v93 'living paint': animated sprites use a finer mesh the vertex shader can bend (breath, sway, lean, strike smear),
    and the fragment shader crossfades between poses instead of cutting. ?motion=0 turns it off on this device. */
@@ -716,7 +733,7 @@ function animMat(k){ const m=new T.MeshBasicMaterial({map:tex(k),alphaTest:0.5,s
   /* one compiled shader per frame count: without this, three.js reuses the first one it built for every character */
   m.customProgramCacheKey=()=>'animframes2'+n;
   return m; }
-const SB={}; [['hero',3],['archer',140],['samurai',40],['onmyoji',40],['ninja',40],['bandit',240],['oni',90],['espear',80],['earcher',80],['eshaman',60],['eshield',50],['esapper',50],['eflier',60],['etunnel',40],['etreasure',4],['brute',4],['akaoni',3],['tengu',3],['kitsune',3],['yuki',3],['shogun',3],['kappa',3],['gasha',3],['raijin',3],['nue',3],['ryujin',3],['tsuchi',3],['nurari',3],['orochi',3],['namazu',3],['mao',3],['umibozu',3],['kamaitachi',3],['daidara',3],['hannya',3],['mikaboshi',3],['ushioni',3],['shuten',3],['kirin',3],['enma',3],['susanoo',3],['jorogumo',3],['karura',3],['kuzuryu',3],['izanami',3],['tsukuyomi',3],['raiju',3],['baku',3],['onryo',3],['shachi',3],['amaterasu',3],['fujin',3],['yukionna',3],['benkei',3],['kagutsuchi',3],['izanagi',3],['takemika',3],['hachiman',3],['bishamon',3],['inari',3],['saruta',3],['minaka',3],['kunitoko',3],['yatono',3],['marishi',3],['mioya',3],['oyama',3],['wata',3],['chochin',3],['kane',3],['gokaryu',3],['mizuchi',3],['genbu',3],['yamata',3],['otori',3],['hitotsume',3],['odokuro',3],['mekaryu',3],['shishi',3],['oshiro',3],['karakasa',3],['ungai',3],['orizuru',3],['daruma',3],['biwa',3],['okina',3],['kotoryu',3],['tsukumo',3],['kurao',3],['magatsu',3],['ryugu',3],['eronin',50],['egolem',24],['epriest',36],['shugen',40],['kunoichi',40],['taiko',40],['naginata',40],['tate',30],['foxmage',40],['sumo',40],['kabuki',40],['falcon',50],['kusari',50],['komainu',50],['yari',60],['teppo',60],['sohei',40],['miko',40],['tanuki',40]].forEach(([k,c])=>{
+const SB={}; [['hero',3],['archer',140],['samurai',40],['onmyoji',40],['ninja',40],['bandit',240],['oni',90],['espear',80],['earcher',80],['eshaman',60],['eshield',50],['esapper',50],['eflier',60],['etunnel',40],['etreasure',4],['brute',4],['akaoni',3],['tengu',3],['kitsune',3],['yuki',3],['shogun',3],['kappa',3],['gasha',3],['raijin',3],['nue',3],['ryujin',3],['tsuchi',3],['nurari',3],['orochi',3],['namazu',3],['mao',3],['umibozu',3],['kamaitachi',3],['daidara',3],['hannya',3],['mikaboshi',3],['ushioni',3],['shuten',3],['kirin',3],['enma',3],['susanoo',3],['jorogumo',3],['karura',3],['kuzuryu',3],['izanami',3],['tsukuyomi',3],['raiju',3],['baku',3],['onryo',3],['shachi',3],['amaterasu',3],['fujin',3],['yukionna',3],['benkei',3],['kagutsuchi',3],['izanagi',3],['takemika',3],['hachiman',3],['bishamon',3],['inari',3],['saruta',3],['minaka',3],['kunitoko',3],['yatono',3],['marishi',3],['mioya',3],['oyama',3],['wata',3],['chochin',3],['kane',3],['gokaryu',3],['mizuchi',3],['genbu',3],['yamata',3],['otori',3],['hitotsume',3],['odokuro',3],['mekaryu',3],['shishi',3],['oshiro',3],['karakasa',3],['ungai',3],['orizuru',3],['daruma',3],['biwa',3],['okina',3],['kotoryu',3],['tsukumo',3],['kurao',3],['magatsu',3],['ryugu',3],['eronin',50],['kspawn',50],['kcrab',40],['kwyrm',40],['kspit',40],['duelist',40],['tidecaller',40],['berserker',40],['bowmaster',40],['cannoneer',40],['egolem',24],['epriest',36],['shugen',40],['kunoichi',40],['taiko',40],['naginata',40],['tate',30],['foxmage',40],['sumo',40],['kabuki',40],['falcon',50],['kusari',50],['komainu',50],['yari',60],['teppo',60],['sohei',40],['miko',40],['tanuki',40]].forEach(([k,c])=>{
   const g=animGeo.clone(), fa=new T.InstancedBufferAttribute(new Float32Array(c),1), ma=new T.InstancedBufferAttribute(new Float32Array(c*4),4); fa.setUsage(T.DynamicDrawUsage); ma.setUsage(T.DynamicDrawUsage); g.setAttribute('aFrame',fa); g.setAttribute('aMo',ma);
   SB[k]=makeBatch(g,c,{mat:animMat(k),shadow:false,order:1}); SB[k].fa=fa; SB[k].ma=ma; });
 const BLD={b_cannon:4.2,b_yari:3.2,b_teppo:3.2,b_sohei:3.6,b_tanuki:3.2,b_tower:4.6,b_range:3.2,b_dojo:3.4,b_shrine:3.6,b_ninja:3.2,b_onipit:3.4,b_banner:4.0,b_mine:3.4,b_forge:3.4,b_armory:3.3};
@@ -742,7 +759,7 @@ let _ch3d; const CH3=()=>_ch3d!==undefined?_ch3d:(_ch3d=(GFX==='3d'&&window.GK3D
 /* v68 Phase 1: 3D world (goldstack-3d-world.js) - terrain, trees, props, castle, buildings */
 let _w3d; const W3=()=>_w3d!==undefined?_w3d:(_w3d=(GFX==='3d'&&window.GK3D_WORLD&&CH3())?window.GK3D_WORLD(T,CH3().kit,{scene}):null);
 const TH=(x,z)=>_w3d?_w3d.terrainHeight(x,z):0;
-const HSTYLE={arrow:'arrow',wind:'wind',orb:'orb',fox:'orb',melee:'melee',blade:'blade',ice:'ice',bolt:'bolt',flame:'flame'};
+const HSTYLE={arrow:'arrow',wind:'wind',orb:'orb',fox:'orb',melee:'melee',blade:'blade',ice:'ice',bolt:'bolt',flame:'flame',comet:'orb',lance:'orb',bloom:'orb',sweep:'melee',thrust:'blade'};
 /* v90: bosses listed in PAINTED_BOSSES draw their painted sheet (same hand-painted anime look as the troops) instead of the code-built 3D body.
    ?boss=painted or ?boss=3d overrides it on this device. Add a key once its sheet has 5 frames (idle, step, attack, step, cast). */
 const BOSS_ART=(()=>{ try{ const q=new URLSearchParams(location.search).get('boss'); if(q==='painted'||q==='3d'){ localStorage.setItem('gk-boss',q); return q; } return localStorage.getItem('gk-boss')||'painted'; }catch(e){ return 'painted'; } })();
@@ -1309,24 +1326,24 @@ function elFlash(bg,peak,ms){ let el=document.getElementById('v2flash'); if(!el)
 
 /* ================================================================ v65 · hero attack tiers
    Power = the hero's damage after War Camp, armory and card bonuses. 600+ adds element accents, 1500+ adds the full show. */
-const HCOL={arrow:0xFFE9A8,wind:0xBFF7FF,orb:0xC58CFF,fox:0x6FE3FF,melee:0xFF9A30,blade:0xD8B4FF,ice:0x9FE6FF,bolt:0xFFF27A,flame:0xFF7A2A};
+const HCOL={arrow:0xFFE9A8,wind:0xBFF7FF,orb:0xC58CFF,fox:0x6FE3FF,melee:0xFF9A30,blade:0xD8B4FF,ice:0x9FE6FF,bolt:0xFFF27A,flame:0xFF7A2A,comet:0xFF8A2A,lance:0x9FE6FF,bloom:0x9BE04A,sweep:0xFFD27A,thrust:0xFFFFFF};
 const dimC=(c,f)=>((((c>>16)&255)*f)<<16)|((((c>>8)&255)*f)<<8)|((c&255)*f|0);
 const heroPower=HD=>HD.dmg*(1+0.12*PK('hero'))*((HD.pass&&HD.pass.dmg)||1);   /* v67: permanent power only, so a hero looks the same in every stage */
 const heroTier=HD=>{ const p=heroPower(HD); return p>=1500?3:p>=600?2:1; };
 function heroFxPlus(h,HD){ const tg=h.target; if(!tg||!h.alive) return; vfx2Init();
-  const tier=heroTier(HD), A=HD.attack, c=HCOL[A]||0xFFFFFF, tx=tg.x, tz=tg.z, dx=tx-h.x, dz=tz-h.z, L=Math.max(0.5,Math.hypot(dx,dz)), sr=scrRot(dx,dz);
+  const tier=heroTier(HD), A=HD.attack, c=(h.vel&&EL_NEW.has(h.vel))?ELCOL[h.vel]:(HCOL[A]||0xFFFFFF), tx=tg.x, tz=tg.z, dx=tx-h.x, dz=tz-h.z, L=Math.max(0.5,Math.hypot(dx,dz)), sr=scrRot(dx,dz);
   fx('v2_spark',tx,1.2,tz,1.0+0.5*tier,0.22,c,{grow:0.6,spin:4,rot:rand(0,1)});
   if(tier<2) return;
   fx('fx_glow',h.x,0.12,h.z,2.4+tier,0.35,c,{flat:true,grow:0.5});
   switch(A){
-    case 'arrow': case 'wind': fx('v2_beam',(h.x+tx)/2,1.45,(h.z+tz)/2,1.4,0.16,c,{rot:sr,grow:0,sy:L/1.4});
+    case 'arrow': case 'wind': case 'lance': fx('v2_beam',(h.x+tx)/2,1.45,(h.z+tz)/2,1.4,0.16,c,{rot:sr,grow:0,sy:L/1.4});
       if(A==='wind') for(let k=0;k<4;k++){ const a=h.rot+k*1.57+TIME*6; fx('v2_petal',h.x+Math.sin(a)*1.3,1.3,h.z+Math.cos(a)*1.3,0.9,0.4,c,{rot:a,spin:7,grow:0.3}); } break;
-    case 'orb': case 'fox': { const d=Math.max(0.3,L/(A==='fox'?12:14));
-      v2Later(d,()=>{ fx('v2_ring',tx,0.15,tz,2.8+tier,0.45,c,{flat:true,grow:1.1}); fx(A==='fox'?'hx_fire':'fx_seal',tx,A==='fox'?1.3:0.16,tz,2.6,0.45,c,{flat:A!=='fox',grow:0.8,spin:3});
+    case 'orb': case 'fox': case 'comet': case 'bloom': { const d=Math.max(0.3,L/(A==='fox'?12:14));
+      v2Later(d,()=>{ fx('v2_ring',tx,0.15,tz,2.8+tier,0.45,c,{flat:true,grow:1.1}); fx((A==='fox'||A==='comet')?'hx_fire':A==='bloom'?'fx_splash':'fx_seal',tx,(A==='fox'||A==='comet')?1.3:0.16,tz,2.6,0.45,c,{flat:!(A==='fox'||A==='comet'),grow:0.8,spin:3});
         for(let k=0;k<6;k++){ const a=k/6*6.283; fx('v2_spark',tx+Math.sin(a)*1.4,1,tz+Math.cos(a)*1.4,0.8,0.35,c,{vy:1.5,spin:5}); } }); break; }
-    case 'melee': fx('v2_ring',h.x,0.15,h.z,HD.range*1.7,0.32,dimC(c,0.55),{flat:true,grow:0.8}); spawnParticles(h.x,0.3,h.z,10,0xC8A46E,5,0.45,1.6,-10);
+    case 'melee': case 'sweep': fx('v2_ring',h.x,0.15,h.z,HD.range*1.7,0.32,dimC(c,0.55),{flat:true,grow:0.8}); spawnParticles(h.x,0.3,h.z,10,0xC8A46E,5,0.45,1.6,-10);
       if(tier>=3) for(const s of [-0.7,0.7]) fx('fx_slash',h.x+Math.sin(h.rot+s)*1.8,1.4,h.z+Math.cos(h.rot+s)*1.8,HD.range*1.05,0.32,c,{rot:-h.rot+Math.PI/2+s,grow:0.7}); break;
-    case 'blade': for(const s of [-0.8,0.8]) fx('fx_slash',tx,1.3,tz,2.0+0.4*tier,0.26,c,{rot:sr+s,grow:0.5});
+    case 'blade': case 'thrust': for(const s of [-0.8,0.8]) fx('fx_slash',tx,1.3,tz,2.0+0.4*tier,0.26,c,{rot:sr+s,grow:0.5});
       for(let k=1;k<5;k++){ const u=k/5; fx('v2_spark',lerp(h.x,tx,u),1.2,lerp(h.z,tz,u),0.7,0.25,c,{spin:6}); } break;
     case 'ice': for(let k=0;k<7;k++){ const a=k/7*6.283+rand(-0.2,0.2), r=HD.range*0.75, sx=Math.sin(a), sz=Math.cos(a);
         fx('v2_shard',h.x+sx*r,0.9,h.z+sz*r,1.0,0.45,c,{rot:scrRot(sx,sz),sy:2,grow:0.25}); }
@@ -1455,6 +1472,11 @@ function genWaves(si){
       if(si>=50&&w>=1&&R()<0.24+prog*0.3) g.push(['eronin',li,1+Math.floor(w/5),1.0]);
       if(si>=50&&w>=4&&R()<0.14+prog*0.22) g.push(['egolem',li,1+Math.floor(w/7),3.0]);
       if(si>=50&&w>=3&&R()<0.16+prog*0.24) g.push(['epriest',li,1+Math.floor(w/7),2.4]);
+      if(BOSSES[st.boss]&&BOSSES[st.boss].kaiju){   /* v96: Kaiju minions march with every Kaiju God */
+        g.push(['kspawn',li,3+Math.floor(w/2),0.7]);
+        if(w>=1&&R()<0.45+prog*0.3) g.push(['kcrab',li,1+Math.floor(w/5),2.4]);
+        if(w>=1&&R()<0.4+prog*0.3) g.push(['kwyrm',li,2+Math.floor(w/3),1.0]);
+        if(w>=2&&R()<0.4+prog*0.3) g.push(['kspit',li,1+Math.floor(w/4),2.0]); }
     });
     if(st.mini&&(w===Math.floor(st.waves*0.45)||(si>=4&&w===Math.floor(st.waves*0.72)))) g.push([miniType(si,w),idx[0],1,0]);
     if(w===st.waves-1){ g.push(['boss:'+st.boss,Math.floor(nL/2),1,0]); if(st.boss2) g.push(['boss:'+st.boss2,(Math.floor(nL/2)+Math.ceil(nL/2))%nL,1,3]); }
@@ -1844,7 +1866,7 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
     hero:{x:0,z:6,vx:0,vz:0,rot:Math.PI,hp:HD.hp*(1+0.08*PK('herohp')),max:HD.hp*(1+0.08*PK('herohp')),cd:0,alive:true,respawn:0,target:null,rt:0,flash:0,ax:0,moving:false,isHero:true,vel:heroVel(HD)},
     units:[], enemies:[], eshots:[], arrows:[], orbs:[], coins:[], parts:[], tgs:[], towerArchers:[], barracks:[], towers:{}, fences:{}, pads:[], builtIds:new Set(), up:new Set(),
     mine:null, forge:null, armory:null, heroDef:HD, ultCd:Math.min(8,ultMax()*0.3), ultFx:0, lvls:{}, armRemote:false, stack:6+PK('chest')*10, bonusTotal:0, diff:0, diffMul:1, sky2Cd:0, skyFall:null, bossScale:0, bossBounty:0, breaks:{}, breakT:0, ingots:0, keepMax:Math.round((HD.id==='shachi'?1.8:HD.id==='gasha'?1.3:HD.id==='orochi'?1.4:HD.id==='daidara'?1.5:HD.id==='enma'?1.6:HD.id==='brute'?1.15:(HD.pass&&HD.pass.castle)||1)*CFG.keepHp*(1+0.15*si)*(1+0.10*PK('bless'))), lean:{x:0,v:0}, wob:{x:0,v:0}, tweens:[],
-    cards:[], mods:{}, cardOpen:false, cardPick:null, cardWaves:{}, shake:0, hitStop:0, focus:new T.Vector3(0,0,6), lastStack:-1, lastIng:-1, pillT:0, cpCap:CFG.cpBase+2*PK('cap'), gear:{archer:0,samurai:0,onmyoji:0,ninja:0,oniw:0,yari:0,teppo:0,sohei:0,miko:0,tanuki:0,sumo:0,kabuki:0,falcon:0,kusari:0,komainu:0,shugen:0,kunoichi:0,taiko:0,naginata:0,tate:0,foxmage:0},
+    cards:[], mods:{}, cardOpen:false, cardPick:null, cardWaves:{}, shake:0, hitStop:0, focus:new T.Vector3(0,0,6), lastStack:-1, lastIng:-1, pillT:0, cpCap:CFG.cpBase+2*PK('cap'), gear:{archer:0,samurai:0,onmyoji:0,ninja:0,oniw:0,yari:0,teppo:0,sohei:0,miko:0,tanuki:0,sumo:0,kabuki:0,falcon:0,kusari:0,komainu:0,shugen:0,kunoichi:0,taiko:0,naginata:0,tate:0,foxmage:0,duelist:0,tidecaller:0,berserker:0,bowmaster:0,cannoneer:0},
     pending:[], boss:null, armOpen:false, armDismissed:false, ambT:0, zoom:1 };
   G.keepHp=G.keepMax;
   for(const k in LAYOUT.fences){
@@ -2009,6 +2031,28 @@ function nearestPlayer(x,z,range){ let best=null, bd=range*range; const h=G.hero
     if(tt&&d2<tt*tt){ const dd=d2*0.05; if(dd<bd){ bd=dd; best=u; } continue; }   /* shield guard draws foes onto himself */
     const d=d2*(u.cls==='samurai'?0.7:1); if(d<bd){ bd=d; best=u; } } return best; }
 const ELCOL={fire:0xFF7A2A, frost:0x7FE3FF, ice:0x9FEFFF, bolt:0xFFE45C};
+/* v96: six more hero elements. Each has its own colour, impact bloom, aura and a light combat touch (see elemStatus). */
+Object.assign(ELCOL,{wind:0xBFF7D0, water:0x4FB7FF, earth:0xD2A25A, venom:0x9BE04A, holy:0xFFF2B0, shadow:0xB06CFF});
+const EL_NEW=new Set(['wind','water','earth','venom','holy','shadow']);
+const EL_NAME={fire:'Fire',ice:'Frost',frost:'Frost',bolt:'Thunder',wind:'Wind',water:'Tide',earth:'Earth',venom:'Venom',holy:'Radiance',shadow:'Shadow'};
+const EL_HX={fire:'hx_fire',bolt:'hx_bolt',ice:'hx_ice',frost:'hx_ice',wind:'v2_petal',water:'fx_splash',earth:'v2_shard',venom:'fx_splash',holy:'v2_rays',shadow:'fx_seal'};
+const ATK_FAM={comet:'fox',lance:'ice',bloom:'orb',sweep:'melee',thrust:'blade'};   /* hero upgrades filter by the family an attack belongs to */
+const ATK_NAT={orb:'shadow',bolt:'bolt',comet:'fire',lance:'ice',wind:'wind',bloom:'venom'};
+const ATKN={arrow:'Arrow',wind:'Wind Volley',orb:'Arcane Orb',fox:'Foxfire',melee:'Cleave',blade:'Dash Slash',ice:'Frost',bolt:'Thunder Chain',flame:'Flame',comet:'Fire Comet',lance:'Frost Lance',bloom:'Venom Bloom',sweep:'Crescent Sweep',thrust:'Piercing Thrust'};
+const FUSE_LONG=[
+  {k:'orb',n:'Arcane Orb',d:'A big slow orb that bursts on the crowd'},
+  {k:'bolt',n:'Thunder Chain',d:'Lightning that jumps from foe to foe'},
+  {k:'comet',n:'Fire Comet',d:'A blazing comet that leaves foes burning'},
+  {k:'lance',n:'Frost Lance',d:'A spear of ice through a whole line, slows them'},
+  {k:'wind',n:'Wind Volley',d:'Three razor gusts at three foes'},
+  {k:'bloom',n:'Venom Bloom',d:'A poison flower; foes keep taking damage'}];
+const FUSE_SHORT=[
+  {k:'blade',n:'Dash Slash',d:'A lunging cut with big critical hits'},
+  {k:'melee',n:'Cleave',d:'A wide arc that hits everyone close'},
+  {k:'sweep',n:'Crescent Sweep',d:'A huge sweeping swing with a glowing blade trail'},
+  {k:'thrust',n:'Piercing Thrust',d:'A lunging stab with a shockwave down the line'}];
+const FUSE_RANGE={orb:12.5,bolt:12.5,comet:12.5,lance:13,wind:12.5,bloom:12.5,blade:3.8,melee:3.8,sweep:4.6,thrust:4.8};
+(function(){ try{ const st=document.createElement('style'); st.textContent='.gk-sub2{margin:12px 2px 6px;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.8}.gk-opts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.gk-opt{text-align:left;padding:9px 11px;border-radius:12px;border:2px solid rgba(255,255,255,.16);background:rgba(24,18,56,.72);color:#fff;font:inherit;cursor:pointer}.gk-opt b{display:block;font-size:13px}.gk-opt small{display:block;opacity:.78;font-size:11px;line-height:1.25;margin-top:2px}.gk-opt.on{border-color:var(--c,#FFD34D);background:linear-gradient(160deg,rgba(255,211,77,.22),rgba(24,18,56,.8));box-shadow:0 0 12px -2px var(--c,#FFD34D)}.gk-opt i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:var(--c,#fff);vertical-align:-1px}'; document.head.appendChild(st); }catch(e){} })();
 function arrowEl(){ return U('fire1')?'fire':U('frost1')?'frost':U('bolt1')?'bolt':null; }
 const LV=id=>(G&&G.lvls&&G.lvls[id])||0;
 function arrowMul(){ return armyPass()*steelMul()*(1+0.08*PK('arrows'))*(1+0.06*LV('m_arrow')); }
@@ -2038,11 +2082,46 @@ function chooseBranch(k){ const tw=G.branchFor; $('cardPick').classList.remove('
   else { const crest=new T.Mesh(new T.CircleGeometry(0.26,16),new T.MeshBasicMaterial({color:0xF5C542,side:T.DoubleSide})); crest.quaternion.copy(camBill); crest.position.set(0,4.15,0); crest.renderOrder=3; tw.obj.add(crest); }
   spawnParticles(tw.x,2.8,tw.z,30,B.col,6,0.8,1.3,-4); fx('fx_glow',tw.x,2.4,tw.z,5,0.6,B.col,{grow:1.3}); sfx('rank');
   toast(B.name+'!',1.8); }
-function heroImpact(e,el){ const k=el==='fire'?'hx_fire':el==='bolt'?'hx_bolt':(el==='ice'||el==='frost')?'hx_ice':null; if(!k||!G) return;
+function heroImpact(e,el){ const k=EL_HX[el]; if(!k||!G) return;
   if(G._hxF!==G.frame){ G._hxF=G.frame; G._hxN=0; } if(G._hxN++>6) return;
-  const H=e.cls==='boss'?((BOSSES[e.kind]||{}).h||5):(SPR_H[e.cls]||2.2), sz=Math.max(0.55,Math.min(e.cls==='boss'?1.5:0.95,H*0.24));
-  fx(k,e.x+rand(-0.3,0.3)*H*0.3,H*rand(0.3,0.65),e.z,sz,0.2,0xD8D8D8,{grow:1.15});
-  const tv=el==='fire'?'vF':el==='bolt'?'vB':'vI'; e[tv]=Math.max(e[tv]||0,0.9); e.stFx=0; if(G._hxN<=2) sfx(el==='fire'?'fire':el==='bolt'?'zap':'ice'); }
+  const nw=EL_NEW.has(el); if(nw) vfx2Init();
+  const H=e.cls==='boss'?((BOSSES[e.kind]||{}).h||5):(SPR_H[e.cls]||2.2), sz=Math.max(0.55,Math.min(e.cls==='boss'?1.5:0.95,H*0.24))*(nw?1.5:1);
+  fx(k,e.x+rand(-0.3,0.3)*H*0.3,H*rand(0.3,0.65),e.z,sz,nw?0.3:0.2,nw?ELCOL[el]:0xD8D8D8,nw?{grow:1.3,spin:el==='wind'||el==='holy'?3:0,rot:rand(0,6)}:{grow:1.15});
+  if(!nw){ const tv=el==='fire'?'vF':el==='bolt'?'vB':'vI'; e[tv]=Math.max(e[tv]||0,0.9); e.stFx=0; }
+  else spawnParticles(e.x,H*0.45,e.z,5,ELCOL[el],3.5,0.45,1.2,el==='venom'||el==='holy'?1.5:0);
+  if(G._hxN<=2) sfx(el==='fire'?'fire':el==='bolt'?'zap':(el==='ice'||el==='frost'||el==='water')?'ice':el==='earth'?'slam':el==='wind'?'dash':'magic'); }
+/* v96: the light combat touch of each new element (damage rules of the old three are untouched) */
+function elemStatus(e,el,dmg,src){ if(e.dead||!G) return; const boss=e.cls==='boss';
+  if(el==='water'){ e.slowT=Math.max(e.slowT||0,1.6); e.slowF=Math.max(e.slowF||0,boss?0.12:0.3); }
+  else if(el==='wind'){ if(!boss&&e.cls!=='etreasure'&&src&&src.x!==undefined){ const dx=e.x-src.x,dz=e.z-src.z,d=Math.hypot(dx,dz)||1; e.kx=clamp((e.kx||0)+dx/d*0.9,-1.2,1.2); e.kz=clamp((e.kz||0)+dz/d*0.9,-1.2,1.2); } }
+  else if(el==='earth'){ if(!boss&&Math.random()<0.15){ e.stunT=Math.max(e.stunT||0,0.5); spawnParticles(e.x,0.4,e.z,6,0xA08050,3,0.5,1.2,-4); } }
+  else if(el==='venom'){ if(!(e._psn>0)){ e._psn=1; for(const t of [0.45,0.9,1.35]) v2Later(t,()=>{ if(G&&!e.dead){ hitEnemy(e,dmg*0.2,src,null,1); spawnParticles(e.x,1.0,e.z,3,0x9BE04A,1.4,0.45,1,1.2); } }); v2Later(1.5,()=>{ e._psn=0; }); } }
+  else if(el==='holy'){ if(src&&src.isHero&&src.alive!==false) src.hp=Math.min(src.max,src.hp+dmg*0.03); }
+  else if(el==='shadow'){ if(!(e._shd>0)){ e._shd=1; v2Later(0.28,()=>{ if(G&&!e.dead){ hitEnemy(e,dmg*0.3,src,null,1); spawnParticles(e.x,1.1,e.z,5,0xB06CFF,3,0.4,1.2,0); } e._shd=0; }); } } }
+/* hero aura for the new elements */
+function auraNew(el,h,Hv){ vfx2Init(); const c=ELCOL[el], x=h.x, z=h.z;
+  if(el==='wind'){ const a=TIME*5+Math.random()*6.283, r=Hv*0.3; fx('v2_petal',x+Math.cos(a)*r,Hv*rand(0.15,0.85),z+Math.sin(a)*r,Hv*0.2,0.45,c,{rot:a,spin:8,vy:0.3,grow:0.3}); spawnParticles(x+Math.cos(a+2)*r,Hv*rand(0.1,0.8),z+Math.sin(a+2)*r,1,0xE8FFF0,0.6,0.35,0.9,0.4); }
+  else if(el==='water'){ fx('fx_glow',x,Hv*0.45,z,Hv*0.9,0.3,0x2F8FE0,{grow:0.1}); const a=Math.random()*6.283, r=Hv*0.26; spawnParticles(x+Math.cos(a)*r,Hv*rand(0.05,0.3),z+Math.sin(a)*r,1,0x7FD0FF,0.5,0.55,0.9,1.6); if(Math.random()<0.4) fx('v2_ring',x,0.14,z,Hv*0.9,0.5,0x4FB7FF,{flat:true,grow:0.8}); }
+  else if(el==='earth'){ if(Math.random()<0.5){ const a=Math.random()*6.283, r=Hv*0.28; fx('v2_shard',x+Math.cos(a)*r,Hv*0.1,z+Math.sin(a)*r,Hv*0.14,0.5,c,{rot:rand(-0.4,0.4),sy:1.8,grow:0.2,vy:0.6}); } spawnParticles(x+rand(-0.3,0.3)*Hv,0.2,z+rand(-0.2,0.2)*Hv,1,0xA08050,0.7,0.5,0.8,0.6); }
+  else if(el==='venom'){ fx('fx_glow',x,0.12,z,Hv*0.9,0.45,0x7FC83A,{flat:true,grow:0.15}); const a=Math.random()*6.283, r=Hv*0.24; spawnParticles(x+Math.cos(a)*r,Hv*rand(0.05,0.2),z+Math.sin(a)*r,1,0x9BE04A,0.5,0.7,0.8,1.8); }
+  else if(el==='holy'){ fx('fx_glow',x,Hv*0.5,z,Hv*1.0,0.3,0xFFE9A0,{grow:0.1}); if(Math.random()<0.3) fx('v2_rays',x,Hv*0.6,z,Hv*0.9,0.4,c,{spin:1.5,grow:0.2}); spawnParticles(x+rand(-0.3,0.3)*Hv,Hv*rand(0.1,0.9),z,1,0xFFF6C8,0.4,0.6,0.7,1.0); }
+  else { fx('fx_glow',x,Hv*0.45,z,Hv*0.95,0.3,0x6A38B8,{grow:0.1}); const a=TIME*2+Math.random()*6.283, r=Hv*0.27; spawnParticles(x+Math.cos(a)*r,Hv*rand(0.1,0.9),z+Math.sin(a)*r,1,0xB06CFF,0.7,0.6,0.9,0.9); if(Math.random()<0.2) fx('fx_seal',x,0.14,z,Hv*1.1,0.5,0x8C4CE0,{flat:true,spin:-2,grow:0.1}); } }
+/* signature burst on the target for the new elements, so every attack reads as its element */
+function elemBurst(h,HD){ const el=h.vel, tg=h.target; if(!tg||!EL_NEW.has(el)||!h.alive||QL<0.3) return; vfx2Init();
+  const c=ELCOL[el], tx=tg.x, tz=tg.z, H=tg.cls==='boss'?((BOSSES[tg.kind]||{}).h||5)*0.4:1.2;
+  if(el==='wind'){ fx('v2_ring',tx,0.2,tz,3.2,0.35,c,{flat:true,grow:1.3}); for(let k=0;k<6;k++){ const a=k/6*6.283; fx('v2_petal',tx+Math.sin(a)*0.6,H,tz+Math.cos(a)*0.6,0.9,0.5,c,{rot:a,spin:9,grow:0.5,vy:0.8}); } }
+  else if(el==='water'){ fx('fx_splash',tx,0.5,tz,3.0,0.4,c,{grow:1.1}); fx('v2_ring',tx,0.15,tz,3.4,0.4,c,{flat:true,grow:1.2}); spawnParticles(tx,0.8,tz,12,c,4,0.5,1.2,-6); }
+  else if(el==='earth'){ for(let k=0;k<5;k++){ const a=k/5*6.283+rand(-0.3,0.3), r=rand(0.5,1.3); fx('v2_shard',tx+Math.sin(a)*r,0.7,tz+Math.cos(a)*r,0.9,0.45,c,{rot:rand(-0.4,0.4),sy:1.8,grow:0.3}); } spawnParticles(tx,0.3,tz,12,0xA08050,5,0.55,1.4,-8); G.shake=Math.max(G.shake,0.1); }
+  else if(el==='venom'){ fx('fx_splash',tx,0.5,tz,2.6,0.5,c,{grow:1.0}); fx('fx_glow',tx,0.2,tz,3.0,0.7,c,{flat:true,grow:0.4}); for(let k=0;k<8;k++) spawnParticles(tx+rand(-1,1),0.4,tz+rand(-1,1),1,c,0.8,0.7,0.9,2); }
+  else if(el==='holy'){ fx('v2_rays',tx,1.4,tz,3.2,0.35,c,{spin:2,grow:0.6}); fx('v2_ring',tx,0.15,tz,3.0,0.4,c,{flat:true,grow:1.2}); fx('v2_beam',tx,3.5,tz,1.6,0.25,c,{rot:0,grow:0.2,sy:3}); }
+  else { fx('fx_seal',tx,0.15,tz,3.4,0.5,c,{flat:true,spin:-2,grow:0.5}); for(let k=0;k<6;k++) spawnParticles(tx+rand(-1,1),0.5,tz+rand(-1,1),1,c,1.6,0.6,1.1,2.5); } }
+/* v96 Painted: the hero is 30% bigger, so the swing and the shot get a matching, clearly visible trail */
+function paintAtkFx(h,HD){ if(!PAINT_ALL||!h.target||!h.alive) return; vfx2Init();
+  const k=Math.min(2,Math.max(1.2,(G._heroK||1)*0.62)), c=ELCOL[h.vel]||HCOL[HD.attack]||0xFFE9A8, a=h.rot, tg=h.target, dx=tg.x-h.x, dz=tg.z-h.z, L=Math.max(1,Math.hypot(dx,dz));
+  fx('fx_glow',h.x+Math.sin(a)*1.3*k,1.7*k,h.z+Math.cos(a)*1.3*k,2.8*k,0.22,c,{grow:1.2});
+  if(HD.range<6) fx('fx_slash',h.x+Math.sin(a)*2.0*k,1.8*k,h.z+Math.cos(a)*2.0*k,Math.max(3.2,HD.range*0.95)*k*0.85,0.3,c,{rot:-a+Math.PI/2,grow:0.8});
+  else fx('v2_beam',(h.x+tg.x)/2,1.7*k,(h.z+tg.z)/2,1.1*k,0.16,c,{rot:scrRot(dx,dz),grow:0,sy:L/(1.1*k)});
+  fx('v2_spark',tg.x,1.4,tg.z,1.8*k,0.22,c,{grow:0.7,spin:4}); }
 /* Element combos: two different elements on the same foe within a few seconds set off a reaction.
    ice + lightning = SHATTER (huge single hit) · fire + ice = STEAM BURST (area hit, blinds and slows)
    lightning + fire = OVERLOAD (explosion that throws foes back). The reaction uses up both elements. */
@@ -2075,10 +2154,10 @@ function elementCombo(e,el,dmg,src){
   popText(e.x,H+0.7,e.z,C.n,'crit');
   SAVE.combos=SAVE.combos||{}; if(!SAVE.combos[key]){ SAVE.combos[key]=1; persist(); toast('Element combo! '+C.tip,2.6); } }
 /* ================================================================ v80: troop types, boss phases / guard / traits, elites */
-const TTYPE={archer:'arrow',teppo:'arrow',falcon:'arrow',tanuki:'arrow',
-  samurai:'sword',yari:'sword',ninja:'sword',kusari:'sword',naginata:'sword',kunoichi:'sword',
-  onmyoji:'magic',miko:'magic',kabuki:'magic',foxmage:'magic',shugen:'magic',
-  oniw:'oni',sohei:'oni',sumo:'oni',komainu:'oni',tate:'oni',taiko:'oni'};
+const TTYPE={archer:'arrow',teppo:'arrow',falcon:'arrow',tanuki:'arrow',bowmaster:'arrow',cannoneer:'arrow',
+  samurai:'sword',yari:'sword',ninja:'sword',kusari:'sword',naginata:'sword',kunoichi:'sword',duelist:'sword',
+  onmyoji:'magic',miko:'magic',kabuki:'magic',foxmage:'magic',shugen:'magic',tidecaller:'magic',
+  oniw:'oni',sohei:'oni',sumo:'oni',komainu:'oni',tate:'oni',taiko:'oni',berserker:'oni'};
 const TTN={arrow:['Arrow','🏹'],sword:['Sword','⚔️'],magic:['Magic','🔮'],oni:['Oni','👹']};
 const armyPass=()=>(PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg');
 const steelMul=()=>1+(U('steel1')?0.15:0)+(U('steel2')?0.15:0)+(U('steel3')?0.25:0);
@@ -2120,7 +2199,7 @@ const PHASE_AT=[0.66,0.33];
 function bossInit(e){ e.phase=0; e.trait=e.mini?null:traitOf(e.kind);
   e.guardMax=e.max*(e.mini?0.15:0.2)*(e.trait==='colossus'?2:1); e.guard=e.guardMax; e.brokeT=0; e.invT=0; e.tempT=4;
   if(e.trait==='swift') e.speed*=1.3; }
-const isMagicSrc=s=>!!s&&((s.cls&&TTYPE[s.cls]==='magic')||(s.isHero&&G.heroDef&&['orb','fox'].includes(G.heroDef.attack)));
+const isMagicSrc=s=>!!s&&((s.cls&&TTYPE[s.cls]==='magic')||(s.isHero&&G.heroDef&&['orb','fox','comet','bloom','lance'].includes(G.heroDef.attack)));
 function bossIntake(e,dmg,src,el,isArrow){
   if(e.invT>0){ if(Math.random()<0.12) popText(e.x,(BOSSES[e.kind]||{}).h||5,e.z,'IMMUNE','crit'); return 0; }
   const tr=e.trait;
@@ -2231,6 +2310,7 @@ function hitEnemy(e,dmg,src,el,depth=0,isArrow=false){
   if(depth===0&&src&&src.isHero&&e.cls!=='boss'&&dmg>=e.max*0.3&&G.hitStop<0.035) G.hitStop=0.035;
   if(depth===0) spawnParticles(e.x,e.cls==='boss'?2:0.9,e.z,3,el?(ELCOL[el]||0xBFEFFF):0xBFEFFF,3.5,0.28,0.8,-4);
   if(vel&&src&&(src.isHero||src.isAlly)) heroImpact(e,vel);
+  if(vel&&EL_NEW.has(vel)&&src&&(src.isHero||src.isAlly)&&(depth===0||el)) elemStatus(e,vel,dmg,src);
   sfx('hit');
   if(el==='fire'){ e.burnT=3; e.burnDps=4*(U('fire3')?2:1)*(1+0.35*G.si); e.burnSrc=src; }
   else if(el==='frost'){ const f=U('frost3')?0.55:0.35; e.slowT=1.6; e.slowF=e.cls==='boss'?f*0.5:f;
@@ -2296,7 +2376,11 @@ const TG_POOL=[]; for(let i=0;i<18;i++){
   [disc,ring,donut,rect,rectE].forEach(m=>{ m.visible=false; m.renderOrder=3; scene.add(m); });
   TG_POOL.push({disc,ring,donut,rect,rectE});
 }
-function addTg(o){ G.tgs.push(Object.assign({t:0},o)); }
+/* v96: Kaiju Gods hit 2.5x as hard: every telegraphed strike they make (players, soldiers, fences and the keep) is scaled once, here */
+const KAIJU_POWER=2.5;
+function addTg(o){ const ow=o.owner, B=ow&&ow.cls==='boss'&&BOSSES[ow.kind];
+  if(B&&B.kaiju&&!o._kx){ o._kx=1; if(o.dmg!=null) o.dmg*=KAIJU_POWER; o.fenceDmg=(o.fenceDmg||90)*KAIJU_POWER; o.keepDmg=(o.keepDmg||45)*KAIJU_POWER; }
+  G.tgs.push(Object.assign({t:0},o)); }
 function inTg(tg,px,pz,pad=0){
   if(tg.shape==='circle') return Math.hypot(px-tg.x,pz-tg.z)<=tg.r+pad;
   if(tg.shape==='donut'){ const d=Math.hypot(px-tg.x,pz-tg.z); return d<=tg.r+pad&&d>=tg.r*0.43-pad; }
@@ -2327,9 +2411,9 @@ function resolveTg(tg){
    Three halls replace the 21 single-type barracks. Each upgrade adds the next soldier type you own
    (trial troops first); once every owned type is in, upgrades add one more of each and better gear. */
 const ACAD={
-  acad_ground:{name:'Ground Troops',       icon:'⚔️', sprite:'b_range',  cost:11, order:['archer','samurai','yari','teppo','falcon','naginata','kusari']},
-  acad_heavy: {name:'Heavy Units',         icon:'👹', sprite:'b_onipit', cost:25, order:['oniw','sohei','tanuki','sumo','komainu','tate','taiko']},
-  acad_mage:  {name:'Mage & Ninja Academy',icon:'⛩️', sprite:'b_shrine', cost:25, order:['onmyoji','ninja','miko','kabuki','foxmage','shugen','kunoichi']}};
+  acad_ground:{name:'Ground Troops',       icon:'⚔️', sprite:'b_range',  cost:11, order:['archer','samurai','yari','teppo','falcon','naginata','kusari','bowmaster','cannoneer']},
+  acad_heavy: {name:'Heavy Units',         icon:'👹', sprite:'b_onipit', cost:25, order:['oniw','sohei','tanuki','sumo','komainu','tate','taiko','berserker']},
+  acad_mage:  {name:'Mage & Ninja Academy',icon:'⛩️', sprite:'b_shrine', cost:25, order:['onmyoji','ninja','miko','kabuki','foxmage','shugen','kunoichi','duelist','tidecaller']}};
 const ACAD_OF=c=>Object.keys(ACAD).find(k=>ACAD[k].order.includes(c));
 const BCAP=c=>c==='archer'?4:(c==='yari'||c==='kusari')?3:2;
 const ACAD_DRILLS=3;
@@ -2467,7 +2551,7 @@ function upgState(u){
   return (G.stack>=u.g&&G.ingots>=u.i)?'avail':'poor';
 }
 function renderArmory(){
-  const HA=(G&&G.heroDef)?G.heroDef.attack:'arrow';
+  const HA=(G&&G.heroDef)?(ATK_FAM[G.heroDef.attack]||G.heroDef.attack):'arrow';
   const list=UPG.filter(u=>(u.grp||'squad')===armGrp&&(!u.att||u.att.indexOf(HA)>=0));
   let html='<div class="ugrp">'+GRP.map(g=>`<button class="ug${g[0]===armGrp?' on':''}" data-g="${g[0]}">${g[2]}<span>${g[1]}</span></button>`).join('')+'</div><div class="ustrip">';
   for(const u of list){ const c=upgCost(u), elCls=u.br==='Fire'?'el-fire':u.br==='Frost'?'el-frost':u.br==='Thunder'?'el-bolt':'';
@@ -2639,7 +2723,7 @@ function upgradeETower(i){ const t=G.etowers[i]; if(!t||t.lv>=3) return; const c
   spawnParticles(t.x,2,t.z,20,ETOW[t.k].col,5,0.6,1.2,-5); sfx('rank'); toast(ETOW[t.k].name+' level '+t.lv,1.3); openETowers(); }
 function heroAura(dt){
   const h=G.hero, HD=G.heroDef; if(!h||!h.alive||!HD) return; const el=h.vel; if(!el) return;
-  const Hv=Math.max(2.3,0.7*HD.h*(HERO_UP[HD.sprite]||1)*0.92), fwd=h.rot, wx=h.x+Math.sin(fwd)*Hv*0.16+Math.cos(fwd)*Hv*0.1, wz=h.z+Math.cos(fwd)*Hv*0.16-Math.sin(fwd)*Hv*0.1, wy=Hv*0.5;
+  const Hv=Math.max(2.3,0.7*HD.h*(HERO_UP[HD.sprite]||1)*0.92)*(PAINT_ALL?1.3:1), fwd=h.rot, wx=h.x+Math.sin(fwd)*Hv*0.16+Math.cos(fwd)*Hv*0.1, wz=h.z+Math.cos(fwd)*Hv*0.16-Math.sin(fwd)*Hv*0.1, wy=Hv*0.5;
   const boost=(h.atk||0)>0.2?1.8:1; G.auraT=(G.auraT||0)-dt*boost; if(G.auraT>0) return;
   if(el==='fire'){ G.auraT=0.06;   /* red flames bursting from the weapon hand */
     fx('st_flame'+(1+((Math.random()*3)|0)),wx+rand(-0.12,0.12)*Hv,wy+rand(-0.1,0.15)*Hv,wz,Hv*rand(0.16,0.24),0.3,0xFF4A2A,{grow:0.35,vy:1.4,rot:rand(-0.3,0.3)});
@@ -2649,6 +2733,7 @@ function heroAura(dt){
     const a=TIME*3+Math.random()*6.283, r=Hv*0.24;
     fx('st_frost',h.x+Math.cos(a)*r,Hv*rand(0.1,0.9),h.z+Math.sin(a)*r,0.42,0.5,0x9ED8FF,{spin:2.5,vy:0.6});
     spawnParticles(h.x+Math.cos(a+1)*r,Hv*rand(0.1,0.8),h.z+Math.sin(a+1)*r,1,0x8FD8FF,0.6,0.5,0.8,0.8); }
+  else if(EL_NEW.has(el)){ G.auraT=0.09; auraNew(el,h,Hv); }
   else { G.auraT=0.08;   /* yellow electricity crawling across the body */
     fx('st_shock'+(1+((Math.random()*2)|0)),h.x+rand(-0.16,0.16)*Hv,Hv*rand(0.25,0.8),h.z+rand(-0.1,0.1),Hv*rand(0.3,0.42),0.1,0xFFC81E,{rot:rand(-0.6,0.6)});
     if(Math.random()<0.45) fx('fx_bolt',h.x+rand(-0.12,0.12)*Hv,Hv*rand(0.3,0.7),h.z,Hv*rand(0.35,0.5),0.08,0xFFC020,{rot:rand(-1.2,1.2),grow:0.1});
@@ -2915,7 +3000,7 @@ function openLoadout(si){
   restoreFused();
   const owned=(SAVE.heroes||[]).filter(h=>HEROES[h]);
   const heroHtml=owned.map(h=>{ const H=HEROES[h], eq=SAVE.hero===h, tint=H.spark?`style="${heroGlow(H)}"`:'';
-    return `<button class="loadhero${eq?' sel':''}${HERO_UP[H.sprite]?' div':''}" data-heropick="${h}"><div class="spr${CROP[H.sprite]?' crop':''} spr-${H.sprite}" ${tint}></div><span>${H.name}</span><i>${H.rarity==='Fused'?'Fused · ':''}${H.attack}</i></button>`; }).join('');
+    return `<button class="loadhero${eq?' sel':''}${HERO_UP[H.sprite]?' div':''}" data-heropick="${h}"><div class="spr${CROP[H.sprite]?' crop':''} spr-${H.sprite}" ${tint}></div><span>${H.name}</span><i>${H.rarity==='Fused'?'Fused · ':''}${ATKN[H.attack]||H.attack}</i></button>`; }).join('');
   const sl=summonList(), sid=summonId();
   const sumHtml=sl.length?`<div class="loadheroes">${sl.map(h=>{ const H=HEROES[h]; return `<button class="loadhero${sid===h?' sel':''}" data-summonpick="${h}"><div class="spr${CROP[H.sprite]?' crop':''} spr-${H.sprite}"></div><span>${H.name}</span><i>${sid===h?'Summoning':'Tap to choose'}</i></button>`; }).join('')}</div>`
     :'<div class="loadnote">Buy any god or boss hero in the Heroes tab to summon it in battle.</div>';
@@ -2963,17 +3048,19 @@ const PASS=id=>!!(G&&G.heroDef&&G.heroDef.id===id);
 /* Visual element for every hero: their real element if they have one, otherwise read from their
    special's colour (red/orange = fire, yellow/purple/white = thunder, green/blue/cyan = ice).
    It drives hit sparks, special blooms and the aura only; damage rules are untouched. */
-function heroVel(HD){ if(!HD) return null; const A={flame:'fire',fox:'fire',ice:'ice',bolt:'bolt'}[HD.attack]; if(A) return A;
-  const K={inferno:'fire',flame:'fire',frost:'ice',storm:'bolt'}[ULT_FX[HD.id]]; if(K) return K;
+function heroVel(HD){ if(!HD) return null; if(HD.el) return HD.el;
+  const A={flame:'fire',fox:'fire',comet:'fire',ice:'ice',lance:'ice',bolt:'bolt',wind:'wind',bloom:'venom'}[HD.attack]; if(A) return A;
+  const K={inferno:'fire',flame:'fire',frost:'ice',storm:'bolt',gale:'wind',wave:'water',quake:'earth',venom:'venom',spirits:'shadow',stars:'holy',seal:'shadow',web:'venom',void:'shadow'}[ULT_FX[HD.id]]; if(K) return K;
   const U=ULTS[HD.id]||ULTS[HD.ultFrom]||null, col=U?U.col:0xFFD34D, r=((col>>16)&255)/255,g=((col>>8)&255)/255,b=(col&255)/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b);
-  if(mx-mn<0.18) return 'bolt'; let hu=0; const d=mx-mn; hu=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); hu*=60;
-  return (hu<42||hu>=330)?'fire':(hu<75||(hu>=255&&hu<330))?'bolt':'ice'; }
+  if(mx-mn<0.18) return mx>0.7?'holy':'shadow'; let hu=0; const d=mx-mn; hu=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); hu*=60;
+  if(hu>=18&&hu<50&&mx<0.74) return 'earth';
+  return (hu<42||hu>=335)?'fire':hu<75?'bolt':hu<165?'wind':hu<255?(mx>0.85?'ice':'water'):'shadow'; }
 /* generic passives for the god heroes: PG('dmg') -> multiplier, PG('heal',0) -> amount */
 const PG=(k,d)=>{ const P=G&&G.heroDef&&G.heroDef.pass; return (P&&P[k]!=null)?P[k]:(d==null?1:d); };
-function heroAttack(h,HD){ G._vfx=true; try{ heroAttack0(h,HD); heroFxPlus(h,HD); } finally{ G._vfx=false; } }
+function heroAttack(h,HD){ G._vfx=true; try{ heroAttack0(h,HD); heroFxPlus(h,HD); elemBurst(h,HD); paintAtkFx(h,HD); } finally{ G._vfx=false; } }
 function heroAttack0(h,HD){
   const mul=MOD('heroDmg')*(1+0.12*PK('hero'))*(1+0.1*LV('m_hero'))*(PASS('shogun')?1.15:1)*(PASS('mao')?1.25:1)*(PASS('mikaboshi')?1.3:1)*(PASS('akaoni')?1.1:1)*(PASS('susanoo')?1.4:1)*(PASS('ushioni')?1.15:1)*(PASS('tsukuyomi')?1.55:1)*(PASS('karura')?1.35:1)*(PASS('amaterasu')?1.7:1)*(PASS('onryo')?1.45:1)*(PASS('kagutsuchi')?1.6:1)*(PASS('izanagi')?1.8:1)*PG('dmg'), dmg=HD.dmg*mul, tg=h.target;
-  const HEL={flame:'fire',fox:'fire',ice:'ice',bolt:'bolt'}[HD.attack]||null;
+  const HEL={flame:'fire',fox:'fire',ice:'ice',bolt:'bolt'}[HD.attack]||((HD.fuseOf&&(HD.el==='fire'||HD.el==='ice'||HD.el==='bolt'))?HD.el:null);
   const aoe=(radius,arc,fx)=>{ const fwd=h.rot; let n=0;
     const __near=[]; eachEnemyNear(h.x,h.z,radius+4,e=>__near.push(e));
     for(const e of __near){ if(e.dead) continue; const dx=e.x-h.x, dz=e.z-h.z, d=Math.hypot(dx,dz); if(d>radius+e.rad*0.6) continue;
@@ -3015,6 +3102,33 @@ function heroAttack0(h,HD){
         spawnParticles(pick.x,1.2,pick.z,7,0xFFF27A,4,0.3,1.6,0);
         { const ang=Math.atan2(pick.x-from.x,pick.z-from.z), dd=Math.hypot(pick.x-from.x,pick.z-from.z);
           fx('fx_bolt',lerp(from.x,pick.x,0.5),1.6,lerp(from.z,pick.z,0.5),Math.max(2,dd),0.18,0xFFF7B0,{rot:-ang,grow:0.2}); } hit.push(pick); hitEnemy(pick,dmg*(k?0.8:1),h,'bolt',1); from=pick; } sfx('zap'); break; }
+    case 'comet': { G.orbs.push({sx:h.x,sy:2.4,sz:h.z,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.3,Math.hypot(tg.x-h.x,tg.z-h.z)/13),src:h,dmg,rad:2.9*(U('h_orb')?1.45:1),burn:6*(1+0.35*G.si)*(U('h_burn')?1.7:1),flame:true,big:true,col:0xFF8A2A});
+      fx('fx_fire',h.x,1.6,h.z,2.8,0.3,0xFF8A2A,{grow:1.0});
+      for(let k=0;k<14;k++){ const a=k/14*6.3; spawnParticles(h.x+Math.sin(a)*0.9,1.6,h.z+Math.cos(a)*0.9,1,k%2?0xFF7A2A:0xFFD27A,2,0.4,1.4,1.4); } sfx('fire'); break; }
+    case 'bloom': { G.orbs.push({sx:h.x,sy:2.0,sz:h.z,tx:tg.x,tz:tg.z,t:0,dur:Math.max(0.3,Math.hypot(tg.x-h.x,tg.z-h.z)/12),src:h,dmg,rad:2.8*(U('h_orb')?1.45:1),el:'venom',big:true,col:0x9BE04A,tex:'fx_splash'});
+      fx('fx_glow',h.x,1.7,h.z,3.0,0.4,0x9BE04A,{grow:1.0});
+      for(let k=0;k<12;k++){ const a=k/12*6.3; spawnParticles(h.x+Math.sin(a)*0.9,1.5,h.z+Math.cos(a)*0.9,1,0x9BE04A,1.6,0.5,1.3,1.4); } sfx('magic'); break; }
+    case 'lance': { vfx2Init(); const a=Math.atan2(tg.x-h.x,tg.z-h.z), sx=Math.sin(a), sz=Math.cos(a), R=HD.range+2; let n=0; const near=[]; eachEnemyNear(h.x+sx*R*0.5,h.z+sz*R*0.5,R*0.62,e=>near.push(e));
+      for(const e of near){ if(e.dead) continue; const dx=e.x-h.x, dz=e.z-h.z, t=dx*sx+dz*sz, pp=Math.abs(dx*sz-dz*sx); if(t<0||t>R||pp>1.5+e.rad*0.6) continue;
+        hitEnemy(e,dmg*(n?0.85:1),h,'ice'); e.slowT=Math.max(e.slowT||0,2); e.slowF=Math.max(e.slowF||0,e.cls==='boss'?0.2:0.45); n++;
+        fx('fx_ice',e.x,0.8,e.z,1.3,0.4,0x9FE6FF,{grow:0.5}); }
+      fx('v2_beam',h.x+sx*R*0.5,1.5,h.z+sz*R*0.5,1.3,0.22,0x9FE6FF,{rot:scrRot(sx,sz),grow:0,sy:R/1.3});
+      for(let q=0;q<16;q++){ const u=q/15*R; spawnParticles(h.x+sx*u,1.4+rand(-0.2,0.2),h.z+sz*u,1,q%2?0xBFF0FF:0xFFFFFF,1.2,0.4,1.2,0.4); }
+      for(let q=1;q<5;q++) fx('fx_ice',h.x+sx*R*q/5,0.7,h.z+sz*R*q/5,0.9,0.4,0x9FE6FF,{grow:0.4});
+      sfx('ice'); G.shake=Math.max(G.shake,0.1); break; }
+    case 'sweep': { vfx2Init(); const R=HD.range*1.2, a0=h.rot, col=ELCOL[h.vel]||0xFFD27A;
+      aoe(R,2.2,e=>{ hitEnemy(e,dmg,h,HEL); if(e.cls!=='boss'&&e.cls!=='etreasure'){ const dx=e.x-h.x,dz=e.z-h.z,d=Math.hypot(dx,dz)||1; e.kx=clamp((e.kx||0)+dx/d*0.9,-1.2,1.2); e.kz=clamp((e.kz||0)+dz/d*0.9,-1.2,1.2); } fx('fx_slash',e.x,1.2,e.z,1.8,0.22,0xFFFFFF,{rot:rand(-1,1),grow:0.5}); });
+      for(let q=0;q<3;q++) fx('fx_slash',h.x+Math.sin(a0)*(1.4+q*0.45),1.5,h.z+Math.cos(a0)*(1.4+q*0.45),R*(0.85+q*0.2),0.3+q*0.05,q?0xFFFFFF:col,{rot:-a0+Math.PI/2+(q-1)*0.5,grow:0.9});
+      for(let k=0;k<40;k++){ const u=k/39, a=a0+(u-0.5)*4.0, r=R*(0.72+0.28*Math.sin(u*Math.PI)); v2Later(u*0.18,()=>{ if(G&&h.alive) spawnParticles(h.x+Math.sin(a)*r,1.2,h.z+Math.cos(a)*r,2,k%3?col:0xFFFFFF,1.4,0.35,1.5,0); }); }
+      fx('v2_ring',h.x,0.15,h.z,R*2.1,0.4,col,{flat:true,grow:0.9}); spawnParticles(h.x,0.3,h.z,12,0xC8A46E,5,0.5,1.5,-8);
+      G.shake=Math.max(G.shake,0.16); if(G.hitStop<0.03) G.hitStop=0.03; sfx('slash'); break; }
+    case 'thrust': { vfx2Init(); const a=h.rot, sx=Math.sin(a), sz=Math.cos(a), R=HD.range+1.8, col=ELCOL[h.vel]||0xFFFFFF; let n=0; const near=[]; eachEnemyNear(h.x+sx*R*0.5,h.z+sz*R*0.5,R*0.7,e=>near.push(e));
+      for(const e of near){ if(e.dead) continue; const dx=e.x-h.x, dz=e.z-h.z, t=dx*sx+dz*sz, pp=Math.abs(dx*sz-dz*sx); if(t<-0.5||t>R||pp>1.1+e.rad*0.6) continue;
+        hitEnemy(e,dmg*(n?0.8:1.35),h,HEL); if(e.cls!=='boss'&&e.cls!=='etreasure'){ e.kx=clamp((e.kx||0)+sx*0.9,-1.2,1.2); e.kz=clamp((e.kz||0)+sz*0.9,-1.2,1.2); } n++; }
+      fx('v2_beam',h.x+sx*R*0.5,1.5,h.z+sz*R*0.5,1.1,0.2,col,{rot:scrRot(sx,sz),grow:0,sy:R/1.1}); fx('v2_beam',h.x+sx*R*0.5,1.5,h.z+sz*R*0.5,0.55,0.12,0xFFFFFF,{rot:scrRot(sx,sz),grow:0,sy:R/0.55});
+      for(let q=0;q<18;q++){ const u=q/17*R; v2Later(u/R*0.08,()=>{ if(G&&h.alive) spawnParticles(h.x+sx*u,1.4+rand(-0.15,0.15),h.z+sz*u,1,q%2?col:0xFFFFFF,1.5,0.3,1.4,0); }); }
+      v2Later(0.07,()=>{ if(!G) return; fx('v2_ring',h.x+sx*R,0.15,h.z+sz*R,3.6,0.4,col,{flat:true,grow:1.3}); fx('v2_spark',h.x+sx*R,1.3,h.z+sz*R,2.4,0.24,0xFFFFFF,{grow:0.6,spin:5}); spawnParticles(h.x+sx*R,0.4,h.z+sz*R,14,0xC8A46E,5,0.5,1.5,-6); });
+      G.shake=Math.max(G.shake,0.14); sfx('slash'); break; }
     case 'flame': { aoe(HD.range,Math.PI,e=>{ hitEnemy(e,dmg,h,'fire'); e.burnT=3; e.burnDps=Math.max(e.burnDps||0,8*(1+0.35*G.si)*(U('h_burn')?1.7:1)); });
       for(let k=0;k<18;k++){ const a=k/18*6.3, r=HD.range*0.75; for(let q=0;q<3;q++) spawnParticles(h.x+Math.sin(a)*r,0.4+q*0.8,h.z+Math.cos(a)*r,1,q>1?0xFFE27A:0xFF7A2A,1.5,0.55,1.9,2.2); }
       for(let q=0;q<5;q++){ const a=q/5*6.283+rand(-0.2,0.2), r=HD.range*rand(0.6,0.9); fx('fx_fire',h.x+Math.sin(a)*r,0.7,h.z+Math.cos(a)*r,1.1,0.4,0x9A5424,{grow:0.5}); }
@@ -3190,7 +3304,7 @@ function castUlt0(){
     for(let k=0;k<7;k++){ const a=k/7*6.3+rand(-0.2,0.2), r=R0*rand(0.3,0.85);
       fx(m,h.x+Math.sin(a)*r,1.2,h.z+Math.cos(a)*r,R0*0.75,0.55,col,{grow:1.1}); }
     fx('fx_glow',h.x,1.6,h.z,R0*0.7,0.5,0xFFFFFF,{grow:1.3}); }
-  { const UV=UEL||h.vel; if(UV){ const k='hx_'+(UV==='ice'?'ice':UV);   /* the hero's element blooms across the whole blast */
+  { const UV=UEL||h.vel; if(UV){ const k=EL_HX[UV]||'hx_'+(UV==='ice'?'ice':UV);   /* the hero's element blooms across the whole blast */
     fx(k,h.x,1.8,h.z,R0*0.5,0.6,0xFFFFFF,{grow:1.2});
     for(let q=0;q<10;q++){ const a=q/10*6.283+rand(-0.15,0.15), r=R0*rand(0.45,0.85); fx(k,h.x+Math.sin(a)*r,1.4,h.z+Math.cos(a)*r,R0*0.17,0.5,0xFFFFFF,{grow:1.25}); } } }
   popText(h.x,3.2,h.z,U0.name.toUpperCase(),'crit'); toast(U0.name+'!',1.4);
@@ -3389,13 +3503,13 @@ function update(dt){
   G.arrows=G.arrows.filter(a=>!a.done);
   /* enemy arrows and foxfire */
   for(const o of G.eshots){ o.t+=dt; const u=Math.min(1,o.t/o.dur); o.x=lerp(o.sx,o.tx,u); o.z=lerp(o.sz,o.tz,u); const y=1.2+Math.sin(u*Math.PI)*(o.kind==='arrow'?1.2:1.8);
-    if(o.kind==='arrow') spawnParticles(o.x,y,o.z,1,0x3A2A1A,0.2,0.12,0.9,0); else { spawnParticles(o.x,y,o.z,2,0x7FD8FF,0.6,0.25,1.3,0.5); }
+    if(o.kind==='arrow') spawnParticles(o.x,y,o.z,1,0x3A2A1A,0.2,0.12,0.9,0); else { spawnParticles(o.x,y,o.z,2,o.kind==='poison'?0x9BE04A:0x7FD8FF,0.6,0.25,1.3,0.5); }
     if(u>=1&&!o.done){ o.done=true;
-      if(o.aoe){ fx('fx_fire',o.tx,0.9,o.tz,o.aoe*2.2,0.4,0x7FD8FF,{grow:0.8}); for(const t of [G.hero,...G.units]){ if(t&&t.alive!==false&&Math.hypot(t.x-o.tx,t.z-o.tz)<o.aoe) damagePlayer(t,o.dmg*0.6); } }
+      if(o.aoe){ fx('fx_fire',o.tx,0.9,o.tz,o.aoe*2.2,0.4,o.kind==='poison'?0x9BE04A:0x7FD8FF,{grow:0.8}); for(const t of [G.hero,...G.units]){ if(t&&t.alive!==false&&Math.hypot(t.x-o.tx,t.z-o.tz)<o.aoe) damagePlayer(t,o.dmg*0.6); } }
       o.onHit(); } }
   G.eshots=G.eshots.filter(o=>!o.done);
-  for(const o of G.orbs){ o.t+=dt; if(o.t>=o.dur){ o.done=true; { const hs=o.src&&o.src.isHero; fx(o.bomb||o.fox||o.flame?'fx_fire':'fx_splash',o.tx,hs?0.15:0.9,o.tz,(o.rad||2)*(hs?1.5:2.4),0.4,o.bomb||o.flame?0xFF9A3C:(o.fox?0x6FE3FF:0xC58CFF),hs?{grow:0.6,flat:true}:{grow:0.9}); }
-  spawnParticles(o.tx,0.4,o.tz,o.bomb?24:(o.big?16:12),o.bomb?0xFF9A3C:(o.fox?0x6FE3FF:0xC58CFF),o.bomb?6:4.5,0.6,1.3,-4); if(o.bomb){ G.shake=Math.max(G.shake,0.12); sfx('slam'); } sfx('magic');
+  for(const o of G.orbs){ o.t+=dt; if(o.t>=o.dur){ o.done=true; { const hs=o.src&&o.src.isHero; fx(o.tex||(o.bomb||o.fox||o.flame?'fx_fire':'fx_splash'),o.tx,hs?0.15:0.9,o.tz,(o.rad||2)*(hs?1.5:2.4),0.4,o.col||(o.bomb||o.flame?0xFF9A3C:(o.fox?0x6FE3FF:0xC58CFF)),hs?{grow:0.6,flat:true}:{grow:0.9}); }
+  spawnParticles(o.tx,0.4,o.tz,o.bomb?24:(o.big?16:12),o.col||(o.bomb?0xFF9A3C:(o.fox?0x6FE3FF:0xC58CFF)),o.bomb?6:4.5,0.6,1.3,-4); if(o.bomb){ G.shake=Math.max(G.shake,0.12); sfx('slam'); } sfx('magic');
       for(const e of G.enemies){ if(e.dead) continue; if(Math.hypot(e.x-o.tx,e.z-o.tz)<o.rad+e.rad*0.5){ hitEnemy(e,o.dmg,o.src,o.burn?'fire':(o.el||null),1); if(o.burn){ e.burnT=3; e.burnDps=Math.max(e.burnDps||0,o.burn); } else { e.slowT=Math.max(e.slowT,1.2); e.slowF=Math.max(e.slowF,0.25); } } }
       if(U('spirit2')&&o.src&&TTYPE[o.src.cls]==='magic') for(const u of G.units) if(Math.hypot(u.x-o.sx,u.z-o.sz)<3.5) u.hp=Math.min(u.max,u.hp+6*healMul()); } }
   G.orbs=G.orbs.filter(o=>!o.done);
@@ -3768,7 +3882,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   if(h.alive){ let hx=0.7*G.heroDef.h*(HERO_UP[G.heroDef.sprite]||1)/SPR_H[G.heroDef.sprite];
     /* v84: in the chibi and classic looks the hero stands at least HERO_TROOP_X times as tall as a typical soldier,
        so you can always pick out your hero in the crowd (anime style keeps its own 1.2x presence) */
-    const anime=!PAINT_ALL&&!!(CH3()&&CH3().style()==='anime'), k=anime?1:Math.max(1,HERO_TROOP_X*troopRefH()/sprH(G.heroDef.sprite,hx)); hx*=k; G._heroK=k; G._hvis=sprH(G.heroDef.sprite,hx);
+    const anime=!PAINT_ALL&&!!(CH3()&&CH3().style()==='anime'), k=(anime?1:Math.max(1,HERO_TROOP_X*troopRefH()/sprH(G.heroDef.sprite,hx)))*(PAINT_ALL?1.3:1); hx*=k; G._heroK=k; G._hvis=sprH(G.heroDef.sprite,hx);
     if(!draw3D(h,G.heroDef.sprite,h.x,0,h.z,h.rot,{H:sprH(G.heroDef.sprite,hx)*(anime?0.92:1),moving:h.moving,atk:h.atk||0,flash:h.flash,style:HSTYLE[G.heroDef.attack],atkDur:Math.min(0.5,Math.max(0.24,(G.heroDef.cd||0.6)*0.9)),wide:0.5}))
       drawSprite(G.heroDef.sprite,h,h.x,0,h.z,h.rot,h.flash,h.moving,0,false,h.atk||0,hx,false); }
   const TR=troops3D(), tdt=Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1);
@@ -3839,7 +3953,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   for(const o of G.orbs){ const u=o.t/o.dur, ox=lerp(o.sx,o.tx,u), oy=lerp(o.sy,0.5,u)+Math.sin(u*Math.PI)*(o.ball?3:2), oz=lerp(o.sz,o.tz,u);
     if(o.ball){ bEuler(B.ball,ox,oy,oz,t*6,t*4,0,1,WHITE); if(Math.random()<0.7) spawnParticles(ox,oy,oz,1,0x8A8A8A,0.4,0.45,1.1,0.8); continue; }
     bEuler(B.talis,ox,oy,oz,0,t*12,0.3,1,C(0xFFF6D8));
-    if(Math.random()<0.5) spawnParticles(ox,oy,oz,1,0xC58CFF,0.5,0.3,0.7,0); }
+    if(Math.random()<0.5) spawnParticles(ox,oy,oz,1,o.col||0xC58CFF,0.5,0.3,0.7,0); if(o.col&&Math.random()<0.7) fx('fx_glow',ox,oy,oz,0.9,0.16,o.col,{grow:0.3}); }
   bEnd(B.talis); bEnd(B.ball);
   bBegin(B.part); for(const p of G.parts){ const s=p.size*Math.max(0.05,Math.min(1,p.life/p.max*1.5)); bEuler(B.part,p.x,p.y,p.z,p.rx+t*4,p.ry+t*3,0,s,C(p.col)); } bEnd(B.part);
   if(_w3d&&!window._fb3){ window._fb3={}; for(const k of ['f_wood','f_iron','f_stone']){ const g=_w3d.geo(k); window._fb3[k]=[makeBatch(g.toon,1400,{mat:_w3d.mats.toon,receive:true}),makeBatch(g.ol,1400,{mat:_w3d.mats.ol,shadow:false})]; } }
@@ -3861,7 +3975,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   const bar=(x,y,z,w,f,col)=>{ bQuat(B.hpBg,x,y,z,camQ,w+0.12,1.75,1,C(0x140C0C)); const fw=w*clamp(f,0,1); bQuat(B.hpFg,x-rx*(w-fw)/2,y-ry*(w-fw)/2,z-rz*(w-fw)/2,camQ,Math.max(0.001,fw),1.2,1,col); };
   const hpCol=f=>f>0.6?C(0x5CE04A):f>0.3?C(0xFFC928):C(0xFF4436);
   for(const t of (G.etowers||[])){ if(t.hp<t.max) bar(t.x,3.9,t.z,1.4,t.hp/t.max,C(0x5CE04A)); }
-  for(const e of G.enemies){ if(e.burrow) continue; if(!e.dead&&e.hp<e.max&&e!==G.boss){ const f=e.hp/e.max; bar(e.x,e.cls==='boss'?BOSSES[e.kind].h+0.4:(e.cls==='oni'?2.95:e.cls==='eshield'?4.6:e.cls==='egolem'?4.6:e.cls==='eronin'?3.6:e.cls==='epriest'?3.7:e.cls==='eshaman'?4.0:e.cls==='earcher'?3.7:e.cls==='espear'?2.9:2.3),e.z,e.cls==='boss'?2.6:(e.cls==='oni'||e.cls==='eshield'||e.cls==='egolem'?1.6:1.35),f,hpCol(f)); } }
+  for(const e of G.enemies){ if(e.burrow) continue; if(!e.dead&&e.hp<e.max&&e!==G.boss){ const f=e.hp/e.max; bar(e.x,e.cls==='boss'?BOSSES[e.kind].h+0.4:(e.cls==='oni'?2.95:e.cls==='eshield'?4.6:e.cls==='egolem'?4.6:e.cls==='eronin'?3.6:e.cls==='epriest'?3.7:e.cls==='kcrab'?3.6:e.cls==='kwyrm'?3.9:e.cls==='kspit'?3.6:e.cls==='kspawn'?2.5:e.cls==='eshaman'?4.0:e.cls==='earcher'?3.7:e.cls==='espear'?2.9:2.3),e.z,e.cls==='boss'?2.6:(e.cls==='oni'||e.cls==='eshield'||e.cls==='egolem'?1.6:1.35),f,hpCol(f)); } }
   if(h.alive&&h.hp<h.max) bar(h.x,Math.max(2.6,(G._hvis||0)+0.35),h.z,1.1,h.hp/h.max,C(0x5AD843));
   for(const u of G.units) if(u.hp<u.max*0.98&&MELEE_CLS.includes(u.cls)) bar(u.x,1.95,u.z,0.7,u.hp/u.max,C(0x5AD843));
   for(const k2 in G.fences){ const f=G.fences[k2]; if(f.built&&f.hp<f.max) bar(f.mid[0],2.2,f.mid[1],2,f.hp/f.max,C(0x5AD843)); }
@@ -4068,7 +4182,7 @@ function renderFusion(){
   const tintStyle=H=>H.spark?`style="${heroGlow(H)}"`:'';
   const heroCard=h=>{ const H=HEROES[h], n=sel.indexOf(h);
     return `<button class="gk-card pick${n>=0?' on':''}${H.rarity==='Fused'?' fused':''}" data-fuse="${h}">${n>=0?`<span class="gk-badge">${n+1}</span>`:''}${H.rarity==='Fused'?'<span class="gk-ribbon">Fused</span>':''}
-      <div class="spr spr-${H.sprite}" ${tintStyle(H)}></div><div class="gk-name">${H.name}</div><div class="gk-tag">${H.attack} · ${H.dmg} dmg</div></button>`; };
+      <div class="spr spr-${H.sprite}" ${tintStyle(H)}></div><div class="gk-name">${H.name}</div><div class="gk-tag">${ATKN[H.attack]||H.attack} · ${H.dmg} dmg</div></button>`; };
   let preview=`<div class="gk-empty">Select two heroes above to see the result.</div>`;
   if(sel.length===2){
     const A=HEROES[sel[0]], B=HEROES[sel[1]], uA=ULTS[sel[0]]||ULTS.ronin, uB=ULTS[sel[1]]||ULTS.ronin;
@@ -4082,22 +4196,23 @@ function renderFusion(){
         <span>Damage</span><b>${Math.round(Math.max(A.dmg,B.dmg)*1.3)}</b>
         <span>Special Attack I</span><b>${(ULTS[keep]||ULTS.ronin).name}</b>
         <span>Inherited from</span><b>${HEROES[keep].name}</b>
+        <span>Attack</span><b>${ATKN[fuseState(A,B).atk]}</b>
+        <span>Element</span><b>${EL_NAME[fuseState(A,B).el]||'None'}</b>
         <span>Fusion spark</span><b><i class="gk-swatch" style="background:${hex(pair[0])}"></i><i class="gk-swatch" style="background:${hex(pair[1])}"></i>Combined</b></div>
-      <div class="gk-btnrow two"><button class="gk-btn gold big${jade>=150?'':' dim'}" data-fusego="reach">Fuse as Reach<small>Close, sweeping strikes</small></button>
-        <button class="gk-btn gold big${jade>=150?'':' dim'}" data-fusego="long">Fuse as Long<small>Ranged, piercing strikes</small></button></div>
+      ${fuseChooser(A,B,jade)}
       <div class="gk-note">Costs 150 <span class="gk-jade"></span> · both heroes are consumed</div>`;
   }
   const fused=(SAVE.fused||[]).filter(f=>HEROES[f.id]);
   $('fuseBox').innerHTML=`<div class="gk-panel">
       <div class="gk-head"><div><div class="gk-title">Hero Fusion</div><div class="gk-sub">Merge two heroes into a stronger new one with its own colour.</div></div>
       <div class="gk-wallet"><span class="gk-jade"></span>${jade}</div></div>
-      <div class="gk-steps"><span><b>1</b>Pick two heroes</span><span><b>2</b>Choose Reach or Long</span><span><b>3</b>Fuse for 150 jade</span></div>
+      <div class="gk-steps"><span><b>1</b>Pick two heroes</span><span><b>2</b>Pick attack and element</span><span><b>3</b>Fuse for 150 jade</span></div>
     </div>
     <div class="gk-panel"><div class="gk-row"><div class="gk-title sm">Choose two heroes</div><div class="gk-count">${sel.length}/2 selected</div></div>
       <div class="gk-grid">${heroes.map(heroCard).join('')}</div></div>
     <div class="gk-panel"><div class="gk-title sm">Result</div>${preview}</div>
     ${fused.length?`<div class="gk-panel"><div class="gk-title sm">Your fused heroes</div><div class="gk-grid">${fused.map(f=>`<div class="gk-card fused${SAVE.hero===f.id?' on':''}"><span class="gk-ribbon">Fused</span>
-        <div class="spr spr-${f.sprite}" ${tintStyle(f)}></div><div class="gk-name">${f.name}</div><div class="gk-tag">${f.attack}${f.ultName?' · '+f.ultName:''}</div>
+        <div class="spr spr-${f.sprite}" ${tintStyle(f)}></div><div class="gk-name">${f.name}</div><div class="gk-tag">${ATKN[f.attack]||f.attack}${f.el?' · '+(EL_NAME[f.el]||f.el):''}${f.ultName?' · '+f.ultName:''}</div>
         ${SAVE.hero===f.id?'<button class="gk-btn ghost" disabled>Equipped</button>':`<button class="gk-btn blue" data-equip="${f.id}">Equip</button>`}</div>`).join('')}</div></div>`:''}`;
 }
 /* ---- fused names: the opening of the first hero + the ending of the second, e.g. Tsukuyomi + Kagutsuchi = Tsukutsuchi */
@@ -4136,10 +4251,21 @@ function tintFilter(t){ if(!t) return ''; const hue=tintHue(t);
 function tintHue(t){ const r=((t>>16)&255)/255,g=((t>>8)&255)/255,b=(t&255)/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b); let h=0;
   if(mx!==mn){ const d=mx-mn; h=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); h*=60; }
   return Math.round(h); }
+function fuseState(A,B){ const all=FUSE_LONG.concat(FUSE_SHORT); let atk=window.__fuseAtk; if(!all.some(o=>o.k===atk)) atk='orb';
+  const opts=[]; for(const e of [ATK_NAT[atk],heroVel(A),heroVel(B)]) if(e&&!opts.includes(e)) opts.push(e);
+  let el=window.__fuseEl; if(!opts.includes(el)) el=opts[0]||null; return {atk,el,opts}; }
+function fuseChooser(A,B,jade){ const st=fuseState(A,B), hx=c=>'#'+c.toString(16).padStart(6,'0');
+  const optBtn=o=>`<button class="gk-opt${st.atk===o.k?' on':''}" data-fuseatk="${o.k}" style="--c:${hx(HCOL[o.k]||0xFFD34D)}"><b>${o.n}</b><small>${o.d}</small></button>`;
+  const elBtn=e=>`<button class="gk-opt${st.el===e?' on':''}" data-fuseel="${e}" style="--c:${hx(ELCOL[e]||0xFFFFFF)}"><b><i></i>${EL_NAME[e]||e}</b></button>`;
+  const nm=(FUSE_LONG.concat(FUSE_SHORT).find(o=>o.k===st.atk)||{}).n;
+  return `<div class="gk-sub2">Long range</div><div class="gk-opts">${FUSE_LONG.map(optBtn).join('')}</div>
+      <div class="gk-sub2">Reach, close combat</div><div class="gk-opts">${FUSE_SHORT.map(optBtn).join('')}</div>
+      <div class="gk-sub2">Element</div><div class="gk-opts">${st.opts.map(elBtn).join('')}</div>
+      <div class="gk-btnrow" style="margin-top:12px"><button class="gk-btn gold big${jade>=150?'':' dim'}" style="width:100%" data-fusego="go">Fuse with ${nm}<small>${EL_NAME[st.el]||'No element'} element</small></button></div>`; }
 function buyFused(style){
   const sel=window.__fuseSel||[]; if(sel.length!==2) return;
   if((SAVE.jade||0)<150){ homeMsg('You need 150 Spirit Jade to fuse.'); return; }
-  const A=HEROES[sel[0]], B=HEROES[sel[1]];
+  const A=HEROES[sel[0]], B=HEROES[sel[1]], FS=fuseState(A,B);
   const id='fx_'+sel[0]+'_'+sel[1];
   if(HEROES[id]){ homeMsg('You have already fused these two.'); return; }
   SAVE.jade-=150;
@@ -4149,16 +4275,15 @@ function buyFused(style){
     hp:Math.round(Math.max(A.hp,B.hp)*1.25), speed:+(Math.max(A.speed,B.speed)*1.1).toFixed(2),
     h:Math.max(A.h,B.h), dmg:Math.round(Math.max(A.dmg,B.dmg)*1.3),
     cd:+(Math.min(A.cd,B.cd)*0.95).toFixed(2),
-    attack:style==='long'?(A.attack==='bolt'||B.attack==='bolt'?'bolt':'orb'):(A.attack==='melee'||B.attack==='melee'?'melee':'blade'),
-    range:style==='long'?12.5:3.8,
-    desc:style==='long'?'Fused power hurled across the field':'Fused power in a sweeping close strike',
-    passive:'Inherits '+A.name+' and '+B.name, fuseOf:[sel[0],sel[1]], style };
+    attack:FS.atk, el:FS.el, range:FUSE_RANGE[FS.atk]||12.5,
+    desc:(FUSE_LONG.concat(FUSE_SHORT).find(o=>o.k===FS.atk)||{}).d||'Fused power',
+    passive:'Inherits '+A.name+' and '+B.name, fuseOf:[sel[0],sel[1]], style:FUSE_LONG.some(o=>o.k===FS.atk)?'long':'reach' };
   HEROES[id]=def; ULTS[id]=Object.assign({},ULTS[keepId],{name:def.name+' '+(ULTS[keepId].name.split(' ').pop()),col:def.spark[0],mult:(uA.mult+uB.mult)*0.62});
   ULT_FX[id]=ULT_FX[keepId]||'slash';
   SAVE.fused.push(def);
   SAVE.heroes=SAVE.heroes.filter(h=>h!==sel[0]&&h!==sel[1]); SAVE.heroes.push(id);
   if(SAVE.hero===sel[0]||SAVE.hero===sel[1]) SAVE.hero=id;
-  window.__fuseSel=[]; persist(); renderHome(); homeMsg(def.name+' created. Equip it in Heroes.');
+  window.__fuseSel=[]; window.__fuseAtk=null; window.__fuseEl=null; persist(); renderHome(); homeMsg(def.name+' created. Equip it in Heroes.');
 }
 function restoreFused(){ for(const f of (SAVE.fused||[])){
     if(f.fuseOf&&f.fuseOf.length===2&&!f.v2){ const A=HEROES[f.fuseOf[0]]||(SAVE.fused||[]).find(x=>x.id===f.fuseOf[0]), B=HEROES[f.fuseOf[1]]||(SAVE.fused||[]).find(x=>x.id===f.fuseOf[1]);
@@ -4172,7 +4297,7 @@ let homeMsgT=null;
 function homeMsg(t){ $('homeMsg').textContent=t; clearTimeout(homeMsgT); homeMsgT=setTimeout(()=>{ $('homeMsg').textContent=''; },4000); }
 document.querySelector('.tabs').addEventListener('click',e=>{ const t=e.target.closest('.tab'); if(!t) return; homeTab=t.dataset.tab; renderHome(); });
 $('map').addEventListener('click',e=>{
-  const b=e.target.closest('[data-buyhero],[data-buyunit],[data-equip],[data-sky],[data-skyeq],[data-skyup],[data-fuse],[data-fusego]'); if(!b) return;
+  const b=e.target.closest('[data-buyhero],[data-buyunit],[data-equip],[data-sky],[data-skyeq],[data-skyup],[data-fuse],[data-fusego],[data-fuseatk],[data-fuseel]'); if(!b) return;
   if(b.dataset.sky){ const k=SKY2.find(x=>x.id===b.dataset.sky);
     if((SAVE.jade||0)<k.cost){ homeMsg('Need '+(k.cost-(SAVE.jade||0))+' more Spirit Jade.'); return; }
     SAVE.jade-=k.cost; SAVE.sky2own.push(k.id); SAVE.sky2Lv[k.id]=1; if(!SAVE.sky2) SAVE.sky2=k.id; persist(); sfx('rank'); homeMsg(k.name+' purchased'); renderHome(); return; }
@@ -4182,6 +4307,8 @@ $('map').addEventListener('click',e=>{
     SAVE.jade-=c; SAVE.sky2Lv[k.id]=lv+1; persist(); sfx('rank'); homeMsg(k.name+' is now level '+(lv+1)); renderHome(); return; }
   if(b.dataset.fuse){ const id=b.dataset.fuse, sel=window.__fuseSel=window.__fuseSel||[];
     const i2=sel.indexOf(id); if(i2>=0) sel.splice(i2,1); else { if(sel.length>=2) sel.shift(); sel.push(id); } renderHome(); return; }
+  if(b.dataset.fuseatk){ window.__fuseAtk=b.dataset.fuseatk; window.__fuseEl=null; sfx('rank'); renderHome(); return; }
+  if(b.dataset.fuseel){ window.__fuseEl=b.dataset.fuseel; sfx('rank'); renderHome(); return; }
   if(b.dataset.fusego){ buyFused(b.dataset.fusego); return; }
   if(b.dataset.equip){ SAVE.hero=b.dataset.equip; persist(); sfx('rank'); homeMsg(`${HEROES[SAVE.hero].name} equipped`); renderHome(); return; }
   const isHero=!!b.dataset.buyhero, id=b.dataset.buyhero||b.dataset.buyunit, d=isHero?HEROES[id]:unitDeal(id,RECRUITS[id]);
