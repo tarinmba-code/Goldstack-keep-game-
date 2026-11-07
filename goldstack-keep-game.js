@@ -220,12 +220,16 @@ const STAGES = [
   {name:"Gate of the Stone Lion", blurb:"Two guardians stood here. One woke.", theme:'mist', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'shishi', waves:15, hp:970, tod:'night'},
   {name:"Siege of the Walking Castle", blurb:"The last castle marches on yours", theme:'sakura', lanes:[-108,-72,-36,0,36,72,108], enemies:['bandit','oni'], mini:true, boss:'oshiro', waves:16, hp:1000, tod:'dawn'},
 ];
-/* v100 pacing: shorter opening stages for phone sessions. Stage 1 (the guided first battle) has 6 waves and stages 2-5
-   have 8 (all were 12). They compress the old 12-wave curve, so the last wave hits as hard as before, with troops packed a
-   little tighter. Autoplay test (starter hero, no upgrades): stage 1 went from 6:00 to 3:30 and stages 2-5 from 6:00-6:30
-   to 3:30-4:30, all still 3 stars. Stages 6+ are unchanged: cutting their waves brought the boss in before the defences
-   were up (stage 10 autoplay wins fell from 3 in 4 to 1 in 3), so they need a separate balance pass. */
-const PACE_WAVES=si=>si===0?6:si<5?8:null;
+/* v100/v101 pacing: shorter stages for phone sessions.
+   Stage 1 (the guided first battle) has 6 waves and stages 2-5 have 8 (all were 12). They compress the old curve, so the
+   last wave hits as hard as before, with troops packed a little tighter.
+   v101: every other stage is shorter too: stages 6-40 have 10 waves (were 12), 41-65 have 11 (were 13-15) and the Kaiju
+   God stages 12 (were 15-16). Their waves are the old ones with the last few dropped, so the boss comes sooner. To give
+   the same build-up in less time, gold from foes and wave bonuses and the gold mine and forge pay more (PACE_ECO). */
+const PACE_WAVES=si=>si===0?6:si<5?8:si<40?10:si<65?11:12;
+const PACE_ECO=1.0;   /* economy boost = (old waves / new waves) ^ PACE_ECO, from stage 6.
+   Autoplay check, old vs new, same upgrades: stages 15, 25, 35, 45, 55, 66 and 70 gave the same results (one loss at 25
+   in both, wins with similar castle health elsewhere) in 10-25% less time; stages 6-10 without upgrades about as before. */
 STAGES.forEach((s,si)=>{ s.baseWaves=s.waves; const n=PACE_WAVES(si); if(n&&n<s.waves) s.waves=n; });
 const THEMES = {
   sakura: {sky:0xCFE9F5, ground:0x78C35A, path:0xD8B784, court:0xCBAA72, hemiG:0x4E8A30, cliff:0x777C86, cap:0x6FB548, tree:'sakura',  amb:0xF7B6D2, stageCol:'#E86FA0'},
@@ -2013,6 +2017,8 @@ function startStage(si){ document.body.classList.remove('cinema'); restoreFused(
         const up=G.pads.find(q=>q.kind==='fup'&&q.target===p.fence); if(up){ up.level=2; up.cost=Math.round(up.cost*1.5); } } }
     if(n){ refreshPads(); setTimeout(()=>toast(t2?'Iron palisades stand ready · upgrade them on the yellow pads':'Palisades stand ready · upgrade them on the yellow pads',2.6),2700); } }
   stageStartV65(si); tutStart(si);
+  { const bw=st.baseWaves||st.waves; G.paceEco=si>=5&&st.waves<bw?Math.pow(bw/st.waves,PACE_ECO):1;   /* v101: shorter stage, richer economy */
+    if(G.paceEco>1){ G.mods.kill=(G.mods.kill||1)*G.paceEco; G.mods.waveBonus=(G.mods.waveBonus||1)*G.paceEco; } }
   if(CH3()){ CH3().clear(); const ks=[HD.sprite,st.boss,st.boss2,'brute'];
     for(const w of (G.waves||[])) for(const g of w.g) if(/^(boss|mini|div):/.test(g[0])) ks.push(g[0].slice(g[0].indexOf(':')+1));
     const sid=summonId&&summonId(); if(sid&&HEROES[sid]) ks.push(HEROES[sid].sprite);
@@ -3660,11 +3666,11 @@ function update(dt){
 
   // mine & forge
   const richMul=1+0.25*LV('m_rich');
-  if(G.mine){ G.mine.t-=dt; if(G.mine.t<=0){ G.mine.t=1.5/richMul;
+  if(G.mine){ G.mine.t-=dt; if(G.mine.t<=0){ G.mine.t=1.5/richMul/(G.paceEco||1);
     if(h.alive){ const d=Math.hypot(h.x-G.mine.x,h.z-G.mine.z); G.coins.push({kind:'gold',st:1,x:G.mine.x,y:0.8,z:G.mine.z,sx:G.mine.x,sy:0.8,sz:G.mine.z,t:0,spin:0,dur:clamp(d/22,0.25,0.9)}); G.mineOut=(G.mineOut||0)+1; }
     else { let near=0; for(const c of G.coins) if(c.st===0&&Math.abs(c.x-G.mine.x)<3&&Math.abs(c.z-G.mine.z)<3) near++;
       if(near<24){ const a=rand(0,Math.PI*2); G.coins.push({kind:'gold',st:0,x:G.mine.x,y:0.6,z:G.mine.z,vx:Math.cos(a)*1.4,vy:4.5,vz:Math.sin(a)*1.4,t:0,bounces:0,spin:0}); } } } }
-  if(G.forge){ const F=G.forge; F.t-=dt; if(F.t<=0){ F.t=2.2/richMul; if(F.pile<20) F.pile++; if(Math.random()<0.7) spawnParticles(F.x,1.3,F.z,3,0xFF8A2A,1.6,0.7,0.8,2); }
+  if(G.forge){ const F=G.forge; F.t-=dt; if(F.t<=0){ F.t=2.2/richMul/(G.paceEco||1); if(F.pile<20) F.pile++; if(Math.random()<0.7) spawnParticles(F.x,1.3,F.z,3,0xFF8A2A,1.6,0.7,0.8,2); }
     const nearF=Math.hypot(h.x-F.x,h.z-(F.z+1.6))<2.6;
     if(h.alive&&F.pile>0){ F.give-=dt; if(F.give<=0){ F.give=nearF?0.07:0.5; F.pile--; const y=0.4+F.pile*0.17, d=Math.hypot(h.x-F.x,h.z-F.z);
       G.coins.push({kind:'ingot',st:1,x:F.x+1.2,y,z:F.z+1.4,sx:F.x+1.2,sy:y,sz:F.z+1.4,t:0,spin:0,dur:clamp(d/22,0.24,0.9)}); } } }
