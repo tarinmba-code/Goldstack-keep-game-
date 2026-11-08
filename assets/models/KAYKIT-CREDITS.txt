@@ -1,0 +1,3 @@
+kay_ronin-*.glb and kay_bandit-*.glb (v102 pilot) are built from the KayKit Adventurers Character Pack 1.0
+by Kay Lousberg (www.kaylousberg.com), licensed CC0 1.0 (public domain, free for commercial use).
+Changes: Japanese kasa hat and katana added, palette recoloured, parts merged into one mesh, clips trimmed.

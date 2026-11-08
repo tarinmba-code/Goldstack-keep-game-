@@ -782,7 +782,8 @@ let PAINT_ALL=(()=>{ try{ const q=new URLSearchParams(location.search).get('styl
 const BOSS_MIN_H=6.2;   /* painted boss floor (sheet height; visible body about 6, a typical enemy is about 2.35) */
 const paintedBoss=k=>(PAINT_ALL&&!!ANIM[k]&&!!SB[k])||(BOSS_ART==='painted'&&PAINTED_BOSSES.has(k)&&!!ANIM[k]&&FRAMES(k)>=5);
 const sprH=(k,extra)=>(SPR_H[k]||2.2)*(extra||1)*((ANIM_META[k]&&ANIM_META[k].hs)||1);
-function draw3D(ent,key,x,y,z,rot,o){ const C=CH3(); if(!C||!C.has(key)||paintedBoss(key)) return false;   /* painted keys (bosses and Kaiju heroes) always use their sheet */
+function draw3D(ent,key,x,y,z,rot,o){ if(PILOT&&ent===G.hero&&kayDraw(ent,'ronin',x,y+TH(x,z),z,rot,o)) return true;   /* v102 pilot */
+  const C=CH3(); if(!C||!C.has(key)||paintedBoss(key)) return false;   /* painted keys (bosses and Kaiju heroes) always use their sheet */
   const ty=TH(x,z); const ok=C.drive(ent,key,Object.assign({x,y:y+ty,z,rot,dt:Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1)},o));   /* v82: characters share the global hit-stop */ if(!ok) return false;
   const W=(o.H||2)*(o.wide||0.5); bYaw(BLOB,x,0.04+ty,z,0,W*1.1,1,W*0.65,WHITE); return true; }   /* Phase 1 fills this, e.g. b_dojo:{url:'assets/models/dojo.glb', scale:1, rotY:0} */
 let _kit3d=null; const _glb={};
@@ -791,12 +792,74 @@ function load3DKit(){ if(!_kit3d) _kit3d=Promise.all([import('three/addons/loade
       loader.setKTX2Loader(ktx); loader.setMeshoptDecoder(M1.MeshoptDecoder); return {loader,ktx}; });
   return _kit3d; }
 function loadModel(url){ return _glb[url]||(_glb[url]=load3DKit().then(k=>k.loader.loadAsync(url))); }
+/* ================================================================ v102 · PILOT: rigged characters with smooth clip animation
+   Opt-in test of the plan in the project doc goldstack-3d-motion-plan.md. ?pilot=1 turns it on for this device (remembered),
+   ?pilot=0 turns it off. While on, the hero (whichever is picked) draws as a ronin and every bandit as a hooded bandit:
+   rigged models built in Blender from Kay Lousberg's CC0 KayKit Adventurers pack (Japanese hat, katana, recoloured palette),
+   about 4.2k triangles and one draw each, playing real animation clips at full frame rate with crossfades:
+   idle, run (speed-matched to movement), three alternating sword cuts, spin on the special, hit, death. Everything else is unchanged. */
+const PILOT=(()=>{ try{ const q=new URLSearchParams(location.search).get('pilot'); if(q==='1'||q==='0') localStorage.setItem('gk-pilot',q); return localStorage.getItem('gk-pilot')==='1'; }catch(e){ return false; } })();
+const KAY_DEFS={
+  ronin:{url:'assets/models/kay_ronin-f0b8b094.glb', k:1.45, idle:'Idle', run:'Running_A', atk:['1H_Melee_Attack_Slice_Diagonal','1H_Melee_Attack_Slice_Horizontal','1H_Melee_Attack_Chop'], ult:'2H_Melee_Attack_Spin', hit:'Hit_A', die:['Death_A'], cheer:'Cheer'},
+  bandit:{url:'assets/models/kay_bandit-078188b1.glb', k:1.3, idle:'Idle', run:'Running_A', atk:['1H_Melee_Attack_Stab','1H_Melee_Attack_Chop'], hit:'Hit_A', die:['Death_A','Death_B']}};
+const KAY_ENEMY={bandit:'bandit'};
+const KAY_RUN=1.6;   /* run clip's natural ground speed in model heights per second (KayKit chibi stride); each def's k scales it against the game's size */
+const KAY={tpl:{},inst:new Map(),seen:new Set(),SU:null,loading:false};
+function kayInit(){ if(!PILOT||KAY.loading||GFX!=='3d') return; KAY.loading=true;
+  import('three/addons/utils/SkeletonUtils.js').then(SU=>{ KAY.SU=SU;
+    for(const k in KAY_DEFS) loadModel(KAY_DEFS[k].url).then(g=>{ const sc=g.scene, clips={};
+      for(const c of g.animations) clips[c.name]=c;
+      sc.traverse(o=>{ if(o.isMesh){ const m=o.material; o.material=new T.MeshToonMaterial({map:m.map,gradientMap:gradTex}); o.frustumCulled=false; } });
+      sc.updateMatrixWorld(true); const box=new T.Box3().setFromObject(sc);
+      KAY.tpl[k]={scene:sc,clips,height:Math.max(0.5,box.max.y-box.min.y)}; })
+    .catch(e=>console.warn('pilot model failed',k,e&&e.message)); })
+  .catch(e=>console.warn('pilot: SkeletonUtils failed',e&&e.message)); }
+function kayReset(){ for(const I of KAY.inst.values()) scene.remove(I.root); KAY.inst.clear(); }
+function kayPlay(I,name,fade){ if(I.cur===name) return; const nx=I.acts[name]; if(!nx) return;
+  nx.reset(); nx.setLoop(T.LoopRepeat); nx.timeScale=1; nx.fadeIn(fade).play(); if(I.cur&&I.acts[I.cur]) I.acts[I.cur].fadeOut(fade); I.cur=name; }
+function kayOnce(I,name,dur,fade){ const nx=I.acts[name]; if(!nx) return; fade=fade==null?0.07:fade;
+  nx.reset(); nx.setLoop(T.LoopOnce,1); nx.clampWhenFinished=true; nx.timeScale=nx.getClip().duration/dur; nx.fadeIn(fade).play();
+  if(I.cur&&I.cur!==name&&I.acts[I.cur]) I.acts[I.cur].fadeOut(fade); I.cur=name; I.lock=dur*0.9; }
+function kayDraw(ent,key,x,y,z,rot,o){ const tp=KAY.tpl[key]; if(!tp||!KAY.SU) return false;
+  let I=KAY.inst.get(ent);
+  if(!I){ const root=KAY.SU.clone(tp.scene), mixer=new T.AnimationMixer(root), acts={}; let mat=null;
+    for(const n in tp.clips) acts[n]=mixer.clipAction(tp.clips[n]);
+    root.traverse(m=>{ if(m.isMesh){ m.material=m.material.clone(); mat=m.material; m.castShadow=ent===G.hero; } });
+    scene.add(root); I={root,mixer,acts,mat,def:KAY_DEFS[key],tp,cur:null,lock:0,prevAtk:0,prevFlash:0,last:null,spd:0,dying:-1,ai:0,ult:G.ultCd||0};
+    KAY.inst.set(ent,I); kayPlay(I,I.def.idle,0); }
+  if(I.dying>=0){ I.dying=-1; I.root.visible=true; I.lock=0; kayPlay(I,I.def.idle,0.1); }
+  KAY.seen.add(ent);
+  const dt=Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1);
+  let spd=0; if(I.last&&dt>0) spd=Math.hypot(x-I.last.x,z-I.last.z)/dt; I.last={x,z}; if(spd>40) spd=0;   /* ignore teleports */
+  I.spd=lerp(I.spd,spd,1-Math.exp(-dt*12));
+  const H=(o.H||2)*(I.def.k||1), s=H/I.tp.height; I.root.scale.setScalar(s);
+  const a=o.atk||0;
+  if(I.def.ult&&ent===G.hero&&(G.ultCd||0)>I.ult+1){ kayOnce(I,I.def.ult,0.7); }   /* special attack: spin */
+  else if(a>I.prevAtk+0.2&&I.lock<=0.05){ const n=I.def.atk[(I.ai++)%I.def.atk.length]; kayOnce(I,n,Math.max(0.32,(o.atkDur||0.45)*1.3)); }
+  I.prevAtk=a; if(ent===G.hero) I.ult=G.ultCd||0;
+  const f=o.flash||0; if(f>0.5&&I.prevFlash<=0.5&&I.lock<=0) kayOnce(I,I.def.hit,0.32,0.05); I.prevFlash=f;
+  if(I.lock>0) I.lock-=dt;
+  if(I.lock<=0){ const run=I.spd>0.5; kayPlay(I,run?I.def.run:I.def.idle,0.14);
+    if(run) I.acts[I.def.run].timeScale=clamp(I.spd/(KAY_RUN*H),0.7,1.7); }
+  I.mixer.update(dt);
+  I.root.position.set(x,y,z); I.root.rotation.y=rot;
+  if(I.mat) I.mat.emissive.setRGB(f*0.7,f*0.7,f*0.7);
+  const W=H*0.5; bYaw(BLOB,x,0.04+y,z,0,W*1.1,1,W*0.65,WHITE);
+  return true; }
+function kayBegin(){ KAY.seen.clear(); }
+function kayEnd(){ if(!KAY.inst.size) return; const dt=Math.min(0.05,G._rdt||0.016);
+  for(const [ent,I] of KAY.inst){ if(KAY.seen.has(ent)) continue;
+    if(I.dying<0){ I.dying=0; kayOnce(I,I.def.die[(I.ai++)%I.def.die.length],0.9,0.05); }   /* gone from the game this frame: fall over */
+    I.dying+=dt; I.mixer.update(dt);
+    if(I.dying>1.3) I.root.position.y-=dt*1.4;
+    if(I.dying>2.2){ scene.remove(I.root); KAY.inst.delete(ent); } } }
 function attach3D(g,kind,sprite,shadow){ const M=MODELS3D[kind]; if(GFX!=='3d'||!M) return;
   loadModel(M.url).then(gltf=>{ const m=gltf.scene.clone(true);
     m.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
     if(M.rotY) m.rotation.y=M.rotY; m.scale.setScalar(M.scale||1); g.add(m); sprite.visible=false; if(shadow) shadow.visible=false; g.userData.model3d=m; renderer.shadowMap.needsUpdate=true; })
   .catch(err=>{ console.warn('3D model failed, keeping sprite:',kind,err&&err.message); }); }
 if(GFX==='3d') load3DKit().catch(err=>console.warn('3D kit failed to load:',err&&err.message));
+if(GFX==='3d'&&PILOT) kayInit();
 if(GFX==='3d'){ /* v79: mon coins with a square hole and a raised rim; trapezoid ingots */
   const sh=new T.Shape(); sh.absarc(0,0,0.3,0,Math.PI*2,false); const hole=new T.Path(); hole.moveTo(-0.075,-0.075); hole.lineTo(-0.075,0.075); hole.lineTo(0.075,0.075); hole.lineTo(0.075,-0.075); hole.lineTo(-0.075,-0.075); sh.holes.push(hole);
   const cg=new T.ExtrudeGeometry(sh,{depth:0.06,bevelEnabled:true,bevelThickness:0.02,bevelSize:0.02,bevelSegments:1,curveSegments:14}); cg.translate(0,0,-0.03); cg.rotateX(-Math.PI/2); B.coin.m.geometry=cg;
@@ -1954,7 +2017,7 @@ function bossIntro(name,kind){ if(G) G.camPunch=-0.22;
 
 /* ================================================================ game state */
 let G=null;
-function startStage(si){ document.body.classList.remove('cinema'); restoreFused(); if(G){ G.cleanupT=0; G.bossesDown=0; G.cine=null; G.seenBoss={}; G.lastBoss=null; } { const c=document.getElementById('cine'); if(c){ c.innerHTML=''; c.className=''; } } if(G&&G.etowers){ for(const t of G.etowers) scene.remove(t.g); }
+function startStage(si){ if(PILOT) kayReset(); document.body.classList.remove('cinema'); restoreFused(); if(G){ G.cleanupT=0; G.bossesDown=0; G.cine=null; G.seenBoss={}; G.lastBoss=null; } { const c=document.getElementById('cine'); if(c){ c.innerHTML=''; c.className=''; } } if(G&&G.etowers){ for(const t of G.etowers) scene.remove(t.g); }
 
   disposeGroup(dyn); $('labels').innerHTML='';
   numPool.forEach(n=>{ n.active=false; n.el.style.display='none'; });
@@ -3981,7 +4044,7 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
   hero.ring.position.set(rc.x,0.06,rc.z); hero.ring.scale.setScalar(lerp(hero.ring.scale.x,Math.max(1.5,rr),1-Math.exp(-dt*6)));
 
   hero.g.visible=false;
-  Object.values(SB).forEach(bBegin); bBegin(B.badge); bBegin(BLOB); G._rdt=dt; cullTrees(dt,G._cullNow); G._cullNow=false; if(CH3()) CH3().begin(); if(_w3d) _w3d.tick(dt);
+  Object.values(SB).forEach(bBegin); bBegin(B.badge); bBegin(BLOB); G._rdt=dt; cullTrees(dt,G._cullNow); G._cullNow=false; if(CH3()) CH3().begin(); if(_w3d) _w3d.tick(dt); if(PILOT) kayBegin();
   if(G.ally){ const a=G.ally, grow=Math.min(1,a.t/0.35), fade=Math.min(1,(a.dur-a.t)/0.4), aH=sprH(a.sprite,(5.4*(DIV_UP[a.sprite]||1)/(SPR_H[a.sprite]||6))*grow*Math.max(0.2,fade));
     if(!draw3D(a,a.sprite,a.x,0.25+Math.sin(TIME*2)*0.15,a.z,a.rot,{H:aH*0.92,moving:a.moving,atk:a.atk,style:HSTYLE[(HEROES[a.id]||{}).attack],wide:0.55})) drawSprite(a.sprite,a,a.x,0.25+Math.sin(TIME*2)*0.15,a.z,a.rot,0,a.moving,a.seed,false,a.atk,(5.4*(DIV_UP[a.sprite]||1)/(SPR_H[a.sprite]||6))*grow*Math.max(0.2,fade),false); }
   if(h.alive){ let hx=0.7*G.heroDef.h*(HERO_UP[G.heroDef.sprite]||1)/SPR_H[G.heroDef.sprite];
@@ -4024,9 +4087,11 @@ function render(dt){ perfTick(dt); try{ edgeArrows(); }catch(err){}
       continue; }
     if(e.burrow) continue;
     if(e.kx||e.kz){ const kd=Math.exp(-(G._rdt||0.016)*11); e.kx*=kd; e.kz*=kd; if(Math.abs(e.kx)+Math.abs(e.kz)<0.01) e.kx=e.kz=0; }
+    if(PILOT&&KAY_ENEMY[e.cls]&&kayDraw(e,KAY_ENEMY[e.cls],e.x+(e.kx||0),TH(e.x,e.z),e.z+(e.kz||0),e.rot,{H:sprH(e.cls,e.mut?1.18:1)*0.92,atk:e.atk,flash:Math.max(e.flash,0),atkDur:0.5})) continue;   /* v102 pilot */
     drawSprite(e.cls,e,e.x+(e.kx||0),(EN[e.cls]&&EN[e.cls].flier)?1.7+Math.sin(TIME*3+e.seed)*0.25:0,e.z+(e.kz||0),e.rot,Math.max(e.flash,e.mut?0.42+Math.sin(TIME*4+e.seed)*0.12:0),e.moving,e.seed,e.freezeT>0||e.slowT>0.8,e.atk,e.mut?1.18:1,e.burnT>0);
   }
   if(CH3()){ CH3().troops.end(); CH3().end(); }
+  if(PILOT) kayEnd();
   SPR_U.uTime.value=TIME; Object.values(SB).forEach(b=>{ bEnd(b); b.fa.needsUpdate=true; if(b.ma) b.ma.needsUpdate=true; }); bEnd(B.badge); bEnd(BLOB);
 
   bBegin(B.coin); bBegin(B.ingot);
