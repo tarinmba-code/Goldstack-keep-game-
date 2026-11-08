@@ -832,7 +832,7 @@ function kayDraw(ent,key,x,y,z,rot,o){ const tp=KAY.tpl[key]; if(!tp||!KAY.SU) r
   const dt=Math.min(0.05,G._rdt||0.016)*(G.hitStop>0?0.1:1);
   let spd=0; if(I.last&&dt>0) spd=Math.hypot(x-I.last.x,z-I.last.z)/dt; I.last={x,z}; if(spd>40) spd=0;   /* ignore teleports */
   I.spd=lerp(I.spd,spd,1-Math.exp(-dt*12));
-  const H=(o.H||2)*(I.def.k||1), s=H/I.tp.height; I.root.scale.setScalar(s);
+  const H=(o.H||2)/(ent===G.hero?(G._heroK||1):1)*(I.def.k||1), s=H/I.tp.height;   /* v103: same size in every style */ I.root.scale.setScalar(s);
   const a=o.atk||0;
   if(I.def.ult&&ent===G.hero&&(G.ultCd||0)>I.ult+1){ kayOnce(I,I.def.ult,0.7); }   /* special attack: spin */
   else if(a>I.prevAtk+0.2&&I.lock<=0.05){ const n=I.def.atk[(I.ai++)%I.def.atk.length]; kayOnce(I,n,Math.max(0.32,(o.atkDur||0.45)*1.3)); }
@@ -878,9 +878,12 @@ if(GFX==='3d'){ /* v79: mon coins with a square hole and a raised rim; trapezoid
       if(nx!=='painted') C.setStyle(nx);   /* painted keeps the 3D module's last style untouched underneath */
       label(); if(typeof sfx==='function') try{ sfx('rank'); }catch(_){} });
     setTimeout(label,0); }
+  if(GFX==='3d'){ /* v103: one-tap switch for the rigged-character pilot (same as ?pilot=1 / ?pilot=0), reloads the page */
+    const pb=document.createElement('button'); pb.id='gfxpilot'; pb.type='button'; pb.textContent=PILOT?'Pilot ON':'Pilot: off'; pb.className=PILOT?'on':''; bar.appendChild(pb);
+    pb.addEventListener('click',()=>{ try{ localStorage.setItem('gk-pilot',PILOT?'0':'1'); }catch(e){} const u=new URL(location.href); u.searchParams.delete('pilot'); location.replace(u.toString()); }); }
   const st=document.createElement('style'); st.textContent='#gfxbar{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 6px);transform:translateX(-50%);z-index:30;display:flex;gap:6px;white-space:nowrap}'+
     '#gfxbar button{font:800 11px "Nunito Sans",sans-serif;color:#fff;border:0;border-radius:999px;padding:5px 12px;cursor:pointer;touch-action:manipulation}'+
-    '#gfx3d{background:'+(GFX==='3d'?'rgba(46,125,50,.9)':'rgba(60,60,72,.85)')+'}#gfxstyle.anime{background:rgba(110,63,176,.9)}#gfxstyle.chibi{background:rgba(216,52,104,.88)}#gfxstyle.painted{background:rgba(176,120,32,.92)}'; document.head.appendChild(st); }
+    '#gfx3d{background:'+(GFX==='3d'?'rgba(46,125,50,.9)':'rgba(60,60,72,.85)')+'}#gfxstyle.anime{background:rgba(110,63,176,.9)}#gfxstyle.chibi{background:rgba(216,52,104,.88)}#gfxstyle.painted{background:rgba(176,120,32,.92)}#gfxpilot{background:rgba(60,60,72,.85)}#gfxpilot.on{background:rgba(214,48,48,.92)}'; document.head.appendChild(st); }
 
 /* ================================================================ v66 · performance overlay
    ?perf=1 shows frame rate, frame time, draw calls, triangles, GPU objects and memory; ?perf=0 hides it. */
